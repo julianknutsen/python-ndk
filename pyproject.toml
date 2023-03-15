@@ -55,7 +55,7 @@ profile = "black"
 
 [tool.pytest.ini_options]
 log_cli_level = "INFO"
-addopts = "--strict-config --strict-markers --relay-url='ws://10.108.221.213:2700'"
+addopts = "--strict-config --strict-markers"
 
 [tool.mypy]
 exclude = "conftest.*"
