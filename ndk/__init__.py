@@ -18,35 +18,3 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
-
-import os
-import subprocess
-import sys
-
-
-def _run_cmd(args: list[str]) -> bool:
-    print(f"Running {args} ...")
-    output = subprocess.run(args, capture_output=True, text=True, check=False)
-    print(output.stdout)
-    print(output.stderr)
-    return bool(output.returncode)
-
-
-py_files = []
-for root, dirs, files in os.walk("."):
-    for file in files:
-        if any(item in root for item in ["venv", "docs"]):
-            continue
-        if file.endswith(".py"):
-            py_files.append(os.path.join(root, file))
-
-sys.exit(
-    any(
-        [
-            _run_cmd(["black", "--check", "."]),
-            _run_cmd(["isort", "--check-only", "."]),
-            _run_cmd(["pylint"] + py_files),
-            _run_cmd(["mypy", "."]),
-        ]
-    )
-)

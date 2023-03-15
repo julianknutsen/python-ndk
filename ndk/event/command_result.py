@@ -19,34 +19,38 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-import os
-import subprocess
-import sys
+import dataclasses
+
+from ndk.event import event, serialize
 
 
-def _run_cmd(args: list[str]) -> bool:
-    print(f"Running {args} ...")
-    output = subprocess.run(args, capture_output=True, text=True, check=False)
-    print(output.stdout)
-    print(output.stderr)
-    return bool(output.returncode)
+@dataclasses.dataclass
+class CommandResult:
+    event_id: event.EventID
+    accepted: bool
+    message: str
 
+    def is_success(self) -> bool:
+        return self.accepted
 
-py_files = []
-for root, dirs, files in os.walk("."):
-    for file in files:
-        if any(item in root for item in ["venv", "docs"]):
-            continue
-        if file.endswith(".py"):
-            py_files.append(os.path.join(root, file))
+    @classmethod
+    def deserialize(cls, s: str):
+        obj = serialize.deserialize(s)
 
-sys.exit(
-    any(
-        [
-            _run_cmd(["black", "--check", "."]),
-            _run_cmd(["isort", "--check-only", "."]),
-            _run_cmd(["pylint"] + py_files),
-            _run_cmd(["mypy", "."]),
-        ]
-    )
-)
+        if not isinstance(obj, list):
+            raise ValueError(f"Unexpected object type for CommandResult: {obj}")
+
+        if obj[0] == "NOTICE":
+            raise RuntimeError(f"NOTICE response from server: {obj[1]}")
+
+        if len(obj) != 4:
+            raise ValueError("Unexpected object length. Expected 4, got: {obj}")
+
+        if obj[0] != "OK":
+            raise ValueError(
+                f'Command result requires "OK" as first element, got {obj[0]}'
+            )
+
+        c = cls(obj[1], obj[2], obj[3])
+
+        return c

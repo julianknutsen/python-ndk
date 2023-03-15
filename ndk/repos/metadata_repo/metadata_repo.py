@@ -19,34 +19,28 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-import os
-import subprocess
-import sys
+import abc
+import typing
+
+from ndk import crypto
+from ndk.repos import contacts
+
+DEFAULT_METADATA = {"recommend_server": "", "contacts": contacts.ContactList()}
 
 
-def _run_cmd(args: list[str]) -> bool:
-    print(f"Running {args} ...")
-    output = subprocess.run(args, capture_output=True, text=True, check=False)
-    print(output.stdout)
-    print(output.stderr)
-    return bool(output.returncode)
+class MetadataRepo(abc.ABC):
+    @abc.abstractmethod
+    def overwrite(
+        self,
+        keys: crypto.KeyPair,
+        name: typing.Optional[str] = None,
+        about: typing.Optional[str] = None,
+        picture: typing.Optional[str] = None,
+        recommend_server: str = "",
+        contact_list: typing.Optional[contacts.ContactList] = None,
+    ) -> bool:
+        pass
 
-
-py_files = []
-for root, dirs, files in os.walk("."):
-    for file in files:
-        if any(item in root for item in ["venv", "docs"]):
-            continue
-        if file.endswith(".py"):
-            py_files.append(os.path.join(root, file))
-
-sys.exit(
-    any(
-        [
-            _run_cmd(["black", "--check", "."]),
-            _run_cmd(["isort", "--check-only", "."]),
-            _run_cmd(["pylint"] + py_files),
-            _run_cmd(["mypy", "."]),
-        ]
-    )
-)
+    @abc.abstractmethod
+    def get(self, pubkey: crypto.PublicKeyStr) -> dict[str, object]:
+        pass

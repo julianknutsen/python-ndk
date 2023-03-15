@@ -19,34 +19,27 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-import os
-import subprocess
-import sys
+import abc
+import typing
+
+from ndk import crypto
+from ndk.event import event
+
+TextNoteID = typing.NewType("TextNoteID", event.EventID)
+TextNoteContent = typing.NewType("TextNoteContent", str)
 
 
-def _run_cmd(args: list[str]) -> bool:
-    print(f"Running {args} ...")
-    output = subprocess.run(args, capture_output=True, text=True, check=False)
-    print(output.stdout)
-    print(output.stderr)
-    return bool(output.returncode)
+class TextNoteRepo(abc.ABC):
+    @abc.abstractmethod
+    def add(self, keys: crypto.KeyPair, content: str) -> TextNoteID:
+        pass
 
+    @abc.abstractmethod
+    def get_by_uid(self, uid: TextNoteID) -> TextNoteContent:
+        pass
 
-py_files = []
-for root, dirs, files in os.walk("."):
-    for file in files:
-        if any(item in root for item in ["venv", "docs"]):
-            continue
-        if file.endswith(".py"):
-            py_files.append(os.path.join(root, file))
-
-sys.exit(
-    any(
-        [
-            _run_cmd(["black", "--check", "."]),
-            _run_cmd(["isort", "--check-only", "."]),
-            _run_cmd(["pylint"] + py_files),
-            _run_cmd(["mypy", "."]),
-        ]
-    )
-)
+    @abc.abstractmethod
+    def get_by_author(
+        self, author: crypto.PublicKeyStr
+    ) -> typing.Sequence[TextNoteContent]:
+        pass

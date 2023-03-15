@@ -1,0 +1,77 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "python-ndk"
+version = "0.1.0"
+description = "Python Nostr Development Kit"
+authors = ["Julian Knutsen <julianknutsen@users.noreply.github.com>"]
+license = "LICENSE"
+readme = "README.md"
+repository = "https://github.com/julianknutsen/python-ndk.git"
+keywords = ["python-ndk", "nostr"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Python Modules",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3"
+]
+packages = [
+    { include = "ndk" }
+]
+exclude = ["test_*.py"]
+
+[tool.poetry.dependencies]
+python = ">=3.9"
+coincurve = "18.0.0"
+
+[tool.poetry.extras]
+cli = [
+    "click",
+    "websocket-client"
+]
+test = [
+    "mock",
+    "pytest",
+    "types-mock",
+    "websocket-client"
+]
+
+[tool.poetry.group.dev.dependencies]
+black = "*"
+click = "*"
+isort = "*"
+mypy = "*"
+pipreqs = "*"
+poetry = "*"
+pylint = "*"
+pytest = "*"
+types-mock = "*"
+
+[tool.isort]
+profile = "black"
+
+[tool.pytest.ini_options]
+log_cli_level = "INFO"
+addopts = "--strict-config --strict-markers --relay-url='ws://10.108.221.213:2700'"
+
+[tool.mypy]
+exclude = "conftest.*"
+
+[[tool.mypy.overrides]]
+module = "click.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "coincurve.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "setuptools.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "websocket.*"
+ignore_missing_imports = true
