@@ -19,34 +19,26 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-import os
-import subprocess
-import sys
+import typing
 
-
-def _run_cmd(args: list[str]) -> bool:
-    print(f"Running {args} ...")
-    output = subprocess.run(args, capture_output=True, text=True, check=False)
-    print(output.stdout)
-    print(output.stderr)
-    return bool(output.returncode)
-
-
-py_files = []
-for root, dirs, files in os.walk("."):
-    for file in files:
-        if any(item in root for item in ["venv", "docs"]):
-            continue
-        if file.endswith(".py"):
-            py_files.append(os.path.join(root, file))
-
-sys.exit(
-    any(
-        [
-            _run_cmd(["black", "--check", "."]),
-            _run_cmd(["isort", "--check-only", "."]),
-            _run_cmd(["pylint"] + py_files),
-            _run_cmd(["mypy", "."]),
-        ]
-    )
+from ndk.event import (
+    contact_list_event,
+    event,
+    metadata_event,
+    recommend_server_event,
+    text_note_event,
 )
+
+LOOKUP: dict[event.EventKind, typing.Type[event.UnsignedEvent]] = {
+    event.EventKind.SET_METADATA: metadata_event.MetadataEvent,
+    event.EventKind.RECOMMEND_SERVER: recommend_server_event.RecommendServerEvent,
+    event.EventKind.TEXT_NOTE: text_note_event.TextNoteEvent,
+    event.EventKind.CONTACT_LIST: contact_list_event.ContactListEvent,
+}
+
+
+def signed_to_unsigned(signed_event: event.SignedEvent) -> event.UnsignedEvent:
+    if signed_event.kind not in LOOKUP:
+        raise ValueError(f"Attempting to parse an unknown event {signed_event}")
+
+    return LOOKUP[signed_event.kind].from_signed_event(signed_event)

@@ -19,34 +19,31 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-import os
-import subprocess
-import sys
+import dataclasses
+import typing
+
+from ndk.event import event, serialize
 
 
-def _run_cmd(args: list[str]) -> bool:
-    print(f"Running {args} ...")
-    output = subprocess.run(args, capture_output=True, text=True, check=False)
-    print(output.stdout)
-    print(output.stderr)
-    return bool(output.returncode)
+@dataclasses.dataclass(frozen=True)
+class MetadataEvent(event.UnsignedEvent):
+    @classmethod
+    def from_metadata_parts(
+        cls,
+        name: typing.Optional[str] = None,
+        about: typing.Optional[str] = None,
+        picture: typing.Optional[str] = None,
+        **kwargs,
+    ) -> "MetadataEvent":
+        content = {**kwargs}
+        if name:
+            content["name"] = name
 
+        if about:
+            content["about"] = about
 
-py_files = []
-for root, dirs, files in os.walk("."):
-    for file in files:
-        if any(item in root for item in ["venv", "docs"]):
-            continue
-        if file.endswith(".py"):
-            py_files.append(os.path.join(root, file))
+        if picture:
+            content["picture"] = picture
 
-sys.exit(
-    any(
-        [
-            _run_cmd(["black", "--check", "."]),
-            _run_cmd(["isort", "--check-only", "."]),
-            _run_cmd(["pylint"] + py_files),
-            _run_cmd(["mypy", "."]),
-        ]
-    )
-)
+        serialized_content = serialize.serialize_as_str(content)
+        return cls(kind=event.EventKind.SET_METADATA, content=serialized_content)
