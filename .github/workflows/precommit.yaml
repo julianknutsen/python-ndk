@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10"]
+        python-version: ["3.9", "3.10", "3.11"]
       fail-fast: false
 
     # Steps represent a sequence of tasks that will be executed as part of the job
@@ -30,19 +30,19 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
+      - name: Install dependencies [dev]
         run: |
-          python -m pip install --upgrade pip
-          pip install poetry
-          poetry install --with dev
+          curl -sSL https://install.python-poetry.org | python3 -
+          poetry self update 1.4.0
+          poetry install --extras dev
 
       - name: Formatting / Linting Checks
         run: |
-          poetry run python verify_format_lint.py
+          poetry run lint
     
       - name: Tests
         run: |
-          poetry run pytest --log-cli-level=DEBUG .
+          poetry run test
 
       - name: Build
         run: |

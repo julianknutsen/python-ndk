@@ -1,5 +1,5 @@
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=1.2"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
@@ -7,14 +7,14 @@ name = "python-ndk"
 version = "0.1.0"
 description = "Python Nostr Development Kit"
 authors = ["Julian Knutsen <julianknutsen@users.noreply.github.com>"]
-license = "LICENSE"
+license = "MIT"
 readme = "README.md"
 repository = "https://github.com/julianknutsen/python-ndk.git"
 keywords = ["python-ndk", "nostr"]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Developers",
-    "Topic :: Software Development :: Python Modules",
+    "Topic :: Software Development :: Libraries :: Python Modules",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3"
 ]
@@ -24,31 +24,31 @@ packages = [
 exclude = ["test_*.py"]
 
 [tool.poetry.dependencies]
+# prod
 python = ">=3.9"
 coincurve = "18.0.0"
 
-[tool.poetry.extras]
-cli = [
-    "click",
-    "websocket-client"
-]
-test = [
-    "mock",
-    "pytest",
-    "types-mock",
-    "websocket-client"
-]
+# extras / dev
+black = { version = "*", optional = true }
+click = { version = "*", optional = true }
+isort = { version = "*", optional = true }
+mock = { version = "*", optional = true }
+mypy = { version = "*", optional = true }
+pipreqs = { version = "*", optional = true }
+pylint = { version = "*", optional = true }
+pytest = { version = "*", optional = true }
+types-mock = { version = "*", optional = true }
+websocket-client = { version = "*", optional = true }
 
-[tool.poetry.group.dev.dependencies]
-black = "*"
-click = "*"
-isort = "*"
-mypy = "*"
-pipreqs = "*"
-poetry = "*"
-pylint = "*"
-pytest = "*"
-types-mock = "*"
+[tool.poetry.scripts]
+nostrcli = "cli.nostrcli:main"
+test = "pytest:main"
+lint = "scripts.verify_format_lint:main"
+
+[tool.poetry.extras]
+cli = ["click", "websocket-client"]
+dev = ["black", "isort", "mock", "mypy", "pipreqs", "pylint", "pytest", "types-mock", "websocket-client"]
+test = ["mock", "pytest", "types-mock", "websocket-client"]
 
 [tool.isort]
 profile = "black"

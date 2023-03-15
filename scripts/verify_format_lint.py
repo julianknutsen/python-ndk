@@ -32,21 +32,27 @@ def _run_cmd(args: list[str]) -> bool:
     return bool(output.returncode)
 
 
-py_files = []
-for root, dirs, files in os.walk("."):
-    for file in files:
-        if any(item in root for item in ["venv", "docs"]):
-            continue
-        if file.endswith(".py"):
-            py_files.append(os.path.join(root, file))
+def main():
+    py_files = []
+    for root, _, files in os.walk("."):
+        for file in files:
+            if any(item in root for item in ["venv", "docs"]):
+                continue
+            if file.endswith(".py"):
+                py_files.append(os.path.join(root, file))
 
-sys.exit(
-    any(
+    failure = any(
         [
+            _run_cmd(["poetry", "check"]),
             _run_cmd(["black", "--check", "."]),
             _run_cmd(["isort", "--check-only", "."]),
             _run_cmd(["pylint"] + py_files),
             _run_cmd(["mypy", "."]),
         ]
     )
-)
+
+    if not failure:
+        print("[SUCCESS]")
+    else:
+        print("[FAILURE]")
+        sys.exit(1)
