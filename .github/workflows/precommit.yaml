@@ -40,10 +40,18 @@ jobs:
         run: |
           poetry run lint
     
-      - name: Tests
+      - name: Unit Tests
         run: |
-          poetry run test
+          poetry run test ndk
 
       - name: Build
         run: |
           poetry build
+
+      - name: Install dependencies [test]
+        run: |
+          poetry install --extras test
+
+      - name: Functional Tests
+        run: |
+          poetry run test functional_tests
