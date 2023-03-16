@@ -44,10 +44,6 @@ jobs:
         run: |
           poetry run test ndk
 
-      - name: Build
-        run: |
-          poetry build
-
       - name: Install dependencies [test]
         run: |
           poetry install --extras test
@@ -55,3 +51,15 @@ jobs:
       - name: Functional Tests
         run: |
           poetry run test functional_tests
+
+      - name: Install dependencies [cli]
+        run: |
+          poetry install --extras cli
+
+      - name: Functional Tests
+        run: |
+          poetry run python scripts/nostrcli_sanity_check.py
+
+      - name: Build
+        run: |
+          poetry build
