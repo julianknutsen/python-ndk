@@ -20,6 +20,8 @@ jobs:
       matrix:
         python-version: ["3.9", "3.10", "3.11"]
       fail-fast: false
+    env:
+      COVPYTEST: "coverage run -m pytest"
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -41,24 +43,40 @@ jobs:
           poetry run lint
     
       - name: Unit Tests
+        env:
+          COVERAGE_FILE: .coverage.unit
         run: |
-          poetry run test ndk
+          poetry run ${{ env.COVPYTEST }} ndk
 
       - name: Install dependencies [test]
         run: |
           poetry install --extras test
 
       - name: Functional Tests
+        env:
+          COVERAGE_FILE: .coverage.functional
         run: |
-          poetry run test functional_tests
+          poetry run pip install coverage
+          poetry run ${{ env.COVPYTEST }} functional_tests
 
       - name: Install dependencies [cli]
         run: |
           poetry install --extras cli
 
-      - name: Functional Tests
+      - name: Sanity Tests
         run: |
           poetry run python scripts/nostrcli_sanity_check.py
+
+      - name: Create codecov report
+        run: |
+          poetry run pip install coverage
+          poetry run coverage combine
+          poetry run coverage xml
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Build
         run: |

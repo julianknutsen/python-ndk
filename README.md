@@ -1,0 +1,1 @@
+[![codecov](https://codecov.io/github/julianknutsen/python-ndk/branch/main/graph/badge.svg?token=6T90F67SLC)](https://codecov.io/github/julianknutsen/python-ndk)
