@@ -1,0 +1,20 @@
+[run]
+source =
+    ndk
+    functional_tests
+
+branch = True
+omit =
+    */__init__.py
+    */conftest.py
+
+[report]
+show_missing = True
+exclude_lines =
+    def __repr__
+    if settings.DEBUG
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    class .*\bProtocol\):
+    @(abc\.)?abstractmethod

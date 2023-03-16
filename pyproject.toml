@@ -31,6 +31,7 @@ coincurve = "18.0.0"
 # extras / dev
 black = { version = "*", optional = true }
 click = { version = "*", optional = true }
+coverage = { version = "*", optional = true }
 isort = { version = "*", optional = true }
 mock = { version = "*", optional = true }
 mypy = { version = "*", optional = true }
@@ -47,7 +48,7 @@ lint = "scripts.verify_format_lint:main"
 
 [tool.poetry.extras]
 cli = ["click", "websocket-client"]
-dev = ["black", "isort", "mock", "mypy", "pipreqs", "pylint", "pytest", "types-mock", "websocket-client"]
+dev = ["black", "coverage", "isort", "mock", "mypy", "pipreqs", "pylint", "pytest", "types-mock", "websocket-client"]
 test = ["mock", "pytest", "types-mock", "websocket-client"]
 
 [tool.isort]
