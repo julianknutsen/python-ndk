@@ -8,4 +8,5 @@ dist/*
 
 poetry.lock
 .coverage*
+cov.xml
 test-results.xml

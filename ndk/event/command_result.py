@@ -30,6 +30,16 @@ class CommandResult:
     accepted: bool
     message: str
 
+    def __post_init__(self):
+        if not isinstance(self.event_id, event.EventID.__supertype__): # type: ignore
+            raise ValueError(f"Unexpected type for event_id {self.event_id}:{self}")
+
+        if not isinstance(self.accepted, bool):
+            raise ValueError(f"Unexpected type for accepted {self.accepted}:{self}")
+
+        if not isinstance(self.message, str):
+            raise ValueError(f"Unexpected type for event_id {self.message}:{self}")
+
     def is_success(self) -> bool:
         return self.accepted
 
@@ -38,19 +48,19 @@ class CommandResult:
         obj = serialize.deserialize(s)
 
         if not isinstance(obj, list):
-            raise ValueError(f"Unexpected object type for CommandResult: {obj}")
+            raise ValueError(
+                f"Unexpected object type for CommandResult: {type(obj)}: {obj}"
+            )
 
         if obj[0] == "NOTICE":
-            raise RuntimeError(f"NOTICE response from server: {obj[1]}")
-
-        if len(obj) != 4:
-            raise ValueError("Unexpected object length. Expected 4, got: {obj}")
+            raise ValueError(f"NOTICE response from server: {obj[1]}")
 
         if obj[0] != "OK":
             raise ValueError(
                 f'Command result requires "OK" as first element, got {obj[0]}'
             )
 
-        c = cls(obj[1], obj[2], obj[3])
+        if len(obj) != 4:
+            raise ValueError("Unexpected object length. Expected 4, got: {obj}")
 
-        return c
+        return cls(*obj[1:])
