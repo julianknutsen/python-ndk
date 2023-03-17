@@ -19,30 +19,22 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-
-import typing
+import pytest
 
 from ndk.event import serialize
-from ndk.messages import command_result, message, notice
+from ndk.messages import message_factory
 
 
-def from_str(data: str):
-    lst = serialize.deserialize(data)
+def test_from_str_non_list_obj():
+    with pytest.raises(TypeError):
+        message_factory.from_str(serialize.serialize_as_str({}))
 
-    if not isinstance(lst, list):
-        raise TypeError("Expected list, got: {obj}")
 
-    if not lst:
-        raise TypeError("Cant parse data of length 0")
+def test_from_str_empty_list():
+    with pytest.raises(TypeError):
+        message_factory.from_str(serialize.serialize_as_str([]))
 
-    hdr = lst[0]
 
-    factories: dict[str, typing.Type[message.Message]] = {
-        "NOTICE": notice.Notice,
-        "OK": command_result.CommandResult,
-    }
-
-    if hdr not in factories:
-        raise TypeError(f"Unknown message type: {hdr}")
-
-    return factories[hdr].deserialize(lst)
+def test_from_str_unknown_header():
+    with pytest.raises(TypeError):
+        message_factory.from_str(serialize.serialize_as_str(["UNKNOWN"]))
