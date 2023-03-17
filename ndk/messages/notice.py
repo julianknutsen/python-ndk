@@ -19,47 +19,29 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-# pylint: disable=redefined-outer-name
+import dataclasses
 
-import pytest
-import websocket
-
-from ndk.event import serialize
-from ndk.messages import message_factory, notice
+from ndk.messages import message
 
 
-@pytest.fixture()
-def ws(relay_url):
-    tmp = websocket.WebSocket()
-    tmp.connect(relay_url)
-    yield tmp
-    tmp.close()
+@dataclasses.dataclass
+class Notice(message.Message):
+    message: str
 
+    def __post_init__(self):
+        super().__post_init__()
 
-@pytest.mark.skip("hangs on recv")
-def test_empty_object_as_message_returns_notice(ws):
-    ws.send(serialize.serialize_as_str("{}"))
+        if not self.message:
+            raise TypeError(f"Unexpected empty message {self}")
 
-    msg = message_factory.from_str(ws.recv())
-    assert isinstance(msg, notice.Notice)
+    @classmethod
+    def deserialize(cls, lst: list):
+        assert len(lst) > 0
+        assert lst[0] == "NOTICE"
 
+        if len(lst) != 2:
+            raise TypeError(
+                f"Unexpected format of Notice message. Expected two items, but got: {lst}"
+            )
 
-@pytest.mark.skip("hangs on recv")
-def test_empty_array_as_message_returns_notice(ws):
-    ws.send(serialize.serialize_as_str("[]"))
-
-    msg = message_factory.from_str(ws.recv())
-    assert isinstance(msg, notice.Notice)
-
-
-def test_only_type_returns_notice(ws):
-    ws.send(
-        serialize.serialize_as_str(
-            [
-                "EVENT",
-            ]
-        )
-    )
-
-    msg = message_factory.from_str(ws.recv())
-    assert isinstance(msg, notice.Notice)
+        return cls(lst[1])

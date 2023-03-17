@@ -19,47 +19,30 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-# pylint: disable=redefined-outer-name
 
-import pytest
-import websocket
+import typing
 
 from ndk.event import serialize
-from ndk.messages import message_factory, notice
+from ndk.messages import command_result, message, notice
 
 
-@pytest.fixture()
-def ws(relay_url):
-    tmp = websocket.WebSocket()
-    tmp.connect(relay_url)
-    yield tmp
-    tmp.close()
+def from_str(data: str):
+    lst = serialize.deserialize(data)
 
+    if not isinstance(lst, list):
+        raise TypeError("Expected list, got: {obj}")
 
-@pytest.mark.skip("hangs on recv")
-def test_empty_object_as_message_returns_notice(ws):
-    ws.send(serialize.serialize_as_str("{}"))
+    if not data:
+        raise ValueError("Cant parse data of length 0")
 
-    msg = message_factory.from_str(ws.recv())
-    assert isinstance(msg, notice.Notice)
+    hdr, *_ = lst
 
+    factories: dict[str, typing.Type[message.Message]] = {
+        "NOTICE": notice.Notice,
+        "OK": command_result.CommandResult,
+    }
 
-@pytest.mark.skip("hangs on recv")
-def test_empty_array_as_message_returns_notice(ws):
-    ws.send(serialize.serialize_as_str("[]"))
+    if hdr not in factories:
+        raise ValueError(f"Unknown message type: {hdr}")
 
-    msg = message_factory.from_str(ws.recv())
-    assert isinstance(msg, notice.Notice)
-
-
-def test_only_type_returns_notice(ws):
-    ws.send(
-        serialize.serialize_as_str(
-            [
-                "EVENT",
-            ]
-        )
-    )
-
-    msg = message_factory.from_str(ws.recv())
-    assert isinstance(msg, notice.Notice)
+    return factories[hdr].deserialize(lst)
