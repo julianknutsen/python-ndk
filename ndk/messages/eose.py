@@ -18,32 +18,24 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
+"""NIP-15 https://github.com/nostr-protocol/nips/blob/master/15.md"""
+import dataclasses
+
+from ndk.messages import message
 
 
-import typing
+@dataclasses.dataclass
+class EndOfStoredEvents(message.Message):
+    sub_id: str
 
-from ndk.event import serialize
-from ndk.messages import command_result, eose, message, notice
+    @classmethod
+    def deserialize(cls, lst: list):
+        assert len(lst) > 0
+        assert lst[0] == "EOSE"
 
+        if len(lst) != 2:
+            raise TypeError(
+                f"Unexpected format of EndOfStoredResults message. Expected two items, but got: {lst}"
+            )
 
-def from_str(data: str):
-    lst = serialize.deserialize(data)
-
-    if not isinstance(lst, list):
-        raise TypeError("Expected list, got: {obj}")
-
-    if not lst:
-        raise TypeError("Cant parse data of length 0")
-
-    hdr = lst[0]
-
-    factories: dict[str, typing.Type[message.Message]] = {
-        "NOTICE": notice.Notice,
-        "OK": command_result.CommandResult,
-        "EOSE": eose.EndOfStoredEvents,
-    }
-
-    if hdr not in factories:
-        raise TypeError(f"Unknown message type: {hdr}")
-
-    return factories[hdr].deserialize(lst)
+        return cls(lst[1])
