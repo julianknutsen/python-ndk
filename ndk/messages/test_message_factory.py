@@ -19,47 +19,22 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-# pylint: disable=redefined-outer-name
-
 import pytest
-import websocket
 
 from ndk.event import serialize
-from ndk.messages import message_factory, notice
+from ndk.messages import message_factory
 
 
-@pytest.fixture()
-def ws(relay_url):
-    tmp = websocket.WebSocket()
-    tmp.connect(relay_url)
-    yield tmp
-    tmp.close()
+def test_from_str_non_list_obj():
+    with pytest.raises(TypeError):
+        message_factory.from_str(serialize.serialize_as_str({}))
 
 
-@pytest.mark.skip("hangs on recv")
-def test_empty_object_as_message_returns_notice(ws):
-    ws.send(serialize.serialize_as_str("{}"))
-
-    msg = message_factory.from_str(ws.recv())
-    assert isinstance(msg, notice.Notice)
+def test_from_str_empty_list():
+    with pytest.raises(TypeError):
+        message_factory.from_str(serialize.serialize_as_str([]))
 
 
-@pytest.mark.skip("hangs on recv")
-def test_empty_array_as_message_returns_notice(ws):
-    ws.send(serialize.serialize_as_str("[]"))
-
-    msg = message_factory.from_str(ws.recv())
-    assert isinstance(msg, notice.Notice)
-
-
-def test_only_type_returns_notice(ws):
-    ws.send(
-        serialize.serialize_as_str(
-            [
-                "EVENT",
-            ]
-        )
-    )
-
-    msg = message_factory.from_str(ws.recv())
-    assert isinstance(msg, notice.Notice)
+def test_from_str_unknown_header():
+    with pytest.raises(TypeError):
+        message_factory.from_str(serialize.serialize_as_str(["UNKNOWN"]))

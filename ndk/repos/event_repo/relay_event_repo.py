@@ -33,14 +33,8 @@ import typing
 import uuid
 
 from ndk import crypto
-from ndk.event import (
-    close_message,
-    command_result,
-    event,
-    event_parser,
-    request,
-    serialize,
-)
+from ndk.event import close_message, event, event_parser, request, serialize
+from ndk.messages import command_result, message_factory
 from ndk.repos.event_repo import event_repo
 
 SendFn = typing.Callable[[str], int]
@@ -127,7 +121,9 @@ class RelayEventRepo(event_repo.EventRepo):
 
     def _write_str_sync(self, serialized: str) -> command_result.CommandResult:
         self._send_str(serialized)
-        return command_result.CommandResult.deserialize(self._read_str())
+        msg = message_factory.from_str(self._read_str())
+        assert isinstance(msg, command_result.CommandResult)
+        return msg
 
     def add(self, signed_ev: event.SignedEvent) -> event.EventID:
         result = self._write_str_sync(signed_ev.serialize())
@@ -141,7 +137,7 @@ class RelayEventRepo(event_repo.EventRepo):
         if "duplicate" in result.message:
             logging.debug("Duplicate event sent to relay: %s", result.message)
 
-        return result.event_id
+        return event.EventID(result.event_id)
 
     def _write_req_msg_sync(
         self,

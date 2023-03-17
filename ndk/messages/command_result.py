@@ -21,56 +21,39 @@
 
 import dataclasses
 
-from ndk.event import event, serialize
+from ndk.messages import message
 
 REJECTED_MSG_PREFIXES = ["blocked:", "invalid:", "pow:", "rate-limited:", "error:"]
 
 
 @dataclasses.dataclass
-class CommandResult:
-    event_id: event.EventID
+class CommandResult(message.Message):
+    event_id: str
     accepted: bool
     message: str
 
     def __post_init__(self):
-        if not isinstance(self.event_id, event.EventID.__supertype__):  # type: ignore
-            raise ValueError(f"Unexpected type for event_id {self.event_id}:{self}")
+        super().__post_init__()
 
-        if not isinstance(self.accepted, bool):
-            raise ValueError(f"Unexpected type for accepted {self.accepted}:{self}")
-
-        if not isinstance(self.message, str):
-            raise ValueError(f"Unexpected type for message {self.message}:{self}")
-
-        if not self.message:
-            raise ValueError(f"Unexpected empty message {self}")
+        if not self.accepted and not self.message:
+            raise TypeError(f"Unexpected empty message {self}")
 
         if self.accepted and any(
             self.message.startswith(prefix) for prefix in REJECTED_MSG_PREFIXES
         ):
-            raise ValueError(f"Unexpected message for accepted status {self}")
+            raise TypeError(f"Unexpected message for accepted status {self}")
 
     def is_success(self) -> bool:
         return self.accepted
 
     @classmethod
-    def deserialize(cls, s: str):
-        obj = serialize.deserialize(s)
+    def deserialize(cls, lst: list):
+        assert len(lst) > 0
+        assert lst[0] == "OK"
 
-        if not isinstance(obj, list):
-            raise ValueError(
-                f"Unexpected object type for CommandResult: {type(obj)}: {obj}"
+        if len(lst) != 4:
+            raise TypeError(
+                f"Unexpected format of CommandResult message. Expected four items, but got: {lst}"
             )
 
-        if obj[0] == "NOTICE":
-            raise ValueError(f"NOTICE response from server: {obj[1]}")
-
-        if obj[0] != "OK":
-            raise ValueError(
-                f"Command result requires 'OK' as first element, got {obj[0]}"
-            )
-
-        if len(obj) != 4:
-            raise ValueError("Unexpected object length. Expected 4, got: {obj}")
-
-        return cls(*obj[1:])
+        return cls(*lst[1:])

@@ -19,81 +19,79 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-import json
-
 import pytest
 
-from ndk.event import command_result
+from ndk.event import serialize
+from ndk.messages import command_result, message_factory
 
 
 def test_input_non_list():
     msg = {}
 
-    with pytest.raises(ValueError):
-        command_result.CommandResult.deserialize(json.dumps(msg))
-
-
-def test_input_notice_message():
-    msg = ["NOTICE", "uh oh"]
-
-    with pytest.raises(ValueError):
-        command_result.CommandResult.deserialize(json.dumps(msg))
-
-
-def test_not_ok_not_notice():
-    msg = ["EVENT"]
-
-    with pytest.raises(ValueError):
-        command_result.CommandResult.deserialize(json.dumps(msg))
+    with pytest.raises(AssertionError):
+        command_result.CommandResult.deserialize(msg)  # type: ignore
 
 
 def test_ok_bad_len():
     msg = ["OK"]
 
-    with pytest.raises(ValueError):
-        command_result.CommandResult.deserialize(json.dumps(msg))
+    with pytest.raises(TypeError):
+        command_result.CommandResult.deserialize(msg)
 
 
 def test_ok_wrong_type_event_id():
     msg = ["OK", 1, True, "message"]
 
-    with pytest.raises(ValueError):
-        command_result.CommandResult.deserialize(json.dumps(msg))
+    with pytest.raises(TypeError):
+        command_result.CommandResult.deserialize(msg)
 
 
 def test_ok_wrong_type_accepted():
     msg = ["OK", "eventid", "True", "message"]
 
-    with pytest.raises(ValueError):
-        command_result.CommandResult.deserialize(json.dumps(msg))
+    with pytest.raises(TypeError):
+        command_result.CommandResult.deserialize(msg)
 
 
 def test_ok_wrong_type_message():
     msg = ["OK", "eventid", True, False]
 
-    with pytest.raises(ValueError):
-        command_result.CommandResult.deserialize(json.dumps(msg))
+    with pytest.raises(TypeError):
+        command_result.CommandResult.deserialize(msg)
 
 
-def test_ok_correct_empty_message():
+def test_correct_not_accepted_empty_message():
+    msg = ["OK", "eventid", False, ""]
+
+    with pytest.raises(TypeError):
+        command_result.CommandResult.deserialize(msg)
+
+
+def test_correct_accepted_empty_message_works():
     msg = ["OK", "eventid", True, ""]
 
-    with pytest.raises(ValueError):
-        command_result.CommandResult.deserialize(json.dumps(msg))
+    command_result.CommandResult.deserialize(msg)
 
 
 def test_ok_correct_accepted():
     msg = ["OK", "eventid", True, "message"]
 
-    cr = command_result.CommandResult.deserialize(json.dumps(msg))
+    cr = command_result.CommandResult.deserialize(msg)
 
     assert cr.is_success()
+
+
+def test_ok_correct_not_accepted_empty_message_fails():
+    msg = ["OK", "eventid", False, ""]
+
+    with pytest.raises(TypeError):
+        command_result.CommandResult.deserialize(msg)
 
 
 def test_ok_correct_not_accepted():
     msg = ["OK", "eventid", False, "message"]
 
-    cr = command_result.CommandResult.deserialize(json.dumps(msg))
+    cr = command_result.CommandResult.deserialize(msg)
 
     assert not cr.is_success()
 
@@ -102,5 +100,11 @@ def test_ok_correct_not_accepted():
 def test_rejected_messages_match_accepted_status(msg):
     msg = ["OK", "eventid", True, msg]
 
-    with pytest.raises(ValueError):
-        command_result.CommandResult.deserialize(json.dumps(msg))
+    with pytest.raises(TypeError):
+        command_result.CommandResult.deserialize(msg)
+
+
+def test_factory_correct():
+    msg = ["OK", "eventid", False, "message"]
+    cr = message_factory.from_str(serialize.serialize_as_str(msg))
+    assert isinstance(cr, command_result.CommandResult)
