@@ -39,6 +39,7 @@ def test_input_notice_message():
     with pytest.raises(ValueError):
         command_result.CommandResult.deserialize(json.dumps(msg))
 
+
 def test_not_ok_not_notice():
     msg = ["EVENT"]
 
@@ -73,16 +74,33 @@ def test_ok_wrong_type_message():
     with pytest.raises(ValueError):
         command_result.CommandResult.deserialize(json.dumps(msg))
 
+
+def test_ok_correct_empty_message():
+    msg = ["OK", "eventid", True, ""]
+
+    with pytest.raises(ValueError):
+        command_result.CommandResult.deserialize(json.dumps(msg))
+
+
 def test_ok_correct_accepted():
-    msg = ["OK", "eventid", True, 'message']
+    msg = ["OK", "eventid", True, "message"]
 
     cr = command_result.CommandResult.deserialize(json.dumps(msg))
 
     assert cr.is_success()
 
+
 def test_ok_correct_not_accepted():
-    msg = ["OK", "eventid", False, 'message']
+    msg = ["OK", "eventid", False, "message"]
 
     cr = command_result.CommandResult.deserialize(json.dumps(msg))
 
     assert not cr.is_success()
+
+
+@pytest.mark.parametrize("msg", command_result.REJECTED_MSG_PREFIXES)
+def test_rejected_messages_match_accepted_status(msg):
+    msg = ["OK", "eventid", True, msg]
+
+    with pytest.raises(ValueError):
+        command_result.CommandResult.deserialize(json.dumps(msg))
