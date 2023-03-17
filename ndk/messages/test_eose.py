@@ -32,21 +32,21 @@ def test_input_non_list():
         eose.EndOfStoredEvents.deserialize(msg)  # type: ignore
 
 
-def test_notice_bad_len():
+def test_bad_len():
     msg = ["EOSE"]
 
     with pytest.raises(TypeError):
         eose.EndOfStoredEvents.deserialize(msg)
 
 
-def test_notice_wrong_type_message():
+def test_wrong_type_message():
     msg = ["EOSE", 1]
 
     with pytest.raises(TypeError):
         eose.EndOfStoredEvents.deserialize(msg)
 
 
-def test_eose_correct():
+def test_correct():
     msg = ["EOSE", "subscription-id"]
 
     n = eose.EndOfStoredEvents.deserialize(msg)
