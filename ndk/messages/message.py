@@ -28,7 +28,9 @@ class Message(abc.ABC):
     def __post_init__(self):
         for field in self.__annotations__:
             if not isinstance(getattr(self, field), self.__annotations__[field]):
-                raise TypeError(f"Type mismatch for field {field}")
+                raise TypeError(
+                    f"Type mismatch for field {field}. {type(getattr(self, field))} != {self.__annotations__[field]}"
+                )
 
     @classmethod
     @abc.abstractmethod

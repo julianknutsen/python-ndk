@@ -18,33 +18,53 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
+# pylint: disable=redefined-outer-name
 
-
-import typing
+import pytest
 
 from ndk.event import serialize
-from ndk.messages import command_result, eose, message, notice, relay_event
+from ndk.messages import message_factory, relay_event
 
 
-def from_str(data: str):
-    lst = serialize.deserialize(data)
+def test_input_non_list():
+    msg = {}
 
-    if not isinstance(lst, list):
-        raise TypeError("Expected list, got: {obj}")
+    with pytest.raises(AssertionError):
+        relay_event.RelayEvent.deserialize(msg)  # type: ignore
 
-    if not lst:
-        raise TypeError("Cant parse data of length 0")
 
-    hdr = lst[0]
+def test_bad_len():
+    msg = ["EVENT"]
 
-    factories: dict[str, typing.Type[message.Message]] = {
-        "NOTICE": notice.Notice,
-        "OK": command_result.CommandResult,
-        "EOSE": eose.EndOfStoredEvents,
-        "EVENT": relay_event.RelayEvent,
-    }
+    with pytest.raises(TypeError):
+        relay_event.RelayEvent.deserialize(msg)
 
-    if hdr not in factories:
-        raise TypeError(f"Unknown message type: {hdr}")
 
-    return factories[hdr].deserialize(lst)
+def test_wrong_type_sub_id():
+    msg = ["EVENT", 1, {}]
+
+    with pytest.raises(TypeError):
+        relay_event.RelayEvent.deserialize(msg)
+
+
+def test_wrong_type_event():
+    msg = ["EVENT", "subscription-id", []]
+
+    with pytest.raises(TypeError):
+        relay_event.RelayEvent.deserialize(msg)
+
+
+def test_correct():
+    msg = ["EVENT", "subscription-id", {}]
+
+    n = relay_event.RelayEvent.deserialize(msg)
+
+    assert n.sub_id == "subscription-id"
+
+
+def test_factory():
+    msg = ["EVENT", "subscription-id", {}]
+
+    n = message_factory.from_str(serialize.serialize_as_str(msg))
+
+    assert isinstance(n, relay_event.RelayEvent)

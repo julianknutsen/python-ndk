@@ -19,32 +19,24 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import dataclasses
 
-import typing
-
-from ndk.event import serialize
-from ndk.messages import command_result, eose, message, notice, relay_event
+from ndk.messages import message
 
 
-def from_str(data: str):
-    lst = serialize.deserialize(data)
+@dataclasses.dataclass
+class RelayEvent(message.Message):
+    sub_id: str
+    event_dict: dict
 
-    if not isinstance(lst, list):
-        raise TypeError("Expected list, got: {obj}")
+    @classmethod
+    def deserialize(cls, lst: list):
+        assert len(lst) > 0
+        assert lst[0] == "EVENT"
 
-    if not lst:
-        raise TypeError("Cant parse data of length 0")
+        if len(lst) != 3:
+            raise TypeError(
+                f"Unexpected format of RelayEvent message. Expected three items, but got: {lst}"
+            )
 
-    hdr = lst[0]
-
-    factories: dict[str, typing.Type[message.Message]] = {
-        "NOTICE": notice.Notice,
-        "OK": command_result.CommandResult,
-        "EOSE": eose.EndOfStoredEvents,
-        "EVENT": relay_event.RelayEvent,
-    }
-
-    if hdr not in factories:
-        raise TypeError(f"Unknown message type: {hdr}")
-
-    return factories[hdr].deserialize(lst)
+        return cls(*lst[1:])

@@ -33,8 +33,8 @@ import typing
 import uuid
 
 from ndk import crypto
-from ndk.event import close_message, event, event_parser, request, serialize
-from ndk.messages import command_result, message_factory
+from ndk.event import close_message, event, event_parser, request
+from ndk.messages import command_result, eose, message_factory, notice, relay_event
 from ndk.repos.event_repo import event_repo
 
 SendFn = typing.Callable[[str], int]
@@ -56,36 +56,20 @@ class _StoredEvents:
     def process_token(self, token: str) -> bool:
         assert not self._complete, "should not call process_token after complete"
 
-        obj = serialize.deserialize(token)
+        msg = message_factory.from_str(token)
 
-        if not isinstance(obj, list):
-            raise ValueError(f"Invalid token. Expected list, got: {obj}")
-
-        if obj[0] == "EOSE":
+        if isinstance(msg, eose.EndOfStoredEvents):
             self._complete = True
             return True
 
-        if obj[0] == "NOTICE":
-            raise RuntimeError(f"NOTICE response from server: {obj[1]}")
+        if isinstance(msg, notice.Notice):
+            raise RuntimeError(f"NOTICE response from server: {msg.message}")
 
-        if obj[0] != "EVENT":
-            raise RuntimeError(f"Unknown message type: {obj}")
-
-        if len(obj) != 3:
-            raise ValueError(
-                f"Failed to parse RelayEvent. Expected 3 items in array, got {obj}"
-            )
-
-        _, _, ev_dict = obj
-
-        if not isinstance(ev_dict, dict):
-            # pylint: disable=line-too-long
-            raise ValueError(
-                f"Failed to parse RelayEvent. Expected dict as 3rd item in array, got: {ev_dict}"
-            )
+        if not isinstance(msg, relay_event.RelayEvent):
+            raise RuntimeError(f"Unhandled message type: {msg}")
 
         self._events.append(
-            event_parser.signed_to_unsigned(event.SignedEvent(**ev_dict))
+            event_parser.signed_to_unsigned(event.SignedEvent(**msg.event_dict))
         )
         return False
 
