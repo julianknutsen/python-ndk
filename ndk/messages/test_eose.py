@@ -19,31 +19,44 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-
-import typing
+import pytest
 
 from ndk.event import serialize
-from ndk.messages import command_result, eose, message, notice
+from ndk.messages import eose, message_factory
 
 
-def from_str(data: str):
-    lst = serialize.deserialize(data)
+def test_input_non_list():
+    msg = {}
 
-    if not isinstance(lst, list):
-        raise TypeError("Expected list, got: {obj}")
+    with pytest.raises(AssertionError):
+        eose.EndOfStoredEvents.deserialize(msg)  # type: ignore
 
-    if not lst:
-        raise TypeError("Cant parse data of length 0")
 
-    hdr = lst[0]
+def test_notice_bad_len():
+    msg = ["EOSE"]
 
-    factories: dict[str, typing.Type[message.Message]] = {
-        "NOTICE": notice.Notice,
-        "OK": command_result.CommandResult,
-        "EOSE": eose.EndOfStoredEvents,
-    }
+    with pytest.raises(TypeError):
+        eose.EndOfStoredEvents.deserialize(msg)
 
-    if hdr not in factories:
-        raise TypeError(f"Unknown message type: {hdr}")
 
-    return factories[hdr].deserialize(lst)
+def test_notice_wrong_type_message():
+    msg = ["EOSE", 1]
+
+    with pytest.raises(TypeError):
+        eose.EndOfStoredEvents.deserialize(msg)
+
+
+def test_eose_correct():
+    msg = ["EOSE", "subscription-id"]
+
+    n = eose.EndOfStoredEvents.deserialize(msg)
+
+    assert n.sub_id == "subscription-id"
+
+
+def test_factory():
+    msg = ["EOSE", "subscription-id"]
+
+    n = message_factory.from_str(serialize.serialize_as_str(msg))
+
+    assert isinstance(n, eose.EndOfStoredEvents)
