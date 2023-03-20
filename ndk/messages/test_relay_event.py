@@ -22,7 +22,7 @@
 
 import pytest
 
-from ndk.event import serialize
+from ndk import serialize
 from ndk.messages import message_factory, relay_event
 
 

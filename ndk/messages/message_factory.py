@@ -22,7 +22,7 @@
 
 import typing
 
-from ndk.event import serialize
+from ndk import serialize
 from ndk.messages import command_result, eose, message, notice, relay_event
 
 

@@ -22,14 +22,8 @@
 import logging
 import typing
 
-from ndk import crypto
-from ndk.event import (
-    contact_list_event,
-    event,
-    metadata_event,
-    recommend_server_event,
-    serialize,
-)
+from ndk import crypto, serialize
+from ndk.event import contact_list_event, event, metadata_event, recommend_server_event
 from ndk.repos import contacts
 from ndk.repos.event_repo import event_repo
 from ndk.repos.metadata_repo import metadata_repo

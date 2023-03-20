@@ -23,8 +23,8 @@ from unittest import mock
 
 import pytest
 
-from ndk import crypto
-from ndk.event import event, metadata_event, serialize
+from ndk import crypto, serialize
+from ndk.event import event, metadata_event
 
 
 def test_create_set_metadata_message():

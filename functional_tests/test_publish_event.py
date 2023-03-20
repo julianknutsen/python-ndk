@@ -23,8 +23,8 @@
 
 import pytest
 
-from ndk import crypto
-from ndk.event import event, metadata_event, serialize
+from ndk import crypto, serialize
+from ndk.event import event, metadata_event
 from ndk.messages import message_factory, notice
 
 

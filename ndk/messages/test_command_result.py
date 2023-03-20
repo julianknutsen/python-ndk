@@ -21,7 +21,7 @@
 
 import pytest
 
-from ndk.event import serialize
+from ndk import serialize
 from ndk.messages import command_result, message_factory
 
 

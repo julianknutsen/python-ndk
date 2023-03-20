@@ -25,8 +25,7 @@ import hashlib
 import time
 import typing
 
-from ndk import crypto
-from ndk.event import serialize
+from ndk import crypto, serialize
 
 EventTags = typing.NewType("EventTags", list[list[str]])
 EventID = typing.NewType("EventID", str)

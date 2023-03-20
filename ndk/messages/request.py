@@ -21,7 +21,7 @@
 
 import dataclasses
 
-from ndk.event import serialize
+from ndk import serialize
 from ndk.messages import message
 
 
