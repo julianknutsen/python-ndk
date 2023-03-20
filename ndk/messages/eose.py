@@ -25,11 +25,11 @@ from ndk.messages import message
 
 
 @dataclasses.dataclass
-class EndOfStoredEvents(message.Message):
+class EndOfStoredEvents(message.ReadableMessage):
     sub_id: str
 
     @classmethod
-    def deserialize(cls, lst: list):
+    def deserialize_list(cls, lst: list):
         assert len(lst) > 0
         assert lst[0] == "EOSE"
 

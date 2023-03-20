@@ -24,7 +24,7 @@
 import pytest
 import websocket
 
-from ndk.event import serialize
+from ndk import serialize
 from ndk.messages import message_factory, notice
 
 

@@ -25,8 +25,7 @@ import hashlib
 import time
 import typing
 
-from ndk import crypto
-from ndk.event import serialize
+from ndk import crypto, serialize
 
 EventTags = typing.NewType("EventTags", list[list[str]])
 EventID = typing.NewType("EventID", str)
@@ -74,10 +73,6 @@ class SignedEvent(UnsignedEvent):
         object.__setattr__(self, "pubkey", pubkey)
         object.__setattr__(self, "kind", kind)
         object.__setattr__(self, "sig", sig)
-
-    def serialize(self) -> str:
-        assert self.kind != EventKind.INVALID
-        return serialize.serialize_as_str(["EVENT", self])
 
 
 def _validate_unsigned_event(ev: UnsignedEvent):

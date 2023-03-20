@@ -25,7 +25,7 @@ from ndk.messages import message
 
 
 @dataclasses.dataclass
-class Notice(message.Message):
+class Notice(message.ReadableMessage):
     message: str
 
     def __post_init__(self):
@@ -35,7 +35,7 @@ class Notice(message.Message):
             raise TypeError(f"Unexpected empty message {self}")
 
     @classmethod
-    def deserialize(cls, lst: list):
+    def deserialize_list(cls, lst: list):
         assert len(lst) > 0
         assert lst[0] == "NOTICE"
 

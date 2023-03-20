@@ -25,12 +25,12 @@ from ndk.messages import message
 
 
 @dataclasses.dataclass
-class RelayEvent(message.Message):
+class RelayEvent(message.ReadableMessage):
     sub_id: str
     event_dict: dict
 
     @classmethod
-    def deserialize(cls, lst: list):
+    def deserialize_list(cls, lst: list):
         assert len(lst) > 0
         assert lst[0] == "EVENT"
 

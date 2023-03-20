@@ -21,13 +21,18 @@
 
 import dataclasses
 
-from ndk.event import serialize
+from ndk import serialize
+from ndk.event import event
+from ndk.messages import message
 
 
 @dataclasses.dataclass
-class Request:
-    sub_id: str
-    filter_list: list[dict]
+class Event(message.WriteableMessage):
+    event_dict: dict
+
+    @classmethod
+    def from_signed_event(cls, signed_event: event.SignedEvent):
+        return cls(signed_event.__dict__)
 
     def serialize(self) -> str:
-        return serialize.serialize_as_str(["REQ", self.sub_id, *self.filter_list])
+        return serialize.serialize_as_str(["EVENT", self.event_dict])

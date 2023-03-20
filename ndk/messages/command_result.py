@@ -27,7 +27,7 @@ REJECTED_MSG_PREFIXES = ["blocked:", "invalid:", "pow:", "rate-limited:", "error
 
 
 @dataclasses.dataclass
-class CommandResult(message.Message):
+class CommandResult(message.ReadableMessage):
     event_id: str
     accepted: bool
     message: str
@@ -47,7 +47,7 @@ class CommandResult(message.Message):
         return self.accepted
 
     @classmethod
-    def deserialize(cls, lst: list):
+    def deserialize_list(cls, lst: list):
         assert len(lst) > 0
         assert lst[0] == "OK"
 

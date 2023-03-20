@@ -21,7 +21,7 @@
 
 import pytest
 
-from ndk.event import serialize
+from ndk import serialize
 from ndk.messages import eose, message_factory
 
 
@@ -29,27 +29,27 @@ def test_input_non_list():
     msg = {}
 
     with pytest.raises(AssertionError):
-        eose.EndOfStoredEvents.deserialize(msg)  # type: ignore
+        eose.EndOfStoredEvents.deserialize_list(msg)  # type: ignore
 
 
 def test_bad_len():
     msg = ["EOSE"]
 
     with pytest.raises(TypeError):
-        eose.EndOfStoredEvents.deserialize(msg)
+        eose.EndOfStoredEvents.deserialize_list(msg)
 
 
 def test_wrong_type_message():
     msg = ["EOSE", 1]
 
     with pytest.raises(TypeError):
-        eose.EndOfStoredEvents.deserialize(msg)
+        eose.EndOfStoredEvents.deserialize_list(msg)
 
 
 def test_correct():
     msg = ["EOSE", "subscription-id"]
 
-    n = eose.EndOfStoredEvents.deserialize(msg)
+    n = eose.EndOfStoredEvents.deserialize_list(msg)
 
     assert n.sub_id == "subscription-id"
 

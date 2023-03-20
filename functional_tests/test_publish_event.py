@@ -24,8 +24,8 @@
 import pytest
 
 from ndk import crypto
-from ndk.event import event, metadata_event, serialize
-from ndk.messages import message_factory, notice
+from ndk.event import event, metadata_event
+from ndk.messages import event_message, message_factory, notice
 
 
 @pytest.fixture()
@@ -59,7 +59,7 @@ def test_publish_event_missing_field_returns_notice(field, unsigned_event, ws):
     serializable = signed_ev.__dict__
     del serializable[field]
 
-    ws.send(serialize.serialize_as_str(["EVENT", serializable]))
+    ws.send(event_message.Event(serializable).serialize())
 
     msg = message_factory.from_str(ws.recv())
     assert isinstance(msg, notice.Notice)
@@ -69,7 +69,9 @@ def test_set_metadata_invalid_sig_is_not_accepted(
     relay_ev_repo, signed_event, signed_event2
 ):
     object.__setattr__(signed_event, "sig", signed_event2.sig)
-    result = relay_ev_repo._write_str_sync(signed_event.serialize())
+    result = relay_ev_repo._write_str_sync(
+        event_message.Event.from_signed_event(signed_event).serialize()
+    )
 
     assert not result.is_success()
     assert result.message.startswith("invalid:")
@@ -80,7 +82,9 @@ def test_set_metadata_invalid_id_is_not_accepted(
     relay_ev_repo, signed_event, signed_event2
 ):
     object.__setattr__(signed_event, "id", signed_event2.id)
-    result = relay_ev_repo._write_str_sync(signed_event.serialize())
+    result = relay_ev_repo._write_str_sync(
+        event_message.Event.from_signed_event(signed_event).serialize()
+    )
 
     assert not result.is_success()
 
@@ -91,7 +95,9 @@ def build_sign_publish_metadata_event(relay_ev_repo, *args, **kwargs):
     unsigned_event = metadata_event.MetadataEvent.from_metadata_parts(*args, **kwargs)
     signed_event = event.build_signed_event(unsigned_event, keys)
 
-    return relay_ev_repo._write_str_sync(signed_event.serialize())
+    return relay_ev_repo._write_str_sync(
+        event_message.Event.from_signed_event(signed_event).serialize()
+    )
 
 
 def test_set_metadata_only_name_present_is_accepted(relay_ev_repo):

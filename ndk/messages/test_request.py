@@ -19,32 +19,40 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-import dataclasses
-import typing
+import pytest
 
 from ndk import serialize
-from ndk.event import event
+from ndk.messages import request
 
 
-@dataclasses.dataclass(frozen=True)
-class MetadataEvent(event.UnsignedEvent):
-    @classmethod
-    def from_metadata_parts(
-        cls,
-        name: typing.Optional[str] = None,
-        about: typing.Optional[str] = None,
-        picture: typing.Optional[str] = None,
-        **kwargs,
-    ) -> "MetadataEvent":
-        content = {**kwargs}
-        if name:
-            content["name"] = name
+def test_init_wrong_type_sub_id():
+    with pytest.raises(TypeError):
+        request.Request(1, [])  # type: ignore
 
-        if about:
-            content["about"] = about
 
-        if picture:
-            content["picture"] = picture
+def test_init_wrong_type_filters():
+    with pytest.raises(TypeError):
+        request.Request("1", {})  # type: ignore
 
-        serialized_content = serialize.serialize_as_str(content)
-        return cls(kind=event.EventKind.SET_METADATA, content=serialized_content)
+
+def test_init_empty_filters():
+    with pytest.raises(TypeError):
+        request.Request("1", [])
+
+
+def test_serialize():
+    r = request.Request("1", [{}])
+    serialized = r.serialize()
+
+    deserialized = serialize.deserialize(serialized)
+
+    assert deserialized == ["REQ", "1", {}]
+
+
+def test_serialize_multiple_filters():
+    r = request.Request("1", [{}, {}])
+    serialized = r.serialize()
+
+    deserialized = serialize.deserialize(serialized)
+
+    assert deserialized == ["REQ", "1", {}, {}]

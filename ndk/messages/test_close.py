@@ -19,32 +19,21 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-import dataclasses
-import typing
+import pytest
 
 from ndk import serialize
-from ndk.event import event
+from ndk.messages import close
 
 
-@dataclasses.dataclass(frozen=True)
-class MetadataEvent(event.UnsignedEvent):
-    @classmethod
-    def from_metadata_parts(
-        cls,
-        name: typing.Optional[str] = None,
-        about: typing.Optional[str] = None,
-        picture: typing.Optional[str] = None,
-        **kwargs,
-    ) -> "MetadataEvent":
-        content = {**kwargs}
-        if name:
-            content["name"] = name
+def test_init_wrong_type():
+    with pytest.raises(TypeError):
+        close.Close(1)  # type: ignore
 
-        if about:
-            content["about"] = about
 
-        if picture:
-            content["picture"] = picture
+def test_serialize():
+    c = close.Close("1")
+    serialized = c.serialize()
 
-        serialized_content = serialize.serialize_as_str(content)
-        return cls(kind=event.EventKind.SET_METADATA, content=serialized_content)
+    deserialized = serialize.deserialize(serialized)
+
+    assert deserialized == ["CLOSE", "1"]

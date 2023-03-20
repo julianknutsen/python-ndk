@@ -22,7 +22,7 @@
 
 import pytest
 
-from ndk.event import serialize
+from ndk import serialize
 from ndk.messages import message_factory, relay_event
 
 
@@ -30,34 +30,34 @@ def test_input_non_list():
     msg = {}
 
     with pytest.raises(AssertionError):
-        relay_event.RelayEvent.deserialize(msg)  # type: ignore
+        relay_event.RelayEvent.deserialize_list(msg)  # type: ignore
 
 
 def test_bad_len():
     msg = ["EVENT"]
 
     with pytest.raises(TypeError):
-        relay_event.RelayEvent.deserialize(msg)
+        relay_event.RelayEvent.deserialize_list(msg)
 
 
 def test_wrong_type_sub_id():
     msg = ["EVENT", 1, {}]
 
     with pytest.raises(TypeError):
-        relay_event.RelayEvent.deserialize(msg)
+        relay_event.RelayEvent.deserialize_list(msg)
 
 
 def test_wrong_type_event():
     msg = ["EVENT", "subscription-id", []]
 
     with pytest.raises(TypeError):
-        relay_event.RelayEvent.deserialize(msg)
+        relay_event.RelayEvent.deserialize_list(msg)
 
 
 def test_correct():
     msg = ["EVENT", "subscription-id", {}]
 
-    n = relay_event.RelayEvent.deserialize(msg)
+    n = relay_event.RelayEvent.deserialize_list(msg)
 
     assert n.sub_id == "subscription-id"
 

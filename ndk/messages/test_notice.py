@@ -21,7 +21,7 @@
 
 import pytest
 
-from ndk.event import serialize
+from ndk import serialize
 from ndk.messages import message_factory, notice
 
 
@@ -29,34 +29,34 @@ def test_input_non_list():
     msg = {}
 
     with pytest.raises(AssertionError):
-        notice.Notice.deserialize(msg)  # type: ignore
+        notice.Notice.deserialize_list(msg)  # type: ignore
 
 
 def test_notice_bad_len():
     msg = ["NOTICE"]
 
     with pytest.raises(TypeError):
-        notice.Notice.deserialize(msg)
+        notice.Notice.deserialize_list(msg)
 
 
 def test_notice_wrong_type_message():
     msg = ["NOTICE", 1]
 
     with pytest.raises(TypeError):
-        notice.Notice.deserialize(msg)
+        notice.Notice.deserialize_list(msg)
 
 
 def test_notice_message_empty():
     msg = ["NOTICE", ""]
 
     with pytest.raises(TypeError):
-        notice.Notice.deserialize(msg)
+        notice.Notice.deserialize_list(msg)
 
 
 def test_notice_correct():
     msg = ["NOTICE", "message goes here"]
 
-    n = notice.Notice.deserialize(msg)
+    n = notice.Notice.deserialize_list(msg)
 
     assert n.message == "message goes here"
 

@@ -20,31 +20,21 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 
 import dataclasses
-import typing
 
 from ndk import serialize
-from ndk.event import event
+from ndk.messages import message
 
 
-@dataclasses.dataclass(frozen=True)
-class MetadataEvent(event.UnsignedEvent):
-    @classmethod
-    def from_metadata_parts(
-        cls,
-        name: typing.Optional[str] = None,
-        about: typing.Optional[str] = None,
-        picture: typing.Optional[str] = None,
-        **kwargs,
-    ) -> "MetadataEvent":
-        content = {**kwargs}
-        if name:
-            content["name"] = name
+@dataclasses.dataclass
+class Request(message.WriteableMessage):
+    sub_id: str
+    filter_list: list[dict]
 
-        if about:
-            content["about"] = about
+    def __post_init__(self):
+        super().__post_init__()
 
-        if picture:
-            content["picture"] = picture
+        if len(self.filter_list) == 0:
+            raise TypeError(f"List of filters must be greater than 0: {self}")
 
-        serialized_content = serialize.serialize_as_str(content)
-        return cls(kind=event.EventKind.SET_METADATA, content=serialized_content)
+    def serialize(self) -> str:
+        return serialize.serialize_as_str(["REQ", self.sub_id, *self.filter_list])

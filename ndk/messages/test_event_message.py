@@ -21,20 +21,42 @@
 
 import pytest
 
-from ndk import serialize
-from ndk.messages import message_factory
+from ndk import crypto, serialize
+from ndk.event import event, metadata_event
+from ndk.messages import event_message
 
 
-def test_from_str_non_list_obj():
+def test_init_wrong_type():
     with pytest.raises(TypeError):
-        message_factory.from_str(serialize.serialize_as_str({}))
+        event_message.Event(1)  # type: ignore
 
 
-def test_from_str_empty_list():
-    with pytest.raises(TypeError):
-        message_factory.from_str(serialize.serialize_as_str([]))
+def test_serialize():
+    r = event_message.Event({})
+    serialized = r.serialize()
+
+    deserialized = serialize.deserialize(serialized)
+
+    assert deserialized == ["EVENT", {}]
 
 
-def test_from_str_unknown_header():
-    with pytest.raises(TypeError):
-        message_factory.from_str(serialize.serialize_as_str(["UNKNOWN"]))
+def test_from_signed_event():
+    keys = crypto.KeyPair()
+    unsigned_event = metadata_event.MetadataEvent.from_metadata_parts(
+        "bob", "#nostr", "http://picture.com"
+    )
+    signed_event = event.build_signed_event(unsigned_event, keys)
+    _, body = serialize.deserialize(
+        event_message.Event.from_signed_event(signed_event).serialize()
+    )
+
+    assert len(body["id"]) == 64
+    assert body["pubkey"] == keys.public
+    assert body["kind"] == event.EventKind.SET_METADATA.value
+    assert body["tags"] == [[]]
+    assert serialize.deserialize(body["content"]) == {
+        "name": "bob",
+        "about": "#nostr",
+        "picture": "http://picture.com",
+    }
+    assert len(body["sig"]) == 128

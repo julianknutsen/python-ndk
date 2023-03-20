@@ -24,32 +24,7 @@ from unittest import mock
 import pytest
 
 from ndk import crypto
-from ndk.event import event, metadata_event, serialize
-
-
-def test_create_set_metadata_message():
-    keys = crypto.KeyPair()
-    unsigned_event = metadata_event.MetadataEvent.from_metadata_parts(
-        "bob", "#nostr", "http://picture.com"
-    )
-    signed_event = event.build_signed_event(unsigned_event, keys)
-    m = serialize.deserialize(signed_event.serialize())
-
-    assert len(m) == 2
-    assert m[0] == "EVENT"
-
-    e = m[1]
-
-    assert len(e["id"]) == 64
-    assert e["pubkey"] == keys.public
-    assert e["kind"] == event.EventKind.SET_METADATA.value
-    assert e["tags"] == [[]]
-    assert serialize.deserialize(e["content"]) == {
-        "name": "bob",
-        "about": "#nostr",
-        "picture": "http://picture.com",
-    }
-    assert len(e["sig"]) == 128
+from ndk.event import event
 
 
 def test_unsigned_event_created_in_future():
