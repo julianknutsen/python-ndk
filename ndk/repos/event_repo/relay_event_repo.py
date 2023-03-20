@@ -38,6 +38,7 @@ from ndk.messages import (
     close,
     command_result,
     eose,
+    event_message,
     message_factory,
     notice,
     relay_event,
@@ -118,7 +119,9 @@ class RelayEventRepo(event_repo.EventRepo):
         return msg
 
     def add(self, signed_ev: event.SignedEvent) -> event.EventID:
-        result = self._write_str_sync(signed_ev.serialize())
+        result = self._write_str_sync(
+            event_message.Event.from_signed_event(signed_ev).serialize()
+        )
 
         if not result.accepted:
             logging.debug("Failed adding event to relay: %s", result.message)

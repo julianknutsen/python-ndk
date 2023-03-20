@@ -74,10 +74,6 @@ class SignedEvent(UnsignedEvent):
         object.__setattr__(self, "kind", kind)
         object.__setattr__(self, "sig", sig)
 
-    def serialize(self) -> str:
-        assert self.kind != EventKind.INVALID
-        return serialize.serialize_as_str(["EVENT", self])
-
 
 def _validate_unsigned_event(ev: UnsignedEvent):
     now = int(time.time())

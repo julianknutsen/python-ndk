@@ -19,18 +19,20 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-from unittest import mock
+import dataclasses
 
-import pytest
-
-from ndk import crypto
+from ndk import serialize
 from ndk.event import event
+from ndk.messages import message
 
 
-def test_unsigned_event_created_in_future():
-    keys = crypto.KeyPair()
-    unsigned_event = event.UnsignedEvent(created_at=2)
+@dataclasses.dataclass
+class Event(message.WriteableMessage):
+    event_dict: dict
 
-    with pytest.raises(ValueError, match=".*in the past.*"):
-        with mock.patch("time.time", return_value=1):
-            event.build_signed_event(unsigned_event, keys)
+    @classmethod
+    def from_signed_event(cls, signed_event: event.SignedEvent):
+        return cls(signed_event.__dict__)
+
+    def serialize(self) -> str:
+        return serialize.serialize_as_str(["EVENT", self.event_dict])

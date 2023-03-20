@@ -19,18 +19,44 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-from unittest import mock
-
 import pytest
 
-from ndk import crypto
-from ndk.event import event
+from ndk import crypto, serialize
+from ndk.event import event, metadata_event
+from ndk.messages import event_message
 
 
-def test_unsigned_event_created_in_future():
+def test_init_wrong_type():
+    with pytest.raises(TypeError):
+        event_message.Event(1)  # type: ignore
+
+
+def test_serialize():
+    r = event_message.Event({})
+    serialized = r.serialize()
+
+    deserialized = serialize.deserialize(serialized)
+
+    assert deserialized == ["EVENT", {}]
+
+
+def test_from_signed_event():
     keys = crypto.KeyPair()
-    unsigned_event = event.UnsignedEvent(created_at=2)
+    unsigned_event = metadata_event.MetadataEvent.from_metadata_parts(
+        "bob", "#nostr", "http://picture.com"
+    )
+    signed_event = event.build_signed_event(unsigned_event, keys)
+    _, body = serialize.deserialize(
+        event_message.Event.from_signed_event(signed_event).serialize()
+    )
 
-    with pytest.raises(ValueError, match=".*in the past.*"):
-        with mock.patch("time.time", return_value=1):
-            event.build_signed_event(unsigned_event, keys)
+    assert len(body["id"]) == 64
+    assert body["pubkey"] == keys.public
+    assert body["kind"] == event.EventKind.SET_METADATA.value
+    assert body["tags"] == [[]]
+    assert serialize.deserialize(body["content"]) == {
+        "name": "bob",
+        "about": "#nostr",
+        "picture": "http://picture.com",
+    }
+    assert len(body["sig"]) == 128
