@@ -29,54 +29,54 @@ def test_input_non_list():
     msg = {}
 
     with pytest.raises(AssertionError):
-        command_result.CommandResult.deserialize(msg)  # type: ignore
+        command_result.CommandResult.deserialize_list(msg)  # type: ignore
 
 
 def test_ok_bad_len():
     msg = ["OK"]
 
     with pytest.raises(TypeError):
-        command_result.CommandResult.deserialize(msg)
+        command_result.CommandResult.deserialize_list(msg)
 
 
 def test_ok_wrong_type_event_id():
     msg = ["OK", 1, True, "message"]
 
     with pytest.raises(TypeError):
-        command_result.CommandResult.deserialize(msg)
+        command_result.CommandResult.deserialize_list(msg)
 
 
 def test_ok_wrong_type_accepted():
     msg = ["OK", "eventid", "True", "message"]
 
     with pytest.raises(TypeError):
-        command_result.CommandResult.deserialize(msg)
+        command_result.CommandResult.deserialize_list(msg)
 
 
 def test_ok_wrong_type_message():
     msg = ["OK", "eventid", True, False]
 
     with pytest.raises(TypeError):
-        command_result.CommandResult.deserialize(msg)
+        command_result.CommandResult.deserialize_list(msg)
 
 
 def test_correct_not_accepted_empty_message():
     msg = ["OK", "eventid", False, ""]
 
     with pytest.raises(TypeError):
-        command_result.CommandResult.deserialize(msg)
+        command_result.CommandResult.deserialize_list(msg)
 
 
 def test_correct_accepted_empty_message_works():
     msg = ["OK", "eventid", True, ""]
 
-    command_result.CommandResult.deserialize(msg)
+    command_result.CommandResult.deserialize_list(msg)
 
 
 def test_ok_correct_accepted():
     msg = ["OK", "eventid", True, "message"]
 
-    cr = command_result.CommandResult.deserialize(msg)
+    cr = command_result.CommandResult.deserialize_list(msg)
 
     assert cr.is_success()
 
@@ -85,13 +85,13 @@ def test_ok_correct_not_accepted_empty_message_fails():
     msg = ["OK", "eventid", False, ""]
 
     with pytest.raises(TypeError):
-        command_result.CommandResult.deserialize(msg)
+        command_result.CommandResult.deserialize_list(msg)
 
 
 def test_ok_correct_not_accepted():
     msg = ["OK", "eventid", False, "message"]
 
-    cr = command_result.CommandResult.deserialize(msg)
+    cr = command_result.CommandResult.deserialize_list(msg)
 
     assert not cr.is_success()
 
@@ -101,7 +101,7 @@ def test_rejected_messages_match_accepted_status(msg):
     msg = ["OK", "eventid", True, msg]
 
     with pytest.raises(TypeError):
-        command_result.CommandResult.deserialize(msg)
+        command_result.CommandResult.deserialize_list(msg)
 
 
 def test_factory_correct():

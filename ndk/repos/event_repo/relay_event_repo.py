@@ -33,8 +33,15 @@ import typing
 import uuid
 
 from ndk import crypto
-from ndk.event import close_message, event, event_parser, request
-from ndk.messages import command_result, eose, message_factory, notice, relay_event
+from ndk.event import event, event_parser, request
+from ndk.messages import (
+    close,
+    command_result,
+    eose,
+    message_factory,
+    notice,
+    relay_event,
+)
 from ndk.repos.event_repo import event_repo
 
 SendFn = typing.Callable[[str], int]
@@ -137,7 +144,7 @@ class RelayEventRepo(event_repo.EventRepo):
         while not stored.process_token(self._read_str()):
             continue
 
-        serialized = close_message.Close(sub_id).serialize()
+        serialized = close.Close(sub_id).serialize()
         self._send_str(serialized)
 
         return stored.get()

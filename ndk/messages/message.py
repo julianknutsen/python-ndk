@@ -32,7 +32,17 @@ class Message(abc.ABC):
                     f"Type mismatch for field {field}. {type(getattr(self, field))} != {self.__annotations__[field]}"
                 )
 
+
+@dataclasses.dataclass
+class ReadableMessage(Message, abc.ABC):
     @classmethod
     @abc.abstractmethod
-    def deserialize(cls, lst: list):
+    def deserialize_list(cls, lst: list) -> list:
+        pass
+
+
+@dataclasses.dataclass
+class WriteableMessage(Message, abc.ABC):
+    @abc.abstractmethod
+    def serialize(self) -> str:
         pass

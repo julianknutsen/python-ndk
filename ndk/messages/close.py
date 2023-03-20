@@ -22,10 +22,11 @@
 import dataclasses
 
 from ndk.event import serialize
+from ndk.messages import message
 
 
 @dataclasses.dataclass
-class Close:
+class Close(message.WriteableMessage):
     """Convenience class for the CLOSE event used to finish a subscription"""
 
     sub_id: str

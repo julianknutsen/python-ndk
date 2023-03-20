@@ -37,7 +37,7 @@ def from_str(data: str):
 
     hdr = lst[0]
 
-    factories: dict[str, typing.Type[message.Message]] = {
+    factories: dict[str, typing.Type[message.ReadableMessage]] = {
         "NOTICE": notice.Notice,
         "OK": command_result.CommandResult,
         "EOSE": eose.EndOfStoredEvents,
@@ -47,4 +47,4 @@ def from_str(data: str):
     if hdr not in factories:
         raise TypeError(f"Unknown message type: {hdr}")
 
-    return factories[hdr].deserialize(lst)
+    return factories[hdr].deserialize_list(lst)
