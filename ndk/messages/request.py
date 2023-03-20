@@ -22,12 +22,19 @@
 import dataclasses
 
 from ndk.event import serialize
+from ndk.messages import message
 
 
 @dataclasses.dataclass
-class Request:
+class Request(message.WriteableMessage):
     sub_id: str
     filter_list: list[dict]
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        if len(self.filter_list) == 0:
+            raise TypeError(f"List of filters must be greater than 0: {self}")
 
     def serialize(self) -> str:
         return serialize.serialize_as_str(["REQ", self.sub_id, *self.filter_list])

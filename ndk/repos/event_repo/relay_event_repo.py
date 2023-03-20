@@ -33,7 +33,7 @@ import typing
 import uuid
 
 from ndk import crypto
-from ndk.event import event, event_parser, request
+from ndk.event import event, event_parser
 from ndk.messages import (
     close,
     command_result,
@@ -41,6 +41,7 @@ from ndk.messages import (
     message_factory,
     notice,
     relay_event,
+    request,
 )
 from ndk.repos.event_repo import event_repo
 

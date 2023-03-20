@@ -21,13 +21,29 @@
 
 import abc
 import dataclasses
+import typing
+
+
+def is_instance_of_type(x, t):
+    origin = typing.get_origin(t)
+    if origin is None:
+        return isinstance(x, t)
+    else:
+        args = typing.get_args(t)
+        return (
+            isinstance(x, origin)
+            and all(isinstance(arg, type) for arg in args)
+            and all(isinstance(item, args[0]) for item in x)
+        )
 
 
 @dataclasses.dataclass
 class Message(abc.ABC):
     def __post_init__(self):
         for field in self.__annotations__:
-            if not isinstance(getattr(self, field), self.__annotations__[field]):
+            if not is_instance_of_type(
+                getattr(self, field), self.__annotations__[field]
+            ):
                 raise TypeError(
                     f"Type mismatch for field {field}. {type(getattr(self, field))} != {self.__annotations__[field]}"
                 )
