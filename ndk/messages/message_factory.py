@@ -26,7 +26,7 @@ from ndk import serialize
 from ndk.messages import command_result, eose, message, notice, relay_event
 
 
-def from_str(data: str):
+def from_str(data: str) -> message.Message:
     lst = serialize.deserialize(data)
 
     if not isinstance(lst, list):

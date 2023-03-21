@@ -87,18 +87,15 @@ class EventRepo(abc.ABC):
         Returns:
             typing.Optional[event.UnsignedEvent]: Returns a subclass of UnsignedEvent based on kind. Return None if no event was found.
         """
-        try:
-            events = list(
-                self.get_by_author(
-                    kind,
-                    author,
-                    1,
-                )
+        events = list(
+            self.get_by_author(
+                kind,
+                author,
+                1,
             )
+        )
 
-            if not events:
-                return None
-        except Exception as exc:
-            raise GetItemError("Error fetching events") from exc
+        if not events:
+            return None
 
         return events[0]

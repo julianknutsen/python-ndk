@@ -28,6 +28,8 @@ from ndk.repos import contacts
 from ndk.repos.event_repo import event_repo
 from ndk.repos.metadata_repo import metadata_repo
 
+logger = logging.getLogger(__name__)
+
 
 class EventBackedMetadataRepo(metadata_repo.MetadataRepo):
     _event_repo: event_repo.EventRepo
@@ -54,6 +56,7 @@ class EventBackedMetadataRepo(metadata_repo.MetadataRepo):
         )
 
     def get(self, pubkey: crypto.PublicKeyStr) -> dict[str, object]:
+        logger.debug("get(%s)", pubkey)
         metadata = {}
         mev = self._event_repo.get_latest_by_author(
             event.EventKind.SET_METADATA, pubkey
@@ -61,7 +64,7 @@ class EventBackedMetadataRepo(metadata_repo.MetadataRepo):
         if mev:
             metadata = serialize.deserialize(mev.content)
         else:
-            logging.debug("No MetadataEvent returned")
+            logger.debug("No MetadataEvent returned")
 
         rsev = self._event_repo.get_latest_by_author(
             event.EventKind.RECOMMEND_SERVER, pubkey
@@ -70,7 +73,7 @@ class EventBackedMetadataRepo(metadata_repo.MetadataRepo):
             metadata["recommend_server"] = rsev.content
         else:
             metadata["recommend_server"] = ""
-            logging.debug("No RecommendServerEvent returned")
+            logger.debug("No RecommendServerEvent returned")
 
         clev = self._event_repo.get_latest_by_author(
             event.EventKind.CONTACT_LIST, pubkey
@@ -79,6 +82,6 @@ class EventBackedMetadataRepo(metadata_repo.MetadataRepo):
             metadata["contacts"] = clev.get_contact_list()  # type: ignore
         else:
             metadata["contacts"] = contacts.ContactList()
-            logging.debug("No ContactListEvent returned")
+            logger.debug("No ContactListEvent returned")
 
         return metadata

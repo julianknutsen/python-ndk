@@ -18,37 +18,77 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
-
+import asyncio
+import logging
 import pprint
+import traceback
 
 import click
-import websocket
+from websockets.client import connect
+from websockets.legacy.client import WebSocketClientProtocol
 
-from ndk.repos.event_repo import relay_event_repo
+from ndk.repos.event_repo import protocol_handler, relay_event_repo
 from ndk.repos.metadata_repo import event_backed_metadata_repo
 
+logger = logging.getLogger(__name__)
 
-class RelayEventRW(relay_event_repo.RelayEventRepo):
-    _ws: websocket.WebSocket
 
-    def __init__(self, url: str):
-        ws = websocket.WebSocket()
-        ws.connect(url)
-        if not ws.connect:
-            click.get_current_context().fail(f"Cant connect to relay: {url}")
+async def _start_websocket(relay_url: str):
+    return await connect(relay_url)
 
-        super().__init__(ws.send, ws.recv)
-        self._ws = ws
 
-    def __del__(self):
-        self._ws.close()
+class ProtocolContext:
+    protocol: protocol_handler.ProtocolHandler
+    _relay_url: str
+    _rq: asyncio.Queue
+    _wq: asyncio.Queue
+    _ws: WebSocketClientProtocol
+    _tasks: list
+
+    def __init__(self, relay_url: str):
+        self._relay_url = relay_url
+
+    def __enter__(self):
+        logger.debug("__aenter__")
+        self._rq = asyncio.Queue()
+        self._wq = asyncio.Queue()
+        self._loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self._loop)
+        self._ws = self._loop.run_until_complete(_start_websocket(self._relay_url))
+
+        reader_task = self._loop.create_task(
+            protocol_handler.read_handler(self._ws, self._rq)
+        )
+        writer_task = self._loop.create_task(
+            protocol_handler.write_handler(self._ws, self._wq)
+        )
+
+        self.protocol = protocol_handler.ProtocolHandler(self._rq, self._wq)
+        protocol_read_loop = self._loop.create_task(self.protocol.start_read_loop())
+
+        self._tasks = [reader_task, writer_task, protocol_read_loop]
+
+        return self
+
+    def __exit__(self, exc_type, exc_val, tb):
+        logger.debug("__aexit__")
+        if exc_val:
+            logger.error(
+                "Exception: [%s] %s %s", exc_type, exc_val, traceback.format_tb(tb)
+            )
+
+        self._loop.run_until_complete(self.protocol.stop_read_thread())
+        for task in self._tasks:
+            task.cancel()
+        self._loop.run_until_complete(self._ws.close())
 
 
 @click.command()
 @click.pass_obj
 @click.argument("pubkey")
 def metadata(relay_url, pubkey):
-    ev_repo = RelayEventRW(relay_url)
-    repo = event_backed_metadata_repo.EventBackedMetadataRepo(ev_repo)
+    with ProtocolContext(relay_url) as pc:
+        ev_repo = relay_event_repo.RelayEventRepo(pc.protocol)
+        repo = event_backed_metadata_repo.EventBackedMetadataRepo(ev_repo)
 
-    click.echo(pprint.pformat(repo.get(pubkey), width=80))
+        click.echo(pprint.pformat(repo.get(pubkey), width=80))

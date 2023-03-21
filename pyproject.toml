@@ -38,8 +38,9 @@ mypy = { version = "*", optional = true }
 pipreqs = { version = "*", optional = true }
 pylint = { version = "*", optional = true }
 pytest = { version = "*", optional = true }
+pytest-asyncio = { version = "*", optional = true }
 types-mock = { version = "*", optional = true }
-websocket-client = { version = "*", optional = true }
+websockets = { version = "*", optional = true }
 
 [tool.poetry.scripts]
 nostrcli = "cli.nostrcli:main"
@@ -47,14 +48,15 @@ test = "pytest:main"
 lint = "scripts.verify_format_lint:main"
 
 [tool.poetry.extras]
-cli = ["click", "websocket-client"]
-dev = ["black", "coverage", "isort", "mock", "mypy", "pipreqs", "pylint", "pytest", "types-mock", "websocket-client"]
-test = ["mock", "pytest", "types-mock", "websocket-client"]
+cli = ["click", "websockets"]
+dev = ["black", "coverage", "isort", "mock", "mypy", "pipreqs", "pylint", "pytest", "pytest-asyncio", "types-mock", "websockets"]
+test = ["mock", "pytest", "pytest-asyncio", "types-mock", "websockets"]
 
 [tool.isort]
 profile = "black"
 
 [tool.pytest.ini_options]
+asyncio_mode = "auto"
 log_cli_level = "INFO"
 addopts = "--strict-config --strict-markers"
 
@@ -71,8 +73,4 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "setuptools.*"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "websocket.*"
 ignore_missing_imports = true

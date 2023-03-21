@@ -23,64 +23,22 @@
 
 Typical usage example::
     keys = crypto.KeyPair()
-    repo = RelayEventRepo(send_fn, recv_fn)
+    repo = RelayEventRepo(XXX)
     event_id = repo.add(keys, <UnsignedEvent>)
     event = repo.get(event_id)
 """
 
+import asyncio
 import logging
 import typing
-import uuid
 
 from ndk import crypto
-from ndk.event import event, event_parser
-from ndk.messages import (
-    close,
-    command_result,
-    eose,
-    event_message,
-    message_factory,
-    notice,
-    relay_event,
-    request,
-)
-from ndk.repos.event_repo import event_repo
+from ndk.event import event
+from ndk.repos.event_repo import event_repo, protocol_handler
 
 SendFn = typing.Callable[[str], int]
 RecvFn = typing.Callable[[], str]
 SubID = typing.NewType("SubID", str)
-
-
-class _StoredEvents:
-    _events: list[event.UnsignedEvent]
-    _complete: bool = False
-
-    def __init__(self):
-        self._events = []
-
-    def get(self) -> typing.Sequence[event.UnsignedEvent]:
-        assert self._complete, "cant access results before processing complete"
-        return self._events
-
-    def process_token(self, token: str) -> bool:
-        assert not self._complete, "should not call process_token after complete"
-
-        msg = message_factory.from_str(token)
-
-        if isinstance(msg, eose.EndOfStoredEvents):
-            self._complete = True
-            return True
-
-        if isinstance(msg, notice.Notice):
-            raise RuntimeError(f"NOTICE response from server: {msg.message}")
-
-        if not isinstance(msg, relay_event.RelayEvent):
-            raise RuntimeError(f"Unhandled message type: {msg}")
-
-        self._events.append(
-            event_parser.signed_to_unsigned(event.SignedEvent(**msg.event_dict))
-        )
-        return False
 
 
 class RelayEventRepo(event_repo.EventRepo):
@@ -89,38 +47,15 @@ class RelayEventRepo(event_repo.EventRepo):
     and server to add new events and get existing events.
     """
 
-    _send_fn: SendFn
-    _recv_fn: RecvFn
+    _protocol: protocol_handler.ProtocolHandler
 
-    def __init__(self, send_fn: SendFn, recv_fn: RecvFn):
-        """Initialize
-
-        Args:
-            send_fn (SendFn): function that can be called to send a string to a Relay
-            recv_fn (RecvFn): function that can be called to receive the next string from a Relay
-        """
-        self._send_fn = send_fn
-        self._recv_fn = recv_fn
+    def __init__(self, protocol: protocol_handler.ProtocolHandler):
+        self._protocol = protocol
         super().__init__()
 
-    def _send_str(self, s: str):
-        logging.debug("Sending: %s", s)
-        self._send_fn(s)
-
-    def _read_str(self) -> str:
-        s = self._recv_fn()
-        logging.debug("Received: %s", s)
-        return s
-
-    def _write_str_sync(self, serialized: str) -> command_result.CommandResult:
-        self._send_str(serialized)
-        msg = message_factory.from_str(self._read_str())
-        assert isinstance(msg, command_result.CommandResult)
-        return msg
-
     def add(self, signed_ev: event.SignedEvent) -> event.EventID:
-        result = self._write_str_sync(
-            event_message.Event.from_signed_event(signed_ev).serialize()
+        result = asyncio.get_event_loop().run_until_complete(
+            self._protocol.write_event(signed_ev)
         )
 
         if not result.accepted:
@@ -134,29 +69,10 @@ class RelayEventRepo(event_repo.EventRepo):
 
         return event.EventID(result.event_id)
 
-    def _write_req_msg_sync(
-        self,
-        fltrs: list[dict],
-    ) -> typing.Sequence[event.UnsignedEvent]:
-        sub_id = str(uuid.uuid4())
-        req = request.Request(sub_id, fltrs)
-        serialized = req.serialize()
-
-        self._send_str(serialized)
-        stored = _StoredEvents()
-
-        while not stored.process_token(self._read_str()):
-            continue
-
-        serialized = close.Close(sub_id).serialize()
-        self._send_str(serialized)
-
-        return stored.get()
-
     def get(self, ev_id: event.EventID) -> event.UnsignedEvent:
-        event_itr = self._write_req_msg_sync([{"ids": [ev_id]}])
-
-        events = list(event_itr)
+        events = asyncio.get_event_loop().run_until_complete(
+            self._protocol.query_events([{"ids": [ev_id]}])
+        )
 
         if not events:
             raise event_repo.GetItemError("No event returned from query for {ev_id}")
@@ -182,4 +98,6 @@ class RelayEventRepo(event_repo.EventRepo):
         if limit:
             fltr["limit"] = limit
 
-        return self._write_req_msg_sync([fltr])
+        return asyncio.get_event_loop().run_until_complete(
+            self._protocol.query_events([fltr])
+        )
