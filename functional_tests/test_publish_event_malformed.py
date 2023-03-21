@@ -22,38 +22,37 @@
 # pylint: disable=redefined-outer-name
 
 import pytest
-import websocket
+import websockets
 
 from ndk import serialize
 from ndk.messages import message_factory, notice
 
 
 @pytest.fixture()
-def ws(relay_url):
-    tmp = websocket.WebSocket()
-    tmp.connect(relay_url)
+async def ws(relay_url):
+    tmp = await websockets.connect(relay_url)
     yield tmp
-    tmp.close()
+    await tmp.close()
 
 
 @pytest.mark.skip("hangs on recv")
-def test_empty_object_as_message_returns_notice(ws):
-    ws.send(serialize.serialize_as_str("{}"))
+async def test_empty_object_as_message_returns_notice(ws):
+    await ws.send(serialize.serialize_as_str("{}"))
 
-    msg = message_factory.from_str(ws.recv())
+    msg = message_factory.from_str(await ws.recv())
     assert isinstance(msg, notice.Notice)
 
 
 @pytest.mark.skip("hangs on recv")
-def test_empty_array_as_message_returns_notice(ws):
-    ws.send(serialize.serialize_as_str("[]"))
+async def test_empty_array_as_message_returns_notice(ws):
+    await ws.send(serialize.serialize_as_str("[]"))
 
-    msg = message_factory.from_str(ws.recv())
+    msg = message_factory.from_str(await ws.recv())
     assert isinstance(msg, notice.Notice)
 
 
-def test_only_type_returns_notice(ws):
-    ws.send(
+async def test_only_type_returns_notice(ws):
+    await ws.send(
         serialize.serialize_as_str(
             [
                 "EVENT",
@@ -61,5 +60,5 @@ def test_only_type_returns_notice(ws):
         )
     )
 
-    msg = message_factory.from_str(ws.recv())
+    msg = message_factory.from_str(await ws.recv())
     assert isinstance(msg, notice.Notice)

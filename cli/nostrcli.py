@@ -19,11 +19,12 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import asyncio
 import logging
 import sys
 
 import click
-import websocket
+import websockets
 
 from cli.read_cmd import metadata
 
@@ -37,23 +38,21 @@ def cli(ctx, relay_url):
     ctx.obj = relay_url
 
 
+async def ping_websocket(relay_url):
+    ws = await websockets.connect(relay_url)
+
+    if ws.open:
+        click.echo(f"Connection to {relay_url} succeeded.")
+    else:
+        click.echo(f"Failed connection to {relay_url} {ws.close_reason}")
+
+    await ws.close()
+
+
 @click.command()
 @click.pass_obj
 def ping(relay_url):
-    ws = websocket.WebSocket()
-    ws.connect(relay_url)
-    if ws.connected:
-        click.echo(f"Connection to {relay_url} succeeded.")
-    else:
-        click.echo(f"Failed connection to {relay_url} {ws.getstatus()}")
-
-    ws.ping()
-    if ws.connected:
-        click.echo("Ping successful")
-    else:
-        click.echo("Ping failed")
-
-    ws.close()
+    asyncio.get_event_loop().run_until_complete(ping_websocket(relay_url))
 
 
 @click.group

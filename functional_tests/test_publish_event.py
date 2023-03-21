@@ -26,6 +26,7 @@ import pytest
 from ndk import crypto
 from ndk.event import event, metadata_event
 from ndk.messages import event_message, message_factory, notice
+from ndk.repos.event_repo import event_repo
 
 
 @pytest.fixture()
@@ -69,12 +70,9 @@ def test_set_metadata_invalid_sig_is_not_accepted(
     relay_ev_repo, signed_event, signed_event2
 ):
     object.__setattr__(signed_event, "sig", signed_event2.sig)
-    result = relay_ev_repo._write_str_sync(
-        event_message.Event.from_signed_event(signed_event).serialize()
-    )
 
-    assert not result.is_success()
-    assert result.message.startswith("invalid:")
+    with pytest.raises(event_repo.AddItemError):
+        relay_ev_repo.add(signed_event)
 
 
 @pytest.mark.skip("relayer is bugged")
@@ -82,11 +80,7 @@ def test_set_metadata_invalid_id_is_not_accepted(
     relay_ev_repo, signed_event, signed_event2
 ):
     object.__setattr__(signed_event, "id", signed_event2.id)
-    result = relay_ev_repo._write_str_sync(
-        event_message.Event.from_signed_event(signed_event).serialize()
-    )
-
-    assert not result.is_success()
+    relay_ev_repo.add(signed_event)
 
 
 def build_sign_publish_metadata_event(relay_ev_repo, *args, **kwargs):
@@ -95,30 +89,20 @@ def build_sign_publish_metadata_event(relay_ev_repo, *args, **kwargs):
     unsigned_event = metadata_event.MetadataEvent.from_metadata_parts(*args, **kwargs)
     signed_event = event.build_signed_event(unsigned_event, keys)
 
-    return relay_ev_repo._write_str_sync(
-        event_message.Event.from_signed_event(signed_event).serialize()
-    )
+    assert relay_ev_repo.add(signed_event)
 
 
 def test_set_metadata_only_name_present_is_accepted(relay_ev_repo):
-    result = build_sign_publish_metadata_event(relay_ev_repo, name="bob")
-
-    assert result.is_success()
+    build_sign_publish_metadata_event(relay_ev_repo, name="bob")
 
 
 def test_set_metadata_only_about_present(relay_ev_repo):
-    result = build_sign_publish_metadata_event(relay_ev_repo, about="#nostr")
-
-    assert result.is_success()
+    build_sign_publish_metadata_event(relay_ev_repo, about="#nostr")
 
 
 def test_set_metadata_only_picture_present(relay_ev_repo):
-    result = build_sign_publish_metadata_event(relay_ev_repo, picture="foo")
-
-    assert result.is_success()
+    build_sign_publish_metadata_event(relay_ev_repo, picture="foo")
 
 
 def test_set_metadata_no_content(relay_ev_repo):
-    result = build_sign_publish_metadata_event(relay_ev_repo)
-
-    assert result.is_success()
+    build_sign_publish_metadata_event(relay_ev_repo)

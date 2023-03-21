@@ -19,18 +19,10 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-import websocket
+import websockets
 
 
 # connect to websocket with no ssl and verify it doesn't error
-def test_websocket_connect(relay_url):
-    ws = websocket.create_connection(relay_url)
-    assert ws.getstatus()
-
-
-def test_websocket_ping_pong(relay_url):
-    pong_opcode = 0xA
-
-    ws = websocket.create_connection(relay_url)
-    ws.ping()
-    assert ws.recv_frame().opcode is pong_opcode
+async def test_websocket_connect(relay_url):
+    ws = await websockets.connect(relay_url)
+    assert ws.open

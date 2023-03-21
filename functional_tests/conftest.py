@@ -21,10 +21,12 @@
 
 # pylint: disable=redefined-outer-name
 
-import pytest
-import websocket
+import asyncio
 
-from ndk.repos.event_repo import relay_event_repo
+import pytest
+import websockets
+
+from ndk.repos.event_repo import protocol_handler, relay_event_repo
 
 
 @pytest.fixture(scope="session")
@@ -38,13 +40,30 @@ def relay_url(pytestconfig):
 
 
 @pytest.fixture(scope="function")
-def ws(relay_url):
-    ws = websocket.WebSocket()
-    ws.connect(relay_url)
-    yield ws
-    ws.close()
+async def ws_protocol(relay_url):
+    rq = asyncio.Queue()
+    wq = asyncio.Queue()
+    ws = await websockets.connect(relay_url)
+
+    reader_task = asyncio.create_task(protocol_handler.read_handler(ws, rq))
+    writer_task = asyncio.create_task(protocol_handler.write_handler(ws, wq))
+
+    transport = protocol_handler.ProtocolHandler(rq, wq)
+    protocol_read_loop = asyncio.create_task(transport.start_read_loop())
+
+    yield transport
+
+    await transport.stop_read_thread()
+
+    _, pending = await asyncio.wait(
+        [reader_task, writer_task, protocol_read_loop],
+        return_when=asyncio.FIRST_COMPLETED,
+    )
+    for task in pending:
+        task.cancel()
+    await ws.close()
 
 
 @pytest.fixture(scope="function")
-def relay_ev_repo(ws):
-    yield relay_event_repo.RelayEventRepo(ws.send, ws.recv)
+async def relay_ev_repo(ws_protocol):
+    yield relay_event_repo.RelayEventRepo(ws_protocol)

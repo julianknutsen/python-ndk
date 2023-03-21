@@ -19,46 +19,37 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-import abc
-import dataclasses
 import typing
 
+from ndk.event import event, event_parser
+from ndk.messages import eose, message, notice, relay_event
 
-def is_instance_of_type(x, t):
-    origin = typing.get_origin(t)
-    if origin is None:
-        return isinstance(x, t)
-    else:
-        args = typing.get_args(t)
-        return (
-            isinstance(x, origin)
-            and all(isinstance(arg, type) for arg in args)
-            and all(isinstance(item, args[0]) for item in x)
+
+class StoredEvents:
+    _events: list[event.UnsignedEvent]
+    _complete: bool = False
+
+    def __init__(self):
+        self._events = []
+
+    def get(self) -> typing.Sequence[event.UnsignedEvent]:
+        assert self._complete, "cant access results before processing complete"
+        return self._events
+
+    def process_msg(self, msg: message.Message) -> bool:
+        assert not self._complete, "should not call process_token after complete"
+
+        if isinstance(msg, eose.EndOfStoredEvents):
+            self._complete = True
+            return True
+
+        if isinstance(msg, notice.Notice):
+            raise RuntimeError(f"NOTICE response from server: {msg.message}")
+
+        if not isinstance(msg, relay_event.RelayEvent):
+            raise RuntimeError(f"Unhandled message type: {msg}")
+
+        self._events.append(
+            event_parser.signed_to_unsigned(event.SignedEvent(**msg.event_dict))
         )
-
-
-@dataclasses.dataclass
-class Message(abc.ABC):
-    def __post_init__(self):
-        for field in self.__annotations__:
-            if not is_instance_of_type(
-                getattr(self, field), self.__annotations__[field]
-            ):
-                raise TypeError(
-                    f"Type mismatch for field {field}. {type(getattr(self, field))} != {self.__annotations__[field]}"
-                )
-
-
-@dataclasses.dataclass
-class ReadableMessage(Message, abc.ABC):
-    @classmethod
-    @abc.abstractmethod
-    def deserialize_list(cls, lst: list) -> Message:
-        pass
-
-
-@dataclasses.dataclass
-class WriteableMessage(Message, abc.ABC):
-    @abc.abstractmethod
-    def serialize(self) -> str:
-        pass
+        return False
