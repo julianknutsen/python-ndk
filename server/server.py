@@ -26,7 +26,7 @@ import logging
 from websockets.legacy.server import serve
 
 from ndk.repos.event_repo import protocol_handler
-from server import message_handler
+from server import event_repo, message_dispatcher, message_handler
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -38,7 +38,7 @@ PORT = 8765
 async def connection_handler(
     read_queue: asyncio.Queue[str],
     write_queue: asyncio.Queue[str],
-    mh: message_handler.MessageHandler,
+    mh: message_dispatcher.MessageDispatcher,
 ):
     while True:
         data = await read_queue.get()
@@ -48,7 +48,7 @@ async def connection_handler(
             await write_queue.put(response)
 
 
-async def handler_wrapper(mh: message_handler.MessageHandler, websocket):
+async def handler_wrapper(mh: message_dispatcher.MessageDispatcher, websocket):
     logger.debug("New connection established from: %s", websocket.remote_address)
     rq: asyncio.Queue[str] = asyncio.Queue()
     wq: asyncio.Queue[str] = asyncio.Queue()
@@ -61,9 +61,11 @@ async def handler_wrapper(mh: message_handler.MessageHandler, websocket):
 
 
 async def main():
-    mh = message_handler.MessageHandler()
+    repo = event_repo.EventRepo()
+    mh = message_handler.MessageHandler(repo)
+    mb = message_dispatcher.MessageDispatcher(mh)
 
-    async with serve(functools.partial(handler_wrapper, mh), HOST, PORT):
+    async with serve(functools.partial(handler_wrapper, mb), HOST, PORT):
         logger.info("Listening on %s:%s", HOST, PORT)
         await asyncio.Future()  # run forever
 

@@ -24,14 +24,16 @@ import asyncio
 from ndk import crypto
 from ndk.event import event, metadata_event
 from ndk.repos.event_repo import protocol_handler, relay_event_repo
-from server import message_handler, server
+from server import event_repo, message_dispatcher, message_handler, server
 
 
 async def test_init():
     rq = asyncio.Queue()
     wq = asyncio.Queue()
-    mh = message_handler.MessageHandler()
-    handler_task = asyncio.create_task(server.connection_handler(rq, wq, mh))
+    repo = event_repo.EventRepo()
+    mh = message_handler.MessageHandler(repo)
+    mb = message_dispatcher.MessageDispatcher(mh)
+    handler_task = asyncio.create_task(server.connection_handler(rq, wq, mb))
 
     keys = crypto.KeyPair()
     ev = metadata_event.MetadataEvent.from_metadata_parts()
