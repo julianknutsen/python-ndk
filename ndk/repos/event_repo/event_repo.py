@@ -36,7 +36,7 @@ class GetItemError(Exception):
 
 class EventRepo(abc.ABC):
     @abc.abstractmethod
-    def add(self, signed_ev: event.SignedEvent) -> event.EventID:
+    async def add(self, signed_ev: event.SignedEvent) -> event.EventID:
         """Adds the SignedEvent to the repo
 
         Args:
@@ -47,7 +47,7 @@ class EventRepo(abc.ABC):
         """
 
     @abc.abstractmethod
-    def get(self, ev_id: event.EventID):
+    async def get(self, ev_id: event.EventID):
         """Retrieves a previously added SignedEvent by id
 
         Args:
@@ -55,7 +55,7 @@ class EventRepo(abc.ABC):
         """
 
     @abc.abstractmethod
-    def get_by_author(
+    async def get_by_author(
         self,
         kind: event.EventKind,
         author: crypto.PublicKeyStr,
@@ -72,7 +72,7 @@ class EventRepo(abc.ABC):
             typing.Sequence[event.UnsignedEvent]: Specific subclass of UnsignedEvent are returned. e.g. MetadataEvent for kind == 0
         """
 
-    def get_latest_by_author(
+    async def get_latest_by_author(
         self, kind: event.EventKind, author: crypto.PublicKeyStr
     ) -> typing.Optional[event.UnsignedEvent]:
         """Convenience function to return the latest single event of a given kind from a specific author
@@ -88,7 +88,7 @@ class EventRepo(abc.ABC):
             typing.Optional[event.UnsignedEvent]: Returns a subclass of UnsignedEvent based on kind. Return None if no event was found.
         """
         events = list(
-            self.get_by_author(
+            await self.get_by_author(
                 kind,
                 author,
                 1,

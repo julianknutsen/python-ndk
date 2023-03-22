@@ -32,7 +32,7 @@ class FakeMetadataRepository(metadata_repo.MetadataRepo):
     def __init__(self):
         self._metadata = {}
 
-    def overwrite(
+    async def overwrite(
         self,
         keys: crypto.KeyPair,
         name: typing.Optional[str] = None,
@@ -61,7 +61,7 @@ class FakeMetadataRepository(metadata_repo.MetadataRepo):
         self._metadata[keys.public] = metadata
         return True
 
-    def get(self, pubkey: crypto.PublicKeyStr) -> dict[str, object]:
+    async def get(self, pubkey: crypto.PublicKeyStr) -> dict[str, object]:
         if pubkey not in self._metadata:
             return metadata_repo.DEFAULT_METADATA
 

@@ -57,7 +57,7 @@ profile = "black"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-log_cli_level = "INFO"
+log_cli_level = "DEBUG"
 addopts = "--strict-config --strict-markers"
 
 [tool.mypy]

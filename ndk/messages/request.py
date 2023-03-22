@@ -26,7 +26,7 @@ from ndk.messages import message
 
 
 @dataclasses.dataclass
-class Request(message.WriteableMessage):
+class Request(message.ReadableMessage, message.WriteableMessage):
     sub_id: str
     filter_list: list[dict]
 
@@ -35,6 +35,18 @@ class Request(message.WriteableMessage):
 
         if len(self.filter_list) == 0:
             raise TypeError(f"List of filters must be greater than 0: {self}")
+
+    @classmethod
+    def deserialize_list(cls, lst: list):
+        assert len(lst) > 0
+        assert lst[0] == "REQ"
+
+        if len(lst) < 3:
+            raise TypeError(
+                f"Unexpected format of Request message. Expected more than two items, but got: {lst}"
+            )
+
+        return cls(lst[1], [*lst[2:]])
 
     def serialize(self) -> str:
         return serialize.serialize_as_str(["REQ", self.sub_id, *self.filter_list])

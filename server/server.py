@@ -43,8 +43,9 @@ async def connection_handler(
     while True:
         data = await read_queue.get()
         read_queue.task_done()
-        response = mh.process_message(data)
-        await write_queue.put(response)
+        responses = mh.process_message(data)
+        for response in responses:
+            await write_queue.put(response)
 
 
 async def handler_wrapper(mh: message_handler.MessageHandler, websocket):

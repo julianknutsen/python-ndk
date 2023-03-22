@@ -27,32 +27,37 @@ from ndk import crypto
 from ndk.repos.text_note_repo import event_backed_text_note_repo, fake_text_note_repo
 
 
-@pytest.fixture()
+@pytest.fixture
 def fake_repo():
     return fake_text_note_repo.FakeTextNoteRepo()
 
 
-@pytest.fixture()
-def real_repo(relay_ev_repo):
+@pytest.fixture
+def ndk_repo(ev_repo):
+    return event_backed_text_note_repo.EventBackedTextNoteRepo(ev_repo)
+
+
+@pytest.fixture
+def remote_repo(relay_ev_repo):
     return event_backed_text_note_repo.EventBackedTextNoteRepo(relay_ev_repo)
 
 
-@pytest.fixture(params=["fake_repo", "real_repo"])
+@pytest.fixture(params=["fake_repo", "remote_repo", "ndk_repo"])
 def repo(request):
     return request.getfixturevalue(request.param)
 
 
-def test_set_retrieve(repo):
+async def test_set_retrieve(repo):
     mykeys = crypto.KeyPair()
 
     # send plaintext note
-    info = repo.add(mykeys, "plaintext content goes here!")
+    info = await repo.add(mykeys, "plaintext content goes here!")
 
     # retrieve by id
-    text_note = repo.get_by_uid(info)
+    text_note = await repo.get_by_uid(info)
 
     # retrive by author
-    text_notes = repo.get_by_author(mykeys.public)
+    text_notes = await repo.get_by_author(mykeys.public)
 
     assert text_note == "plaintext content goes here!"
     assert text_notes[0] == "plaintext content goes here!"

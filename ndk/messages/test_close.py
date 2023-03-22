@@ -30,6 +30,21 @@ def test_init_wrong_type():
         close.Close(1)  # type: ignore
 
 
+def test_close_message_empty():
+    msg = ["CLOSE"]
+
+    with pytest.raises(TypeError):
+        close.Close.deserialize_list(msg)
+
+
+def test_close_correct():
+    msg = ["CLOSE", "sub-id"]
+
+    c = close.Close.deserialize_list(msg)
+
+    assert c.sub_id == "sub-id"
+
+
 def test_serialize():
     c = close.Close("1")
     serialized = c.serialize()

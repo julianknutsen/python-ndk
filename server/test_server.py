@@ -41,7 +41,7 @@ async def test_init():
     read_loop_task = asyncio.create_task(ph.start_read_loop())
     ev_repo = relay_event_repo.RelayEventRepo(ph)
 
-    ev_id = await ev_repo.add_coro(signed)
+    ev_id = await ev_repo.add(signed)
     assert ev_id == signed.id
 
     await rq.join()

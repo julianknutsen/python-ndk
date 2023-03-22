@@ -21,11 +21,12 @@
 """NIP-15 https://github.com/nostr-protocol/nips/blob/master/15.md"""
 import dataclasses
 
+from ndk import serialize
 from ndk.messages import message
 
 
 @dataclasses.dataclass
-class EndOfStoredEvents(message.ReadableMessage):
+class EndOfStoredEvents(message.ReadableMessage, message.WriteableMessage):
     sub_id: str
 
     @classmethod
@@ -39,3 +40,6 @@ class EndOfStoredEvents(message.ReadableMessage):
             )
 
         return cls(lst[1])
+
+    def serialize(self) -> str:
+        return serialize.serialize_as_str(["EOSE", self.sub_id])

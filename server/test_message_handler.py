@@ -25,7 +25,15 @@ import pytest
 
 from ndk import serialize
 from ndk.event import event
-from ndk.messages import command_result, event_message, message_factory, notice
+from ndk.messages import (
+    close,
+    command_result,
+    eose,
+    event_message,
+    message_factory,
+    notice,
+    request,
+)
 from server import message_handler
 
 
@@ -42,7 +50,8 @@ def test_init(mh):  # pylint: disable=unused-argument
 def test_process_invalid_obj(mh):
     response = mh.process_message(serialize.serialize_as_str({}))
 
-    response_msg = message_factory.from_str(response)
+    assert len(response) == 1
+    response_msg = message_factory.from_str(response[0])
 
     assert isinstance(response_msg, notice.Notice)
 
@@ -50,7 +59,8 @@ def test_process_invalid_obj(mh):
 def test_process_invalid_list(mh):
     response = mh.process_message(serialize.serialize_as_str([]))
 
-    response_msg = message_factory.from_str(response)
+    assert len(response) == 1
+    response_msg = message_factory.from_str(response[0])
 
     assert isinstance(response_msg, notice.Notice)
 
@@ -59,7 +69,8 @@ def test_process_unsupported_ev(mh):
     req = notice.Notice("huh?")
     response = mh.process_message(req.serialize())
 
-    response_msg = message_factory.from_str(response)
+    assert len(response) == 1
+    response_msg = message_factory.from_str(response[0])
 
     assert isinstance(response_msg, notice.Notice)
 
@@ -67,7 +78,8 @@ def test_process_unsupported_ev(mh):
 def test_event_missing_required_fields(mh):
     response = mh.process_message(event_message.Event({}).serialize())
 
-    response_msg = message_factory.from_str(response)
+    assert len(response) == 1
+    response_msg = message_factory.from_str(response[0])
 
     assert isinstance(response_msg, notice.Notice)
 
@@ -83,7 +95,8 @@ def test_event_validation_failure(mh):
             event_message.Event({"id": "1"})
         )  # pylint: disable=protected-access
 
-        response_msg = message_factory.from_str(response)
+        assert len(response) == 1
+        response_msg = message_factory.from_str(response[0])
 
         assert isinstance(response_msg, command_result.CommandResult)
         assert not response_msg.accepted
@@ -100,7 +113,23 @@ def test_accepted_event(mh):
             event_message.Event({"id": "1"})
         )  # pylint: disable=protected-access
 
-        response_msg = message_factory.from_str(response)
+        assert len(response) == 1
+        response_msg = message_factory.from_str(response[0])
 
         assert isinstance(response_msg, command_result.CommandResult)
         assert response_msg.accepted
+
+
+def test_close_does_nothing(mh):
+    response = mh.process_message(close.Close("1").serialize())
+
+    assert len(response) == 0
+
+
+def test_handle_request_no_match(mh):
+    response = mh.process_message(request.Request("1", [{}]).serialize())
+
+    assert len(response) == 1
+    response_msg = message_factory.from_str(response[0])
+
+    assert isinstance(response_msg, eose.EndOfStoredEvents)

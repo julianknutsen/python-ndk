@@ -28,7 +28,6 @@ Typical usage example::
     event = repo.get(event_id)
 """
 
-import asyncio
 import logging
 import typing
 
@@ -53,10 +52,7 @@ class RelayEventRepo(event_repo.EventRepo):
         self._protocol = protocol
         super().__init__()
 
-    def add(self, signed_ev: event.SignedEvent) -> event.EventID:
-        return asyncio.get_event_loop().run_until_complete(self.add_coro(signed_ev))
-
-    async def add_coro(self, signed_ev: event.SignedEvent) -> event.EventID:
+    async def add(self, signed_ev: event.SignedEvent) -> event.EventID:
         result = await self._protocol.write_event(signed_ev)
 
         if not result.accepted:
@@ -70,10 +66,8 @@ class RelayEventRepo(event_repo.EventRepo):
 
         return event.EventID(result.event_id)
 
-    def get(self, ev_id: event.EventID) -> event.UnsignedEvent:
-        events = asyncio.get_event_loop().run_until_complete(
-            self._protocol.query_events([{"ids": [ev_id]}])
-        )
+    async def get(self, ev_id: event.EventID) -> event.UnsignedEvent:
+        events = await self._protocol.query_events([{"ids": [ev_id]}])
 
         if not events:
             raise event_repo.GetItemError("No event returned from query for {ev_id}")
@@ -85,7 +79,7 @@ class RelayEventRepo(event_repo.EventRepo):
 
         return events[0]
 
-    def get_by_author(
+    async def get_by_author(
         self,
         kind: event.EventKind,
         author: crypto.PublicKeyStr,
@@ -99,6 +93,4 @@ class RelayEventRepo(event_repo.EventRepo):
         if limit:
             fltr["limit"] = limit
 
-        return asyncio.get_event_loop().run_until_complete(
-            self._protocol.query_events([fltr])
-        )
+        return await self._protocol.query_events([fltr])

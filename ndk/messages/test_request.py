@@ -40,6 +40,29 @@ def test_init_empty_filters():
         request.Request("1", [])
 
 
+def test_request_message_empty():
+    msg = ["REQ"]
+
+    with pytest.raises(TypeError):
+        request.Request.deserialize_list(msg)
+
+
+def test_notice_correct_one_item():
+    msg = ["REQ", "sub-id", {}]
+
+    r = request.Request.deserialize_list(msg)
+
+    assert r.filter_list == [{}]
+
+
+def test_notice_correct_multiple_item():
+    msg = ["REQ", "sub-id", {}, {}]
+
+    r = request.Request.deserialize_list(msg)
+
+    assert r.filter_list == [{}, {}]
+
+
 def test_serialize():
     r = request.Request("1", [{}])
     serialized = r.serialize()

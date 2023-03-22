@@ -44,17 +44,17 @@ class MemoryEventRepo(event_repo.EventRepo):
         self._by_id = {}
         super().__init__()
 
-    def add(self, signed_ev: event.SignedEvent) -> event.EventID:
+    async def add(self, signed_ev: event.SignedEvent) -> event.EventID:
         self._by_id[signed_ev.id] = signed_ev
         return signed_ev.id
 
-    def get(self, ev_id: event.EventID):
+    async def get(self, ev_id: event.EventID):
         if ev_id not in self._by_id:
             raise event_repo.GetItemError("Unknown ev_id")
 
         return self._by_id[ev_id]
 
-    def get_by_author(
+    async def get_by_author(
         self,
         kind: event.EventKind,
         author: crypto.PublicKeyStr,

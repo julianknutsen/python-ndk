@@ -31,15 +31,15 @@ TextNoteContent = typing.NewType("TextNoteContent", str)
 
 class TextNoteRepo(abc.ABC):
     @abc.abstractmethod
-    def add(self, keys: crypto.KeyPair, content: str) -> TextNoteID:
+    async def add(self, keys: crypto.KeyPair, content: str) -> TextNoteID:
         pass
 
     @abc.abstractmethod
-    def get_by_uid(self, uid: TextNoteID) -> TextNoteContent:
+    async def get_by_uid(self, uid: TextNoteID) -> TextNoteContent:
         pass
 
     @abc.abstractmethod
-    def get_by_author(
+    async def get_by_author(
         self, author: crypto.PublicKeyStr
     ) -> typing.Sequence[TextNoteContent]:
         pass
