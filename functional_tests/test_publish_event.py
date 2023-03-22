@@ -25,8 +25,23 @@ import pytest
 
 from ndk import crypto
 from ndk.event import event, metadata_event
-from ndk.messages import event_message, message_factory, notice
+from ndk.messages import event_message
 from ndk.repos.event_repo import event_repo
+
+
+@pytest.fixture()
+def fake_repo(ev_repo):
+    return ev_repo
+
+
+@pytest.fixture()
+def real_repo(relay_ev_repo):
+    return relay_ev_repo
+
+
+@pytest.fixture(params=["fake_repo", "real_repo"])
+def repo(request):
+    return request.getfixturevalue(request.param)
 
 
 @pytest.fixture()
@@ -51,58 +66,69 @@ def signed_event2(unsigned_event):
 fields = ["id", "pubkey", "created_at", "kind", "tags", "content", "sig"]
 
 
-@pytest.mark.skip("relayer is bugged")
+# XXX only runs on fake right now due to relayer bug
 @pytest.mark.parametrize("field", fields)
-def test_publish_event_missing_field_returns_notice(field, unsigned_event, ws):
+async def test_publish_event_missing_field_returns_notice(
+    field,
+    unsigned_event,
+    fake_repo,  # pylint: disable=unused-argument
+    protocol_rq,
+    protocol_wq,
+    caplog,
+):
     keys = crypto.KeyPair()
 
     signed_ev = event.build_signed_event(unsigned_event, keys)
     serializable = signed_ev.__dict__
     del serializable[field]
 
-    ws.send(event_message.Event(serializable).serialize())
+    await protocol_wq.put(event_message.Event.from_signed_event(signed_ev).serialize())
+    await protocol_wq.join()
+    await protocol_rq.join()
 
-    msg = message_factory.from_str(ws.recv())
-    assert isinstance(msg, notice.Notice)
+    assert "Unable to parse message" in caplog.text
 
 
-def test_set_metadata_invalid_sig_is_not_accepted(
-    relay_ev_repo, signed_event, signed_event2
+async def test_set_metadata_invalid_sig_is_not_accepted(
+    repo, signed_event, signed_event2
 ):
     object.__setattr__(signed_event, "sig", signed_event2.sig)
 
     with pytest.raises(event_repo.AddItemError):
-        relay_ev_repo.add(signed_event)
+        await repo.add_coro(signed_event)
 
 
-@pytest.mark.skip("relayer is bugged")
-def test_set_metadata_invalid_id_is_not_accepted(
-    relay_ev_repo, signed_event, signed_event2
+# XXX only runs on fake right now due to relayer bug
+async def test_set_metadata_invalid_id_is_not_accepted(
+    fake_repo, signed_event, signed_event2
 ):
+    assert signed_event.id != signed_event2.id
     object.__setattr__(signed_event, "id", signed_event2.id)
-    relay_ev_repo.add(signed_event)
+
+    with pytest.raises(event_repo.AddItemError):
+        await fake_repo.add_coro(signed_event)
 
 
-def build_sign_publish_metadata_event(relay_ev_repo, *args, **kwargs):
+async def build_sign_publish_metadata_event(repo, *args, **kwargs):
     keys = crypto.KeyPair()
 
     unsigned_event = metadata_event.MetadataEvent.from_metadata_parts(*args, **kwargs)
     signed_event = event.build_signed_event(unsigned_event, keys)
 
-    assert relay_ev_repo.add(signed_event)
+    assert await repo.add_coro(signed_event)
 
 
-def test_set_metadata_only_name_present_is_accepted(relay_ev_repo):
-    build_sign_publish_metadata_event(relay_ev_repo, name="bob")
+async def test_set_metadata_only_name_present_is_accepted(repo):
+    await build_sign_publish_metadata_event(repo, name="bob")
 
 
-def test_set_metadata_only_about_present(relay_ev_repo):
-    build_sign_publish_metadata_event(relay_ev_repo, about="#nostr")
+async def test_set_metadata_only_about_present(repo):
+    await build_sign_publish_metadata_event(repo, about="#nostr")
 
 
-def test_set_metadata_only_picture_present(relay_ev_repo):
-    build_sign_publish_metadata_event(relay_ev_repo, picture="foo")
+async def test_set_metadata_only_picture_present(repo):
+    await build_sign_publish_metadata_event(repo, picture="foo")
 
 
-def test_set_metadata_no_content(relay_ev_repo):
-    build_sign_publish_metadata_event(relay_ev_repo)
+async def test_set_metadata_no_content(repo):
+    await build_sign_publish_metadata_event(repo)

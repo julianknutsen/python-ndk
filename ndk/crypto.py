@@ -42,6 +42,13 @@ SchnorrSigStr = typing.NewType("SchnorrSigStr", str)
 PublicKeyStr = typing.NewType("PublicKeyStr", str)
 
 
+def verify_signature(pubkey: PublicKeyStr, signature: SchnorrSigStr, message: bytes):
+    pubkey_bytes = bytes.fromhex(pubkey)
+    return coincurve.PublicKeyXOnly(pubkey_bytes).verify(
+        bytes.fromhex(signature), message
+    )
+
+
 class PrivateKey:
     """Private key for use with signing, encryption, decryption
 

@@ -23,14 +23,74 @@ from unittest import mock
 
 import pytest
 
-from ndk import crypto
+from ndk import crypto, exceptions
 from ndk.event import event
 
 
 def test_unsigned_event_created_in_future():
-    keys = crypto.KeyPair()
-    unsigned_event = event.UnsignedEvent(created_at=2)
-
     with pytest.raises(ValueError, match=".*in the past.*"):
         with mock.patch("time.time", return_value=1):
-            event.build_signed_event(unsigned_event, keys)
+            event.UnsignedEvent(created_at=2)
+
+
+def test_signed_event_from_dict_bad_input():
+    with pytest.raises(exceptions.ParseError):
+        event.SignedEvent.from_dict({})
+
+
+def test_signed_event_from_dict_bad_sig():
+    keys = crypto.KeyPair()
+    unsigned = event.UnsignedEvent()
+    signed = event.build_signed_event(unsigned, keys)
+
+    base_dict = signed.__dict__
+    base_dict["sig"] = "badsig"
+
+    with pytest.raises(event.ValidationError):
+        event.SignedEvent.from_dict(base_dict)
+
+
+def test_signed_event_from_dict_wrong_sig():
+    keys = crypto.KeyPair()
+    keys2 = crypto.KeyPair()
+    unsigned = event.UnsignedEvent()
+    signed = event.build_signed_event(unsigned, keys)
+    signed2 = event.build_signed_event(unsigned, keys2)
+
+    base_dict = signed.__dict__
+    base_dict["sig"] = signed2.sig
+
+    with pytest.raises(event.ValidationError):
+        event.SignedEvent.from_dict(base_dict)
+
+
+def test_signed_event_from_dict_wrong_id():
+    keys = crypto.KeyPair()
+    keys2 = crypto.KeyPair()
+    unsigned = event.UnsignedEvent()
+    signed = event.build_signed_event(unsigned, keys)
+    signed2 = event.build_signed_event(unsigned, keys2)
+
+    base_dict = signed.__dict__
+    base_dict["id"] = signed2.id
+
+    with pytest.raises(event.ValidationError):
+        event.SignedEvent.from_dict(base_dict)
+
+
+def test_signed_event_from_dict_ok():
+    keys = crypto.KeyPair()
+    unsigned = event.UnsignedEvent()
+    signed = event.build_signed_event(unsigned, keys)
+
+    event.SignedEvent.from_dict(signed.__dict__)
+
+
+def test_unsigned_from_signed():
+    keys = crypto.KeyPair()
+    unsigned = event.UnsignedEvent()
+    signed = event.build_signed_event(unsigned, keys)
+
+    unsigned2 = event.UnsignedEvent.from_signed_event(signed)
+
+    assert unsigned == unsigned2

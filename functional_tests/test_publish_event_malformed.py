@@ -22,37 +22,54 @@
 # pylint: disable=redefined-outer-name
 
 import pytest
-import websockets
 
 from ndk import serialize
-from ndk.messages import message_factory, notice
 
 
 @pytest.fixture()
-async def ws(relay_url):
-    tmp = await websockets.connect(relay_url)
-    yield tmp
-    await tmp.close()
+def fake_repo(ev_repo):
+    return ev_repo
 
 
-@pytest.mark.skip("hangs on recv")
-async def test_empty_object_as_message_returns_notice(ws):
-    await ws.send(serialize.serialize_as_str("{}"))
-
-    msg = message_factory.from_str(await ws.recv())
-    assert isinstance(msg, notice.Notice)
+@pytest.fixture()
+def real_repo(relay_ev_repo):
+    return relay_ev_repo
 
 
-@pytest.mark.skip("hangs on recv")
-async def test_empty_array_as_message_returns_notice(ws):
-    await ws.send(serialize.serialize_as_str("[]"))
-
-    msg = message_factory.from_str(await ws.recv())
-    assert isinstance(msg, notice.Notice)
+@pytest.fixture(params=["fake_repo", "real_repo"])
+def repo(request):
+    return request.getfixturevalue(request.param)
 
 
-async def test_only_type_returns_notice(ws):
-    await ws.send(
+# XXX only on fake due to server bug
+async def test_empty_object_as_message_returns_notice(
+    fake_repo, protocol_rq, protocol_wq, caplog  # pylint: disable=unused-argument
+):
+    await protocol_wq.put(serialize.serialize_as_str({}))
+
+    await protocol_wq.join()
+    await protocol_rq.join()
+
+    assert "Unable to parse message" in caplog.text
+
+
+# XXX only on fake due to server bug
+# @pytest.mark.skip("hangs on recv")
+async def test_empty_array_as_message_returns_notice(
+    fake_repo, protocol_rq, protocol_wq, caplog  # pylint: disable=unused-argument
+):
+    await protocol_wq.put(serialize.serialize_as_str([]))
+
+    await protocol_wq.join()
+    await protocol_rq.join()
+
+    assert "Unable to parse message" in caplog.text
+
+
+async def test_only_type_returns_notice(
+    fake_repo, protocol_rq, protocol_wq, caplog
+):  # pylint: disable=unused-argument
+    await protocol_wq.put(
         serialize.serialize_as_str(
             [
                 "EVENT",
@@ -60,5 +77,7 @@ async def test_only_type_returns_notice(ws):
         )
     )
 
-    msg = message_factory.from_str(await ws.recv())
-    assert isinstance(msg, notice.Notice)
+    await protocol_wq.join()
+    await protocol_rq.join()
+
+    assert "Unable to parse message" in caplog.text

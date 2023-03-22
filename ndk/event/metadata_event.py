@@ -26,7 +26,7 @@ from ndk import serialize
 from ndk.event import event
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class MetadataEvent(event.UnsignedEvent):
     @classmethod
     def from_metadata_parts(

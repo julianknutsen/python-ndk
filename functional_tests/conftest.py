@@ -27,6 +27,7 @@ import pytest
 import websockets
 
 from ndk.repos.event_repo import protocol_handler, relay_event_repo
+from server import message_handler, server
 
 
 @pytest.fixture(scope="session")
@@ -40,30 +41,57 @@ def relay_url(pytestconfig):
 
 
 @pytest.fixture(scope="function")
-async def ws_protocol(relay_url):
-    rq = asyncio.Queue()
-    wq = asyncio.Queue()
+async def protocol_rq():
+    return asyncio.Queue()
+
+
+@pytest.fixture(scope="function")
+async def protocol_wq():
+    return asyncio.Queue()
+
+
+@pytest.fixture(scope="function")
+async def protocol(protocol_rq, protocol_wq):
+    ph = protocol_handler.ProtocolHandler(protocol_rq, protocol_wq)
+    protocol_read_loop = asyncio.create_task(ph.start_read_loop())
+    yield ph
+    await ph.stop_read_thread()
+    await protocol_read_loop
+
+
+@pytest.fixture(scope="function")
+async def ws_protocol(relay_url, protocol, protocol_rq, protocol_wq):
     ws = await websockets.connect(relay_url)
 
-    reader_task = asyncio.create_task(protocol_handler.read_handler(ws, rq))
-    writer_task = asyncio.create_task(protocol_handler.write_handler(ws, wq))
+    reader_task = asyncio.create_task(protocol_handler.read_handler(ws, protocol_rq))
+    writer_task = asyncio.create_task(protocol_handler.write_handler(ws, protocol_wq))
 
-    transport = protocol_handler.ProtocolHandler(rq, wq)
-    protocol_read_loop = asyncio.create_task(transport.start_read_loop())
+    yield protocol
 
-    yield transport
-
-    await transport.stop_read_thread()
-
-    _, pending = await asyncio.wait(
-        [reader_task, writer_task, protocol_read_loop],
-        return_when=asyncio.FIRST_COMPLETED,
-    )
-    for task in pending:
+    for task in [reader_task, writer_task]:
         task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
     await ws.close()
 
 
 @pytest.fixture(scope="function")
 async def relay_ev_repo(ws_protocol):
     yield relay_event_repo.RelayEventRepo(ws_protocol)
+
+
+@pytest.fixture(scope="function")
+async def ev_repo(protocol, protocol_wq, protocol_rq):
+    mh = message_handler.MessageHandler()
+    handler_task = asyncio.create_task(
+        server.connection_handler(protocol_wq, protocol_rq, mh)
+    )  # intentionally swapped
+    yield relay_event_repo.RelayEventRepo(protocol)
+
+    handler_task.cancel()
+    try:
+        await handler_task
+    except asyncio.CancelledError:
+        pass

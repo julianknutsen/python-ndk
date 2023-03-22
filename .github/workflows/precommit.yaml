@@ -57,7 +57,7 @@ jobs:
           COVERAGE_FILE: .coverage.functional
         run: |
           poetry run pip install coverage
-          poetry run ${{ env.COVPYTEST }} functional_tests
+          poetry run ${{ env.COVPYTEST }} functional_tests server
 
       - name: Install dependencies [cli]
         run: |

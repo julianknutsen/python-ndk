@@ -104,6 +104,12 @@ def test_rejected_messages_match_accepted_status(msg):
         command_result.CommandResult.deserialize_list(msg)
 
 
+def test_serialize():
+    cr = command_result.CommandResult("1", True, "msg")
+
+    assert serialize.deserialize(cr.serialize()) == ["OK", "1", True, "msg"]
+
+
 def test_factory_correct():
     msg = ["OK", "eventid", False, "message"]
     cr = message_factory.from_str(serialize.serialize_as_str(msg))

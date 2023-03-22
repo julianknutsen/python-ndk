@@ -22,20 +22,34 @@
 
 import typing
 
-from ndk import serialize
-from ndk.messages import command_result, eose, message, notice, relay_event
+from ndk import exceptions, serialize
+from ndk.messages import (
+    command_result,
+    eose,
+    event_message,
+    message,
+    notice,
+    relay_event,
+)
 
 
 def from_str(data: str) -> message.Message:
     lst = serialize.deserialize(data)
 
     if not isinstance(lst, list):
-        raise TypeError("Expected list, got: {obj}")
+        raise exceptions.ParseError("Expected list, got: {obj}")
 
-    if not lst:
-        raise TypeError("Cant parse data of length 0")
+    if len(lst) < 2:
+        raise exceptions.ParseError("Cant parse data of length < 2")
 
     hdr = lst[0]
+
+    if hdr == "EVENT":
+        if len(lst) > 2:
+            # assume RelayEvent
+            return relay_event.RelayEvent.deserialize_list(lst)
+        else:
+            return event_message.Event.deserialize_list(lst)
 
     factories: dict[str, typing.Type[message.ReadableMessage]] = {
         "NOTICE": notice.Notice,
@@ -45,6 +59,6 @@ def from_str(data: str) -> message.Message:
     }
 
     if hdr not in factories:
-        raise TypeError(f"Unknown message type: {hdr}")
+        raise exceptions.ParseError(f"Unknown message type: {hdr}")
 
     return factories[hdr].deserialize_list(lst)

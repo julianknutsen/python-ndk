@@ -19,33 +19,39 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-import dataclasses
+import asyncio
 
-from ndk import serialize
-from ndk.messages import message
+from ndk import crypto
+from ndk.event import event, metadata_event
+from ndk.repos.event_repo import protocol_handler, relay_event_repo
+from server import message_handler, server
 
 
-@dataclasses.dataclass
-class Notice(message.ReadableMessage, message.WriteableMessage):
-    message: str
+async def test_init():
+    rq = asyncio.Queue()
+    wq = asyncio.Queue()
+    mh = message_handler.MessageHandler()
+    handler_task = asyncio.create_task(server.connection_handler(rq, wq, mh))
 
-    def __post_init__(self):
-        super().__post_init__()
+    keys = crypto.KeyPair()
+    ev = metadata_event.MetadataEvent.from_metadata_parts()
+    signed = event.build_signed_event(ev, keys)
 
-        if not self.message:
-            raise TypeError(f"Unexpected empty message {self}")
+    ph = protocol_handler.ProtocolHandler(wq, rq)
+    read_loop_task = asyncio.create_task(ph.start_read_loop())
+    ev_repo = relay_event_repo.RelayEventRepo(ph)
 
-    @classmethod
-    def deserialize_list(cls, lst: list):
-        assert len(lst) > 0
-        assert lst[0] == "NOTICE"
+    ev_id = await ev_repo.add_coro(signed)
+    assert ev_id == signed.id
 
-        if len(lst) != 2:
-            raise TypeError(
-                f"Unexpected format of Notice message. Expected two items, but got: {lst}"
-            )
+    await rq.join()
+    await wq.join()
 
-        return cls(lst[1])
+    await ph.stop_read_thread()
+    await read_loop_task
 
-    def serialize(self) -> str:
-        return serialize.serialize_as_str(["NOTICE", self.message])
+    handler_task.cancel()
+    try:
+        await handler_task
+    except asyncio.CancelledError:
+        pass

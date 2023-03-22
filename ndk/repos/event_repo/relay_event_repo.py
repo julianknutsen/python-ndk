@@ -54,9 +54,10 @@ class RelayEventRepo(event_repo.EventRepo):
         super().__init__()
 
     def add(self, signed_ev: event.SignedEvent) -> event.EventID:
-        result = asyncio.get_event_loop().run_until_complete(
-            self._protocol.write_event(signed_ev)
-        )
+        return asyncio.get_event_loop().run_until_complete(self.add_coro(signed_ev))
+
+    async def add_coro(self, signed_ev: event.SignedEvent) -> event.EventID:
+        result = await self._protocol.write_event(signed_ev)
 
         if not result.accepted:
             logging.debug("Failed adding event to relay: %s", result.message)

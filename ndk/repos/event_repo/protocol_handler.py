@@ -24,6 +24,7 @@ import logging
 import typing
 import uuid
 
+from ndk import exceptions
 from ndk.event import event, stored_events
 from ndk.messages import (
     close,
@@ -81,7 +82,7 @@ class ProtocolHandler:
 
         try:
             msg = message_factory.from_str(token)
-        except TypeError as exc:
+        except exceptions.ParseError as exc:
             logger.error("Error parsing from read queue: %s", exc)
             return
 
@@ -132,6 +133,7 @@ class ProtocolHandler:
         self._read_waiters[sub_id] = awaitable
 
         while not stored.process_msg(await awaitable.get()):
+            awaitable.task_done()
             continue
 
         serialized = close.Close(sub_id).serialize()

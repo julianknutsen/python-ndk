@@ -22,13 +22,22 @@
 import dataclasses
 import enum
 import hashlib
+import logging
 import time
+import traceback
 import typing
 
-from ndk import crypto, serialize
+from ndk import crypto, exceptions, serialize
+
+logger = logging.getLogger(__name__)
+
 
 EventTags = typing.NewType("EventTags", list[list[str]])
 EventID = typing.NewType("EventID", str)
+
+
+class ValidationError(ValueError):
+    pass
 
 
 class EventKind(enum.IntEnum):
@@ -39,19 +48,26 @@ class EventKind(enum.IntEnum):
     CONTACT_LIST = 3
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class UnsignedEvent:
     created_at: int = dataclasses.field(default_factory=lambda: int(time.time()))
+    kind: EventKind = EventKind.INVALID
     tags: EventTags = dataclasses.field(default_factory=lambda: EventTags([[]]))
     content: str = ""
-    kind: EventKind = EventKind.INVALID
+
+    def __post_init__(self):
+        now = int(time.time())
+        if self.created_at > now:
+            raise ValueError(
+                f"UnsignedEvent created_at timestamp must be in the past: {self.created_at} >= {now}"  # pylint: disable=line-too-long
+            )
 
     @classmethod
     def from_signed_event(cls, ev: "SignedEvent"):
-        return cls(ev.created_at, ev.tags, ev.content, ev.kind)
+        return cls(ev.created_at, ev.kind, ev.tags, ev.content)
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class SignedEvent(UnsignedEvent):
     id: EventID = dataclasses.field(init=False)
     pubkey: crypto.PublicKeyStr = dataclasses.field(init=False)
@@ -67,25 +83,48 @@ class SignedEvent(UnsignedEvent):
         content: str,
         sig: crypto.SchnorrSigStr,
     ):
-        super().__init__(created_at, tags, content)
+        self.id = id
+        self.pubkey = pubkey
+        self.sig = sig
 
-        object.__setattr__(self, "id", id)
-        object.__setattr__(self, "pubkey", pubkey)
-        object.__setattr__(self, "kind", kind)
-        object.__setattr__(self, "sig", sig)
+        super().__init__(created_at=created_at, kind=kind, tags=tags, content=content)
 
-
-def _validate_unsigned_event(ev: UnsignedEvent):
-    now = int(time.time())
-    if ev.created_at > now:
-        raise ValueError(
-            f"UnsignedEvent created_at timestamp must be in the past: {ev.created_at} >= {now}"  # pylint: disable=line-too-long
+    def __post_init__(self):
+        payload = serialize.serialize_as_bytes(
+            [0, self.pubkey, self.created_at, self.kind, self.tags, self.content]
         )
+
+        hashed_payload = hashlib.sha256(payload)
+
+        try:
+            if not crypto.verify_signature(
+                self.pubkey, self.sig, hashed_payload.digest()
+            ):
+                raise ValidationError(
+                    f"Signature in event did not match PublicKey: {self}"
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            raise ValidationError(f"Signature validation failed: {self}") from exc
+
+        if not hashed_payload.hexdigest() == self.id:
+            raise ValidationError(f"ID does not match hash of payload: {self}")
+
+    @classmethod
+    def from_dict(cls, fields: dict):
+        required = set(cls.__annotations__.keys())
+        for base_cls in cls.__bases__:
+            required.update(base_cls.__annotations__)
+        actual = set(fields.keys())
+        if not required == actual:
+            raise exceptions.ParseError(
+                f"Required attributes not provided: {required} != {actual}"
+            )
+
+        return cls(**fields)
 
 
 def build_signed_event(ev: UnsignedEvent, keys: crypto.KeyPair) -> SignedEvent:
-    _validate_unsigned_event(ev)
-
     payload = serialize.serialize_as_bytes(
         [0, keys.public, ev.created_at, ev.kind, ev.tags, ev.content]
     )
