@@ -18,34 +18,3 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
-
-import dataclasses
-
-from ndk import serialize
-from ndk.messages import message
-
-
-@dataclasses.dataclass
-class Notice(message.ReadableMessage, message.WriteableMessage):
-    message: str
-
-    def __post_init__(self):
-        super().__post_init__()
-
-        if not self.message:
-            raise TypeError(f"Unexpected empty message {self}")
-
-    @classmethod
-    def deserialize_list(cls, lst: list):
-        assert len(lst) > 0
-        assert lst[0] == "NOTICE"
-
-        if len(lst) != 2:
-            raise TypeError(
-                f"Unexpected format of Notice message. Expected two items, but got: {lst}"
-            )
-
-        return cls(lst[1])
-
-    def serialize(self) -> str:
-        return serialize.serialize_as_str(["NOTICE", self.message])

@@ -21,13 +21,13 @@
 
 import dataclasses
 
-from ndk import serialize
+from ndk import exceptions, serialize
 from ndk.event import event
 from ndk.messages import message
 
 
 @dataclasses.dataclass
-class Event(message.WriteableMessage):
+class Event(message.WriteableMessage, message.ReadableMessage):
     event_dict: dict
 
     @classmethod
@@ -36,3 +36,15 @@ class Event(message.WriteableMessage):
 
     def serialize(self) -> str:
         return serialize.serialize_as_str(["EVENT", self.event_dict])
+
+    @classmethod
+    def deserialize_list(cls, lst: list):
+        assert len(lst) > 0
+        assert lst[0] == "EVENT"
+
+        if len(lst) != 2:
+            raise exceptions.ParseError(
+                f"Unexpected format of Event message. Expected two items, but got: {lst}"
+            )
+
+        return cls(*lst[1:])

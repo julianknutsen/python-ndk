@@ -21,13 +21,14 @@
 
 import dataclasses
 
+from ndk import serialize
 from ndk.messages import message
 
 REJECTED_MSG_PREFIXES = ["blocked:", "invalid:", "pow:", "rate-limited:", "error:"]
 
 
 @dataclasses.dataclass
-class CommandResult(message.ReadableMessage):
+class CommandResult(message.ReadableMessage, message.WriteableMessage):
     event_id: str
     accepted: bool
     message: str
@@ -57,3 +58,8 @@ class CommandResult(message.ReadableMessage):
             )
 
         return cls(*lst[1:])
+
+    def serialize(self) -> str:
+        return serialize.serialize_as_str(
+            ["OK", self.event_id, self.accepted, self.message]
+        )

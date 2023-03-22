@@ -50,6 +50,6 @@ class StoredEvents:
             raise RuntimeError(f"Unhandled message type: {msg}")
 
         self._events.append(
-            event_parser.signed_to_unsigned(event.SignedEvent(**msg.event_dict))
+            event_parser.signed_to_unsigned(event.SignedEvent.from_dict(msg.event_dict))
         )
         return False

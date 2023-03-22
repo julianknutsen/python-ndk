@@ -27,7 +27,7 @@ from ndk.event import event
 from ndk.repos import contacts
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class ContactListEvent(event.UnsignedEvent):
     @classmethod
     def from_contact_list(

@@ -25,3 +25,22 @@ from ndk import crypto
 def test_public_key_creation():
     keys = crypto.KeyPair()
     assert len(keys.public) == 64
+
+
+def test_sign_verify():
+    keys = crypto.KeyPair()
+    message = "00112233445566778899aabbccddeeff".encode()
+
+    sig = keys.private.sign_schnorr(message)
+
+    assert crypto.verify_signature(keys.public, sig, message)
+
+
+def test_sign_verify_bad():
+    keys1 = crypto.KeyPair()
+    keys2 = crypto.KeyPair()
+    message = "00112233445566778899aabbccddeeff".encode()
+
+    sig = keys1.private.sign_schnorr(message)
+
+    assert not crypto.verify_signature(keys2.public, sig, message)

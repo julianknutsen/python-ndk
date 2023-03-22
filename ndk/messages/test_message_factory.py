@@ -21,20 +21,20 @@
 
 import pytest
 
-from ndk import serialize
+from ndk import exceptions, serialize
 from ndk.messages import message_factory
 
 
 def test_from_str_non_list_obj():
-    with pytest.raises(TypeError):
+    with pytest.raises(exceptions.ParseError):
         message_factory.from_str(serialize.serialize_as_str({}))
 
 
 def test_from_str_empty_list():
-    with pytest.raises(TypeError):
+    with pytest.raises(exceptions.ParseError):
         message_factory.from_str(serialize.serialize_as_str([]))
 
 
 def test_from_str_unknown_header():
-    with pytest.raises(TypeError):
+    with pytest.raises(exceptions.ParseError):
         message_factory.from_str(serialize.serialize_as_str(["UNKNOWN"]))

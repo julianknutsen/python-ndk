@@ -101,6 +101,7 @@ async def test_write_event_receive_bad_data_logs(read_queue, protocol, caplog, s
 
     assert not future_cmd_result.done()
     future_cmd_result.cancel()
+    await read_queue.join()
 
     assert "Error parsing from read queue" in caplog.text
 

@@ -61,6 +61,12 @@ def test_notice_correct():
     assert n.message == "message goes here"
 
 
+def test_notice_serialie():
+    n = notice.Notice("text")
+
+    assert serialize.deserialize(n.serialize()) == ["NOTICE", "text"]
+
+
 def test_factory():
     msg = ["NOTICE", "message goes here"]
 

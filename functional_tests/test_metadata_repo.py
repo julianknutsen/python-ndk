@@ -90,7 +90,8 @@ def test_overwrite_metadata_spanning_multiple_events(mykeys, repo):
     with mock.patch("time.time", return_value=cur + 1):
         repo.overwrite(mykeys, recommend_server="ws://foo.com")
 
-    assert repo.get(mykeys.public)["recommend_server"] == "ws://foo.com"
+    with mock.patch("time.time", return_value=cur + 2):
+        assert repo.get(mykeys.public)["recommend_server"] == "ws://foo.com"
 
 
 def test_overwrite_contact_list(mykeys, repo):

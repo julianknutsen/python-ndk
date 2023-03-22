@@ -21,7 +21,7 @@
 
 import pytest
 
-from ndk import crypto, serialize
+from ndk import crypto, exceptions, serialize
 from ndk.event import event, metadata_event
 from ndk.messages import event_message
 
@@ -60,3 +60,19 @@ def test_from_signed_event():
         "picture": "http://picture.com",
     }
     assert len(body["sig"]) == 128
+
+
+def test_deserialize_list_bad_length():
+    with pytest.raises(exceptions.ParseError):
+        event_message.Event.deserialize_list(["EVENT"])
+
+
+def test_deserialize_list():
+    keys = crypto.KeyPair()
+    unsigned_event = metadata_event.MetadataEvent.from_metadata_parts()
+    signed_event = event.build_signed_event(unsigned_event, keys)
+    event_msg = event_message.Event.from_signed_event(signed_event)
+    lst = serialize.deserialize(event_msg.serialize())
+    ev = event_message.Event.deserialize_list(lst)
+
+    assert ev == event_msg
