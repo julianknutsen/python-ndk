@@ -28,35 +28,27 @@ class EventRepo:
     def __init__(self):
         self._stored_events = []
 
-    def add(self, ev: event.SignedEvent):
+    def add(self, ev: event.SignedEvent) -> event.EventID:
         self._stored_events.append(ev)
+        return ev.id
 
     def get(self, fltrs: list[dict]) -> list[event.SignedEvent]:
         fetched: list[event.SignedEvent] = []
 
         for fltr in fltrs:
-            # only id fetch
-            if set(["ids"]) == set(fltr.keys()):
-                for ev_id in fltr["ids"]:
-                    for ev in self._stored_events:
-                        if ev.id == ev_id:
-                            fetched.append(ev)
+            tmp = [
+                event
+                for event in self._stored_events
+                if ("ids" not in fltr or event.id in fltr["ids"])
+                and ("authors" not in fltr or event.pubkey in fltr["authors"])
+                and ("kinds" not in fltr or event.kind in fltr["kinds"])
+                and ("since" not in fltr or event.created_at > fltr["since"])
+                and ("until" not in fltr or event.created_at < fltr["until"])
+            ]
 
-            # search by kind & author
-            elif set(["kinds", "authors", "limit"]) == set(fltr.keys()) or set(
-                ["kinds", "authors"]
-            ) == set(fltr.keys()):
-                limit = 0
-                if "limit" in fltr:
-                    limit = fltr["limit"]
+            if "limit" in fltr:
+                tmp = tmp[-fltr["limit"] :]
 
-                fetched = sorted(
-                    [
-                        ev
-                        for ev in self._stored_events
-                        if ev.kind in fltr["kinds"] and ev.pubkey in fltr["authors"]
-                    ],
-                    key=lambda ev: ev.created_at,
-                )[-limit:]
+            fetched.extend(tmp)
 
         return fetched
