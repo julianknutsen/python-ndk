@@ -19,7 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name, unused-argument
 
 import asyncio
 
@@ -27,7 +27,7 @@ import pytest
 import websockets
 
 from ndk.repos.event_repo import protocol_handler, relay_event_repo
-from server import event_repo, message_dispatcher, message_handler, server
+from relay import event_repo, message_dispatcher, message_handler, server
 
 
 @pytest.fixture(scope="session")
@@ -41,18 +41,18 @@ def relay_url(pytestconfig):
 
 
 @pytest.fixture(scope="function")
-async def protocol_rq():
+async def response_queue():
     return asyncio.Queue()
 
 
 @pytest.fixture(scope="function")
-async def protocol_wq():
+async def request_queue():
     return asyncio.Queue()
 
 
 @pytest.fixture(scope="function")
-async def protocol(protocol_rq, protocol_wq):
-    ph = protocol_handler.ProtocolHandler(protocol_rq, protocol_wq)
+async def protocol(response_queue, request_queue):
+    ph = protocol_handler.ProtocolHandler(response_queue, request_queue)
     protocol_read_loop = asyncio.create_task(ph.start_read_loop())
     yield ph
     await ph.stop_read_thread()
@@ -60,13 +60,18 @@ async def protocol(protocol_rq, protocol_wq):
 
 
 @pytest.fixture(scope="function")
-async def ws_protocol(relay_url, protocol, protocol_rq, protocol_wq):
+async def ws(relay_url):
     ws = await websockets.connect(relay_url)
+    yield ws
+    await ws.close()
 
-    reader_task = asyncio.create_task(protocol_handler.read_handler(ws, protocol_rq))
-    writer_task = asyncio.create_task(protocol_handler.write_handler(ws, protocol_wq))
 
-    yield protocol
+@pytest.fixture(scope="function")
+async def ws_handlers(ws, request_queue, response_queue):
+    reader_task = asyncio.create_task(protocol_handler.read_handler(ws, response_queue))
+    writer_task = asyncio.create_task(protocol_handler.write_handler(ws, request_queue))
+
+    yield
 
     for task in [reader_task, writer_task]:
         task.cancel()
@@ -74,26 +79,31 @@ async def ws_protocol(relay_url, protocol, protocol_rq, protocol_wq):
             await task
         except asyncio.CancelledError:
             pass
-    await ws.close()
 
 
 @pytest.fixture(scope="function")
-async def relay_ev_repo(ws_protocol):
-    yield relay_event_repo.RelayEventRepo(ws_protocol)
+async def remote_relay(ws_handlers):
+    yield
 
 
 @pytest.fixture(scope="function")
-async def ev_repo(protocol, protocol_wq, protocol_rq):
+async def local_relay(response_queue, request_queue):
     repo = event_repo.EventRepo()
     msg_handler = message_handler.MessageHandler(repo)
     md = message_dispatcher.MessageDispatcher(msg_handler)
     handler_task = asyncio.create_task(
-        server.connection_handler(protocol_wq, protocol_rq, md)
+        server.connection_handler(request_queue, response_queue, md)
     )  # intentionally swapped
-    yield relay_event_repo.RelayEventRepo(protocol)
+
+    yield
 
     handler_task.cancel()
     try:
         await handler_task
     except asyncio.CancelledError:
         pass
+
+
+@pytest.fixture(scope="function")
+async def ev_repo(protocol):
+    return relay_event_repo.RelayEventRepo(protocol)

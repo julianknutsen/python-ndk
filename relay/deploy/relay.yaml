@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: relay-config
+  labels:
+    app: relay
+data:
+  PORT: "2700"
+  
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: relay
+  labels:
+    app: relay
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: relay
+  template:
+    metadata:
+      labels:
+        app: relay
+    spec:
+      containers:
+        - name: relay
+          image: relay
+          ports:
+            - containerPort: 2700
+          envFrom:
+            - configMapRef:
+                name: relay-config
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: relay-service
+  labels:
+    app: relay
+spec:
+  selector:
+    app: relay
+  ports:
+    - protocol: TCP
+      port: 2700
+      targetPort: 2700
+  type: LoadBalancer

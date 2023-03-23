@@ -23,7 +23,7 @@ import logging
 
 from ndk import exceptions
 from ndk.messages import close, event_message, message, message_factory, notice, request
-from server import message_handler
+from relay import message_handler
 
 logger = logging.getLogger(__name__)
 
@@ -53,4 +53,4 @@ class MessageDispatcher:
         elif isinstance(msg, close.Close):
             return self._ev_handler.handle_close(msg)
         else:
-            return [create_notice(f"Server does not support message of type: {msg}")]
+            return [create_notice(f"Relay does not support message of type: {msg}")]

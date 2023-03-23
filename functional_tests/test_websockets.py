@@ -19,10 +19,10 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-import websockets
+import pytest
 
 
 # connect to websocket with no ssl and verify it doesn't error
-async def test_websocket_connect(relay_url):
-    ws = await websockets.connect(relay_url)
-    assert ws.open
+@pytest.mark.usefixtures("ws")
+async def test_websocket_connect():
+    pass  # done in fixture

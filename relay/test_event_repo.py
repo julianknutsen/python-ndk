@@ -22,7 +22,7 @@
 
 from ndk import crypto
 from ndk.event import event, metadata_event
-from server import event_repo
+from relay import event_repo
 
 
 def test_get_empty():

@@ -39,6 +39,7 @@ from ndk.messages import (
 )
 
 logger = logging.getLogger(__name__)
+logger.propagate = True
 
 
 async def read_handler(websocket, read_queue: asyncio.Queue):
@@ -73,15 +74,9 @@ class ProtocolHandler:
         logger.debug("Received signal to stop read loop")
         self._stop.set()
 
-    async def _read_loop_iteration(self):
+    async def _process_data(self, data: str):
         try:
-            token = await asyncio.wait_for(self._read_queue.get(), timeout=0.1)
-            self._read_queue.task_done()
-        except asyncio.TimeoutError:
-            return  # enable reading of stop event
-
-        try:
-            msg = message_factory.from_str(token)
+            msg = message_factory.from_str(data)
         except exceptions.ParseError as exc:
             logger.error("Error parsing from read queue: %s", exc)
             return
@@ -105,7 +100,16 @@ class ProtocolHandler:
     async def start_read_loop(self):
         logger.debug("Read loop starting")
         while not self._stop.is_set():
-            await self._read_loop_iteration()
+            try:
+                data = await asyncio.wait_for(self._read_queue.get(), timeout=0.1)
+            except asyncio.TimeoutError:
+                pass  # enable reading of stop event
+            else:
+                try:
+                    await self._process_data(data)
+                finally:
+                    self._read_queue.task_done()
+
         logger.debug("Read loop ending")
 
     async def write_event(self, ev: event.SignedEvent) -> command_result.CommandResult:
