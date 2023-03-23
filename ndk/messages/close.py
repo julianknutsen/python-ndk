@@ -26,10 +26,22 @@ from ndk.messages import message
 
 
 @dataclasses.dataclass
-class Close(message.WriteableMessage):
+class Close(message.ReadableMessage, message.WriteableMessage):
     """Convenience class for the CLOSE event used to finish a subscription"""
 
     sub_id: str
+
+    @classmethod
+    def deserialize_list(cls, lst: list):
+        assert len(lst) > 0
+        assert lst[0] == "CLOSE"
+
+        if len(lst) != 2:
+            raise TypeError(
+                f"Unexpected format of Close message. Expected two items, but got: {lst}"
+            )
+
+        return cls(lst[1])
 
     def serialize(self) -> str:
         return serialize.serialize_as_str(["CLOSE", self.sub_id])

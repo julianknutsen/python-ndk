@@ -30,7 +30,7 @@ DEFAULT_METADATA = {"recommend_server": "", "contacts": contacts.ContactList()}
 
 class MetadataRepo(abc.ABC):
     @abc.abstractmethod
-    def overwrite(
+    async def overwrite(
         self,
         keys: crypto.KeyPair,
         name: typing.Optional[str] = None,
@@ -42,5 +42,5 @@ class MetadataRepo(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get(self, pubkey: crypto.PublicKeyStr) -> dict[str, object]:
+    async def get(self, pubkey: crypto.PublicKeyStr) -> dict[str, object]:
         pass

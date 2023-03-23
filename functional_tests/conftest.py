@@ -27,7 +27,7 @@ import pytest
 import websockets
 
 from ndk.repos.event_repo import protocol_handler, relay_event_repo
-from server import message_handler, server
+from server import event_repo, message_dispatcher, message_handler, server
 
 
 @pytest.fixture(scope="session")
@@ -84,9 +84,11 @@ async def relay_ev_repo(ws_protocol):
 
 @pytest.fixture(scope="function")
 async def ev_repo(protocol, protocol_wq, protocol_rq):
-    mh = message_handler.MessageHandler()
+    repo = event_repo.EventRepo()
+    msg_handler = message_handler.MessageHandler(repo)
+    md = message_dispatcher.MessageDispatcher(msg_handler)
     handler_task = asyncio.create_task(
-        server.connection_handler(protocol_wq, protocol_rq, mh)
+        server.connection_handler(protocol_wq, protocol_rq, md)
     )  # intentionally swapped
     yield relay_event_repo.RelayEventRepo(protocol)
 

@@ -19,6 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import asyncio
 import logging
 import typing
 
@@ -37,7 +38,7 @@ class EventBackedMetadataRepo(metadata_repo.MetadataRepo):
     def __init__(self, ev_repo: event_repo.EventRepo):
         self._event_repo = ev_repo
 
-    def overwrite(
+    async def overwrite(
         self,
         keys: crypto.KeyPair,
         name: typing.Optional[str] = None,
@@ -50,15 +51,22 @@ class EventBackedMetadataRepo(metadata_repo.MetadataRepo):
         rsev = recommend_server_event.RecommendServerEvent.from_url(recommend_server)
         clev = contact_list_event.ContactListEvent.from_contact_list(contact_list)
 
-        return all(
-            self._event_repo.add(event.build_signed_event(ev, keys))
-            for ev in [mev, rsev, clev]
-        )
+        tasks = []
+        for ev in [mev, rsev, clev]:
+            tasks.append(
+                asyncio.create_task(
+                    self._event_repo.add(event.build_signed_event(ev, keys))
+                )
+            )
 
-    def get(self, pubkey: crypto.PublicKeyStr) -> dict[str, object]:
+        await asyncio.gather(*tasks)
+
+        return True
+
+    async def get(self, pubkey: crypto.PublicKeyStr) -> dict[str, object]:
         logger.debug("get(%s)", pubkey)
         metadata = {}
-        mev = self._event_repo.get_latest_by_author(
+        mev = await self._event_repo.get_latest_by_author(
             event.EventKind.SET_METADATA, pubkey
         )
         if mev:
@@ -66,7 +74,7 @@ class EventBackedMetadataRepo(metadata_repo.MetadataRepo):
         else:
             logger.debug("No MetadataEvent returned")
 
-        rsev = self._event_repo.get_latest_by_author(
+        rsev = await self._event_repo.get_latest_by_author(
             event.EventKind.RECOMMEND_SERVER, pubkey
         )
         if rsev:
@@ -75,7 +83,7 @@ class EventBackedMetadataRepo(metadata_repo.MetadataRepo):
             metadata["recommend_server"] = ""
             logger.debug("No RecommendServerEvent returned")
 
-        clev = self._event_repo.get_latest_by_author(
+        clev = await self._event_repo.get_latest_by_author(
             event.EventKind.CONTACT_LIST, pubkey
         )
         if clev:

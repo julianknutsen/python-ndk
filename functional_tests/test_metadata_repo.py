@@ -45,72 +45,78 @@ def fake_repo():
     return fake_metadata_repo.FakeMetadataRepository()
 
 
+@pytest.fixture
+def ndk_repo(ev_repo):
+    return event_backed_metadata_repo.EventBackedMetadataRepo(ev_repo)
+
+
 @pytest.fixture()
 def real_repo(relay_ev_repo):
     return event_backed_metadata_repo.EventBackedMetadataRepo(relay_ev_repo)
 
 
-@pytest.fixture(params=["fake_repo", "real_repo"])
+@pytest.fixture(params=["fake_repo", "ndk_repo", "real_repo"])
 def repo(request):
     return request.getfixturevalue(request.param)
 
 
-def test_initial_state(repo):
+async def test_initial_state(repo):
     theirkeys = crypto.KeyPair()
-    assert repo.get(theirkeys.public) == {
+    assert await repo.get(theirkeys.public) == {
         "recommend_server": "",
         "contacts": contacts.ContactList(),
     }
 
 
-def test_overwrite_write(mykeys, repo):
-    repo.overwrite(mykeys, name="bob")
+async def test_overwrite_write(mykeys, repo):
+    await repo.overwrite(mykeys, name="bob")
 
-    assert repo.get(mykeys.public)["name"] == "bob"
-
-
-def test_overwrite(mykeys, repo):
-    repo.overwrite(mykeys, name="bob")
-    repo.overwrite(mykeys, about="#nostr")
-
-    assert repo.get(mykeys.public)["about"] == "#nostr"
+    assert (await repo.get(mykeys.public))["name"] == "bob"
 
 
-def test_overwrite_recommend_server(mykeys, repo):
-    repo.overwrite(mykeys, recommend_server="ws://foo.com")
+async def test_overwrite(mykeys, repo):
+    await repo.overwrite(mykeys, name="bob")
+    await repo.overwrite(mykeys, about="#nostr")
 
-    assert repo.get(mykeys.public)["recommend_server"] == "ws://foo.com"
+    result = await repo.get(mykeys.public)
+    assert result["about"] == "#nostr"
 
 
-def test_overwrite_metadata_spanning_multiple_events(mykeys, repo):
+async def test_overwrite_recommend_server(mykeys, repo):
+    await repo.overwrite(mykeys, recommend_server="ws://foo.com")
+
+    assert (await repo.get(mykeys.public))["recommend_server"] == "ws://foo.com"
+
+
+async def test_overwrite_metadata_spanning_multiple_events(mykeys, repo):
     cur = time.time()
     with mock.patch("time.time", return_value=cur):
-        repo.overwrite(mykeys, name="bob")
+        await repo.overwrite(mykeys, name="bob")
 
     with mock.patch("time.time", return_value=cur + 1):
-        repo.overwrite(mykeys, recommend_server="ws://foo.com")
+        await repo.overwrite(mykeys, recommend_server="ws://foo.com")
 
     with mock.patch("time.time", return_value=cur + 2):
-        assert repo.get(mykeys.public)["recommend_server"] == "ws://foo.com"
+        assert (await repo.get(mykeys.public))["recommend_server"] == "ws://foo.com"
 
 
-def test_overwrite_contact_list(mykeys, repo):
+async def test_overwrite_contact_list(mykeys, repo):
     contact1_keys = crypto.KeyPair()
 
     contact_list = contacts.ContactList()
     contact_list.add(contact1_keys.public, "", "")
 
-    repo.overwrite(mykeys, contact_list=contact_list)
+    await repo.overwrite(mykeys, contact_list=contact_list)
 
-    assert repo.get(mykeys.public)["contacts"] == contact_list
+    assert (await repo.get(mykeys.public))["contacts"] == contact_list
 
 
-def test_overwrite_contact_list_only_pubkey(mykeys, repo):
+async def test_overwrite_contact_list_only_pubkey(mykeys, repo):
     contact1_keys = crypto.KeyPair()
 
     contact_list = contacts.ContactList()
     contact_list.add(contact1_keys.public)
 
-    repo.overwrite(mykeys, contact_list=contact_list)
+    await repo.overwrite(mykeys, contact_list=contact_list)
 
-    assert repo.get(mykeys.public)["contacts"] == contact_list
+    assert (await repo.get(mykeys.public))["contacts"] == contact_list

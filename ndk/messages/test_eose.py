@@ -54,6 +54,12 @@ def test_correct():
     assert n.sub_id == "subscription-id"
 
 
+def test_serialize():
+    n = eose.EndOfStoredEvents("subscription-id")
+
+    assert serialize.deserialize(n.serialize()) == ["EOSE", "subscription-id"]
+
+
 def test_factory():
     msg = ["EOSE", "subscription-id"]
 

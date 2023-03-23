@@ -36,7 +36,9 @@ class FakeTextNoteRepo(text_note_repo.TextNoteRepo):
         self._content = defaultdict()
         self._content_author = defaultdict(list[text_note_repo.TextNoteContent])
 
-    def add(self, keys: crypto.KeyPair, content: str) -> text_note_repo.TextNoteID:
+    async def add(
+        self, keys: crypto.KeyPair, content: str
+    ) -> text_note_repo.TextNoteID:
         uid = str(uuid.uuid4())
         self._content[uid] = text_note_repo.TextNoteContent(content)
         self._content_author[keys.public].append(
@@ -45,12 +47,12 @@ class FakeTextNoteRepo(text_note_repo.TextNoteRepo):
 
         return text_note_repo.TextNoteID(event.EventID(uid))
 
-    def get_by_uid(
+    async def get_by_uid(
         self, uid: text_note_repo.TextNoteID
     ) -> text_note_repo.TextNoteContent:
         return self._content[uid]
 
-    def get_by_author(
+    async def get_by_author(
         self, author: crypto.PublicKeyStr
     ) -> list[text_note_repo.TextNoteContent]:
         return self._content_author[author]

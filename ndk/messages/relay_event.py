@@ -21,11 +21,12 @@
 
 import dataclasses
 
+from ndk import serialize
 from ndk.messages import message
 
 
 @dataclasses.dataclass
-class RelayEvent(message.ReadableMessage):
+class RelayEvent(message.ReadableMessage, message.WriteableMessage):
     sub_id: str
     event_dict: dict
 
@@ -40,3 +41,6 @@ class RelayEvent(message.ReadableMessage):
             )
 
         return cls(*lst[1:])
+
+    def serialize(self) -> str:
+        return serialize.serialize_as_str(["EVENT", self.sub_id, self.event_dict])

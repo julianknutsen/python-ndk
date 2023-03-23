@@ -95,7 +95,7 @@ async def test_set_metadata_invalid_sig_is_not_accepted(
     object.__setattr__(signed_event, "sig", signed_event2.sig)
 
     with pytest.raises(event_repo.AddItemError):
-        await repo.add_coro(signed_event)
+        await repo.add(signed_event)
 
 
 # XXX only runs on fake right now due to relayer bug
@@ -106,7 +106,7 @@ async def test_set_metadata_invalid_id_is_not_accepted(
     object.__setattr__(signed_event, "id", signed_event2.id)
 
     with pytest.raises(event_repo.AddItemError):
-        await fake_repo.add_coro(signed_event)
+        await fake_repo.add(signed_event)
 
 
 async def build_sign_publish_metadata_event(repo, *args, **kwargs):
@@ -115,7 +115,7 @@ async def build_sign_publish_metadata_event(repo, *args, **kwargs):
     unsigned_event = metadata_event.MetadataEvent.from_metadata_parts(*args, **kwargs)
     signed_event = event.build_signed_event(unsigned_event, keys)
 
-    assert await repo.add_coro(signed_event)
+    assert await repo.add(signed_event)
 
 
 async def test_set_metadata_only_name_present_is_accepted(repo):

@@ -91,4 +91,6 @@ def metadata(relay_url, pubkey):
         ev_repo = relay_event_repo.RelayEventRepo(pc.protocol)
         repo = event_backed_metadata_repo.EventBackedMetadataRepo(ev_repo)
 
-        click.echo(pprint.pformat(repo.get(pubkey), width=80))
+        response = asyncio.get_event_loop().run_until_complete(repo.get(pubkey))
+
+        click.echo(pprint.pformat(response, width=80))

@@ -24,12 +24,14 @@ import typing
 
 from ndk import exceptions, serialize
 from ndk.messages import (
+    close,
     command_result,
     eose,
     event_message,
     message,
     notice,
     relay_event,
+    request,
 )
 
 
@@ -56,6 +58,8 @@ def from_str(data: str) -> message.Message:
         "OK": command_result.CommandResult,
         "EOSE": eose.EndOfStoredEvents,
         "EVENT": relay_event.RelayEvent,
+        "REQ": request.Request,
+        "CLOSE": close.Close,
     }
 
     if hdr not in factories:

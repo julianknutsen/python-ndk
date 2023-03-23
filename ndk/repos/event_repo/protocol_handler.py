@@ -115,7 +115,7 @@ class ProtocolHandler:
         )
         self._write_waiters[ev.id] = awaitable
 
-        return await awaitable
+        return await asyncio.wait_for(awaitable, timeout=10.0)
 
     async def query_events(
         self, fltrs: list[dict]
@@ -132,7 +132,9 @@ class ProtocolHandler:
         assert sub_id not in self._read_waiters
         self._read_waiters[sub_id] = awaitable
 
-        while not stored.process_msg(await awaitable.get()):
+        while not stored.process_msg(
+            await asyncio.wait_for(awaitable.get(), timeout=10.0)
+        ):
             awaitable.task_done()
             continue
 

@@ -33,16 +33,18 @@ class EventBackedTextNoteRepo(text_note_repo.TextNoteRepo):
     def __init__(self, ev_repo: event_repo.EventRepo):
         self._event_repo = ev_repo
 
-    def add(self, keys: crypto.KeyPair, content: str) -> text_note_repo.TextNoteID:
+    async def add(
+        self, keys: crypto.KeyPair, content: str
+    ) -> text_note_repo.TextNoteID:
         ev = text_note_event.TextNoteEvent.from_content(content)
 
-        ev_id = self._event_repo.add(event.build_signed_event(ev, keys))
+        ev_id = await self._event_repo.add(event.build_signed_event(ev, keys))
         return text_note_repo.TextNoteID(ev_id)
 
-    def get_by_uid(
+    async def get_by_uid(
         self, uid: text_note_repo.TextNoteID
     ) -> text_note_repo.TextNoteContent:
-        signed_event = self._event_repo.get(uid)
+        signed_event = await self._event_repo.get(uid)
 
         if not signed_event:
             raise ValueError(f"TextNote with uid: {uid} not found.")
@@ -51,10 +53,10 @@ class EventBackedTextNoteRepo(text_note_repo.TextNoteRepo):
             text_note_event.TextNoteEvent.from_signed_event(signed_event).content
         )
 
-    def get_by_author(
+    async def get_by_author(
         self, author: crypto.PublicKeyStr
     ) -> typing.Sequence[text_note_repo.TextNoteContent]:
-        unsigned_events = self._event_repo.get_by_author(
+        unsigned_events = await self._event_repo.get_by_author(
             event.EventKind.TEXT_NOTE, author
         )
 

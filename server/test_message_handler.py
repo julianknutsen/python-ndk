@@ -18,89 +18,49 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
-# pylint: disable=redefined-outer-name, protected-access
+# pylint: disable=redefined-outer-name
 
 import mock
 import pytest
 
-from ndk import serialize
 from ndk.event import event
-from ndk.messages import command_result, event_message, message_factory, notice
-from server import message_handler
+from ndk.messages import command_result, event_message, message_factory
+from server import event_repo, message_handler
 
 
 @pytest.fixture
-def mh():
-    return message_handler.MessageHandler()
+def eh():
+    repo = event_repo.EventRepo()
+    yield message_handler.MessageHandler(repo)
 
 
-def test_init(mh):  # pylint: disable=unused-argument
-    # done in fixture
-    pass
-
-
-def test_process_invalid_obj(mh):
-    response = mh.process_message(serialize.serialize_as_str({}))
-
-    response_msg = message_factory.from_str(response)
-
-    assert isinstance(response_msg, notice.Notice)
-
-
-def test_process_invalid_list(mh):
-    response = mh.process_message(serialize.serialize_as_str([]))
-
-    response_msg = message_factory.from_str(response)
-
-    assert isinstance(response_msg, notice.Notice)
-
-
-def test_process_unsupported_ev(mh):
-    req = notice.Notice("huh?")
-    response = mh.process_message(req.serialize())
-
-    response_msg = message_factory.from_str(response)
-
-    assert isinstance(response_msg, notice.Notice)
-
-
-def test_event_missing_required_fields(mh):
-    response = mh.process_message(event_message.Event({}).serialize())
-
-    response_msg = message_factory.from_str(response)
-
-    assert isinstance(response_msg, notice.Notice)
-
-
-def test_event_validation_failure(mh):
+def test_event_validation_failure(eh):
     def raise_validation_error():
         raise event.ValidationError("Failed validation")
 
     with mock.patch.object(
         event.SignedEvent, "from_dict", lambda self, **kwargs: raise_validation_error()
     ):
-        response = mh._handle_event(
-            event_message.Event({"id": "1"})
-        )  # pylint: disable=protected-access
+        response = eh.handle_event(event_message.Event({"id": "1"}))
 
-        response_msg = message_factory.from_str(response)
+        assert len(response) == 1
+        response_msg = message_factory.from_str(response[0])
 
         assert isinstance(response_msg, command_result.CommandResult)
         assert not response_msg.accepted
 
 
-def test_accepted_event(mh):
+def test_accepted_event(eh):
     mocked = mock.MagicMock()
     mocked.id = "1"
 
     with mock.patch.object(
         event.SignedEvent, "from_dict", lambda self, **kwargs: mocked
     ):
-        response = mh._handle_event(
-            event_message.Event({"id": "1"})
-        )  # pylint: disable=protected-access
+        response = eh.handle_event(event_message.Event({"id": "1"}))
 
-        response_msg = message_factory.from_str(response)
+        assert len(response) == 1
+        response_msg = message_factory.from_str(response[0])
 
         assert isinstance(response_msg, command_result.CommandResult)
         assert response_msg.accepted

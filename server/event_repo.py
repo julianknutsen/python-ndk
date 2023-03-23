@@ -19,45 +19,36 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-# pylint: disable=redefined-outer-name
-
-import pytest
-
-from ndk import crypto
-from ndk.repos.text_note_repo import event_backed_text_note_repo, fake_text_note_repo
+from ndk.event import event
 
 
-@pytest.fixture
-def fake_repo():
-    return fake_text_note_repo.FakeTextNoteRepo()
+class EventRepo:
+    _stored_events: list[event.SignedEvent]
 
+    def __init__(self):
+        self._stored_events = []
 
-@pytest.fixture
-def ndk_repo(ev_repo):
-    return event_backed_text_note_repo.EventBackedTextNoteRepo(ev_repo)
+    def add(self, ev: event.SignedEvent) -> event.EventID:
+        self._stored_events.append(ev)
+        return ev.id
 
+    def get(self, fltrs: list[dict]) -> list[event.SignedEvent]:
+        fetched: list[event.SignedEvent] = []
 
-@pytest.fixture
-def remote_repo(relay_ev_repo):
-    return event_backed_text_note_repo.EventBackedTextNoteRepo(relay_ev_repo)
+        for fltr in fltrs:
+            tmp = [
+                event
+                for event in self._stored_events
+                if ("ids" not in fltr or event.id in fltr["ids"])
+                and ("authors" not in fltr or event.pubkey in fltr["authors"])
+                and ("kinds" not in fltr or event.kind in fltr["kinds"])
+                and ("since" not in fltr or event.created_at > fltr["since"])
+                and ("until" not in fltr or event.created_at < fltr["until"])
+            ]
 
+            if "limit" in fltr:
+                tmp = tmp[-fltr["limit"] :]
 
-@pytest.fixture(params=["fake_repo", "remote_repo", "ndk_repo"])
-def repo(request):
-    return request.getfixturevalue(request.param)
+            fetched.extend(tmp)
 
-
-async def test_set_retrieve(repo):
-    mykeys = crypto.KeyPair()
-
-    # send plaintext note
-    info = await repo.add(mykeys, "plaintext content goes here!")
-
-    # retrieve by id
-    text_note = await repo.get_by_uid(info)
-
-    # retrive by author
-    text_notes = await repo.get_by_author(mykeys.public)
-
-    assert text_note == "plaintext content goes here!"
-    assert text_notes[0] == "plaintext content goes here!"
+        return fetched
