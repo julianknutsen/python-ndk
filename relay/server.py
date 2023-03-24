@@ -22,17 +22,19 @@
 import asyncio
 import functools
 import logging
+import os
 
 from websockets.legacy.server import serve
 
 from ndk.repos.event_repo import protocol_handler
-from server import event_repo, message_dispatcher, message_handler
+from relay import event_repo, message_dispatcher, message_handler
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
 
-HOST = "localhost"
-PORT = 8765
+HOST = os.environ.get("RELAY_HOST", "localhost")
+PORT = int(os.environ.get("RELAY_PORT", "2700"))
+DEBUG_LEVEL = os.environ.get("RELAY_LOG_LEVEL", "DEBUG")
+logging.basicConfig(level=DEBUG_LEVEL, format="%(asctime)s %(levelname)s %(message)s")
 
 
 async def connection_handler(
@@ -65,8 +67,9 @@ async def main():
     mh = message_handler.MessageHandler(repo)
     mb = message_dispatcher.MessageDispatcher(mh)
 
+    logger.info("Logging set to %s", DEBUG_LEVEL)
+
     async with serve(functools.partial(handler_wrapper, mb), HOST, PORT):
-        logger.info("Listening on %s:%s", HOST, PORT)
         await asyncio.Future()  # run forever
 
 

@@ -24,7 +24,7 @@ import pytest
 
 from ndk import serialize
 from ndk.messages import close, eose, event_message, message_factory, notice, request
-from server import event_repo, message_dispatcher, message_handler
+from relay import event_repo, message_dispatcher, message_handler
 
 
 @pytest.fixture

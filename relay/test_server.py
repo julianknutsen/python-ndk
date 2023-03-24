@@ -24,7 +24,7 @@ import asyncio
 from ndk import crypto
 from ndk.event import event, metadata_event
 from ndk.repos.event_repo import protocol_handler, relay_event_repo
-from server import event_repo, message_dispatcher, message_handler, server
+from relay import event_repo, message_dispatcher, message_handler, server
 
 
 async def test_init():

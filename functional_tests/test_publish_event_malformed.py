@@ -19,57 +19,54 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name, unused-argument
 
 import pytest
 
 from ndk import serialize
+from ndk.messages import message_factory, notice
 
 
-@pytest.fixture()
-def fake_repo(ev_repo):
-    return ev_repo
+@pytest.fixture
+def local(local_relay):
+    yield
 
 
-@pytest.fixture()
-def real_repo(relay_ev_repo):
-    return relay_ev_repo
+@pytest.fixture
+def remote(remote_relay):
+    yield
 
 
-@pytest.fixture(params=["fake_repo", "real_repo"])
-def repo(request):
+@pytest.fixture(params=["local", "remote"])
+def ctx(request):
     return request.getfixturevalue(request.param)
 
 
-# XXX only on fake due to server bug
-async def test_empty_object_as_message_returns_notice(
-    fake_repo, protocol_rq, protocol_wq, caplog  # pylint: disable=unused-argument
-):
-    await protocol_wq.put(serialize.serialize_as_str({}))
-
-    await protocol_wq.join()
-    await protocol_rq.join()
-
-    assert "Unable to parse message" in caplog.text
+def assert_notice(data: str):
+    n = message_factory.from_str(data)
+    assert isinstance(n, notice.Notice)
+    assert "Unable to parse message" in n.message
 
 
-# XXX only on fake due to server bug
-# @pytest.mark.skip("hangs on recv")
+@pytest.mark.usefixtures("ctx")
+async def test_empty_object_as_message_returns_notice(response_queue, request_queue):
+    await request_queue.put(serialize.serialize_as_str({}))
+
+    assert_notice(await response_queue.get())
+
+
+@pytest.mark.usefixtures("ctx")
 async def test_empty_array_as_message_returns_notice(
-    fake_repo, protocol_rq, protocol_wq, caplog  # pylint: disable=unused-argument
+    response_queue, request_queue, caplog
 ):
-    await protocol_wq.put(serialize.serialize_as_str([]))
+    await request_queue.put(serialize.serialize_as_str([]))
 
-    await protocol_wq.join()
-    await protocol_rq.join()
-
-    assert "Unable to parse message" in caplog.text
+    assert_notice(await response_queue.get())
 
 
-async def test_only_type_returns_notice(
-    fake_repo, protocol_rq, protocol_wq, caplog
-):  # pylint: disable=unused-argument
-    await protocol_wq.put(
+@pytest.mark.usefixtures("ctx")
+async def test_only_type_returns_notice(response_queue, request_queue, caplog):
+    await request_queue.put(
         serialize.serialize_as_str(
             [
                 "EVENT",
@@ -77,7 +74,4 @@ async def test_only_type_returns_notice(
         )
     )
 
-    await protocol_wq.join()
-    await protocol_rq.join()
-
-    assert "Unable to parse message" in caplog.text
+    assert_notice(await response_queue.get())

@@ -19,7 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name, unused-argument
 import time
 
 import mock
@@ -30,32 +30,32 @@ from ndk.repos import contacts
 from ndk.repos.metadata_repo import event_backed_metadata_repo, fake_metadata_repo
 
 
-@pytest.fixture()
+@pytest.fixture
 def mykeys():
     return crypto.KeyPair()
 
 
-@pytest.fixture()
+@pytest.fixture
 def mypub(mykeys):
     return crypto.PublicKeyStr(mykeys.public)
 
 
-@pytest.fixture()
-def fake_repo():
+@pytest.fixture
+def fake():
     return fake_metadata_repo.FakeMetadataRepository()
 
 
 @pytest.fixture
-def ndk_repo(ev_repo):
+def local(local_relay, ev_repo):
     return event_backed_metadata_repo.EventBackedMetadataRepo(ev_repo)
 
 
-@pytest.fixture()
-def real_repo(relay_ev_repo):
-    return event_backed_metadata_repo.EventBackedMetadataRepo(relay_ev_repo)
+@pytest.fixture
+def remote(remote_relay, ev_repo):
+    return event_backed_metadata_repo.EventBackedMetadataRepo(ev_repo)
 
 
-@pytest.fixture(params=["fake_repo", "ndk_repo", "real_repo"])
+@pytest.fixture(params=["fake", "local", "remote"])
 def repo(request):
     return request.getfixturevalue(request.param)
 

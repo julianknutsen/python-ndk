@@ -19,45 +19,60 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-# pylint: disable=redefined-outer-name, protected-access
+# pylint: disable=redefined-outer-name, unused-argument
 
 import pytest
 
 from ndk import crypto
 from ndk.event import event, metadata_event
-from ndk.messages import event_message
+from ndk.messages import event_message, message_factory, notice
 from ndk.repos.event_repo import event_repo
 
 
-@pytest.fixture()
-def fake_repo(ev_repo):
+@pytest.fixture
+def local(local_relay, ev_repo):
     return ev_repo
 
 
-@pytest.fixture()
-def real_repo(relay_ev_repo):
-    return relay_ev_repo
+@pytest.fixture
+def remote(remote_relay, ev_repo):
+    return ev_repo
 
 
-@pytest.fixture(params=["fake_repo", "real_repo"])
+@pytest.fixture(params=["local", "remote"])
 def repo(request):
     return request.getfixturevalue(request.param)
 
 
-@pytest.fixture()
+@pytest.fixture
+def local_relay(local_relay):
+    yield
+
+
+@pytest.fixture
+def remote_relay(remote_relay):
+    yield
+
+
+@pytest.fixture(params=["local_relay", "remote_relay"])
+def relay(request):
+    return request.getfixturevalue(request.param)
+
+
+@pytest.fixture
 def unsigned_event():
     return metadata_event.MetadataEvent.from_metadata_parts(
         "bob", "#nostr", "http://pics.com"
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def signed_event(unsigned_event):
     keys = crypto.KeyPair()
     return event.build_signed_event(unsigned_event, keys)
 
 
-@pytest.fixture()
+@pytest.fixture
 def signed_event2(unsigned_event):
     keys = crypto.KeyPair()
     return event.build_signed_event(unsigned_event, keys)
@@ -66,15 +81,13 @@ def signed_event2(unsigned_event):
 fields = ["id", "pubkey", "created_at", "kind", "tags", "content", "sig"]
 
 
-# XXX only runs on fake right now due to relayer bug
+@pytest.mark.usefixtures("relay")  #
 @pytest.mark.parametrize("field", fields)
 async def test_publish_event_missing_field_returns_notice(
     field,
     unsigned_event,
-    fake_repo,  # pylint: disable=unused-argument
-    protocol_rq,
-    protocol_wq,
-    caplog,
+    response_queue,
+    request_queue,
 ):
     keys = crypto.KeyPair()
 
@@ -82,11 +95,13 @@ async def test_publish_event_missing_field_returns_notice(
     serializable = signed_ev.__dict__
     del serializable[field]
 
-    await protocol_wq.put(event_message.Event.from_signed_event(signed_ev).serialize())
-    await protocol_wq.join()
-    await protocol_rq.join()
+    await request_queue.put(
+        event_message.Event.from_signed_event(signed_ev).serialize()
+    )
 
-    assert "Unable to parse message" in caplog.text
+    n = message_factory.from_str(await response_queue.get())
+    assert isinstance(n, notice.Notice)
+    assert "Unable to parse message" in n.message
 
 
 async def test_set_metadata_invalid_sig_is_not_accepted(
@@ -98,15 +113,14 @@ async def test_set_metadata_invalid_sig_is_not_accepted(
         await repo.add(signed_event)
 
 
-# XXX only runs on fake right now due to relayer bug
 async def test_set_metadata_invalid_id_is_not_accepted(
-    fake_repo, signed_event, signed_event2
+    repo, signed_event, signed_event2
 ):
     assert signed_event.id != signed_event2.id
     object.__setattr__(signed_event, "id", signed_event2.id)
 
     with pytest.raises(event_repo.AddItemError):
-        await fake_repo.add(signed_event)
+        await repo.add(signed_event)
 
 
 async def build_sign_publish_metadata_event(repo, *args, **kwargs):

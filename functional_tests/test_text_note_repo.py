@@ -19,7 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name, unused-argument
 
 import pytest
 
@@ -28,21 +28,21 @@ from ndk.repos.text_note_repo import event_backed_text_note_repo, fake_text_note
 
 
 @pytest.fixture
-def fake_repo():
+def fake():
     return fake_text_note_repo.FakeTextNoteRepo()
 
 
 @pytest.fixture
-def ndk_repo(ev_repo):
+def local(local_relay, ev_repo):
     return event_backed_text_note_repo.EventBackedTextNoteRepo(ev_repo)
 
 
 @pytest.fixture
-def remote_repo(relay_ev_repo):
-    return event_backed_text_note_repo.EventBackedTextNoteRepo(relay_ev_repo)
+def remote(remote_relay, ev_repo):
+    return event_backed_text_note_repo.EventBackedTextNoteRepo(ev_repo)
 
 
-@pytest.fixture(params=["fake_repo", "remote_repo", "ndk_repo"])
+@pytest.fixture(params=["fake", "local", "remote"])
 def repo(request):
     return request.getfixturevalue(request.param)
 

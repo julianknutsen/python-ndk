@@ -39,6 +39,7 @@ pipreqs = { version = "*", optional = true }
 pylint = { version = "*", optional = true }
 pytest = { version = "*", optional = true }
 pytest-asyncio = { version = "*", optional = true }
+pytest-timeout = { version = "*", optional = true }
 types-mock = { version = "*", optional = true }
 websockets = { version = "*", optional = true }
 
@@ -49,8 +50,9 @@ lint = "scripts.verify_format_lint:main"
 
 [tool.poetry.extras]
 cli = ["click", "websockets"]
-dev = ["black", "coverage", "isort", "mock", "mypy", "pipreqs", "pylint", "pytest", "pytest-asyncio", "types-mock", "websockets"]
-test = ["mock", "pytest", "pytest-asyncio", "types-mock", "websockets"]
+dev = ["black", "coverage", "isort", "mock", "mypy", "pipreqs", "pylint", "pytest", "pytest-timeout", "pytest-asyncio", "types-mock", "websockets"]
+relay = ["websockets"]
+test = ["mock", "pytest", "pytest-asyncio", "pytest-timeout", "types-mock", "websockets"]
 
 [tool.isort]
 profile = "black"
