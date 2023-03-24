@@ -110,7 +110,7 @@ jobs:
       - name: Wait for Relay to start
         run: |
           while [[ $(kubectl get pods -l app=relay -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" ]]; do echo "waiting for pod" && sleep 1; done
-          echo "CLUSTER_IP=$(kubectl get svc -l app=relay -o 'jsonpath={$.items[0].spec.clusterIP}')" >> $GITHUB_ENV
+          echo "CLUSTER_IP=$(kubectl get svc -l app=relay -o 'jsonpath={$.items[0].status.loadBalancer.ingress[0].ip}')" >> $GITHUB_ENV
           echo "CLUSTER_PORT=$(kubectl get svc -l app=relay -o 'jsonpath={$.items[0].spec.ports[0].port}')" >> $GITHUB_ENV
 
       - name: Wait for websocket to open
