@@ -33,6 +33,18 @@ spec:
           envFrom:
             - configMapRef:
                 name: relay-config
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 2700
+            failureThreshold: 1
+            periodSeconds: 5
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 2700
+            failureThreshold: 6
+            periodSeconds: 5
 
 ---
 
