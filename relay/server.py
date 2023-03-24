@@ -21,8 +21,10 @@
 
 import asyncio
 import functools
+import http
 import logging
 import os
+import signal
 
 from websockets.legacy.server import serve
 
@@ -62,15 +64,25 @@ async def handler_wrapper(mh: message_dispatcher.MessageDispatcher, websocket):
     return await connection_handler(rq, wq, mh)
 
 
+async def health_check(path, _):
+    if path == "/healthz":
+        return http.HTTPStatus.OK, [], b"OK\n"
+
+
 async def main():
+    logger.info("Logging set to %s", DEBUG_LEVEL)
     repo = event_repo.EventRepo()
     mh = message_handler.MessageHandler(repo)
     mb = message_dispatcher.MessageDispatcher(mh)
 
-    logger.info("Logging set to %s", DEBUG_LEVEL)
+    loop = asyncio.get_event_loop()
+    stop = loop.create_future()
+    loop.add_signal_handler(signal.SIGTERM, stop.set_result, None)
 
-    async with serve(functools.partial(handler_wrapper, mb), HOST, PORT):
-        await asyncio.Future()  # run forever
+    async with serve(
+        functools.partial(handler_wrapper, mb), HOST, PORT, process_request=health_check
+    ):
+        await stop
 
 
 if __name__ == "__main__":
