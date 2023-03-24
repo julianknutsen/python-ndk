@@ -1,6 +1,34 @@
-load('ext://restart_process', 'docker_build_with_restart')
+DIGITALOCEAN_DEV_CONTEXT = "do-sfo3-k8s-1-26-3-do-0-sfo3-1679680354406"
 
-k8s_yaml("relay.yaml")
+load("ext://restart_process", "docker_build_with_restart")
+allow_k8s_contexts(DIGITALOCEAN_DEV_CONTEXT)
+
+config.define_string_list("target", args=False, usage="Deploy to Digital Ocean cluster")
+cfg = config.parse()
+
+def switch_ctx(ctx):
+    if ctx == "local":
+        local("kubectl config use-context minikube")
+    elif ctx == "remote-dev":
+        local("kubectl config use-context {}".format(DIGITALOCEAN_DEV_CONTEXT))
+
+def __get_context():
+    return str(local("kubectl config current-context")).strip()
+
+target = cfg.get("target", ["local"])[0]
+if target == "local":
+    switch_ctx("local")
+    if __get_context() != "minikube":
+        fail("kubectl context doesn't match {} != {}".format(__get_context(), "minikube"))
+    k8s_yaml("relay.yaml")
+elif target == "remote-dev":
+    default_registry("registry.digitalocean.com/python-ndk")
+    switch_ctx("remote-dev")
+    if __get_context() != DIGITALOCEAN_DEV_CONTEXT:
+        fail("kubectl context doesn't match {} != {}".format(__get_context(), DIGITALOCEAN_DEV_CONTEXT))
+    k8s_yaml("relay.yaml")
+else:
+    fail("target not specified")
 
 docker_build_with_restart(
     "relay",
