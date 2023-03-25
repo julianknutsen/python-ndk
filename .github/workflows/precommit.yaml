@@ -213,6 +213,3 @@ jobs:
           tags: |
             ${{ env.IMAGE }}:${{ env.BUILD_ID }}
             ${{ env.IMAGE }}:${{ env.LATEST_ID }}
-
-      - name: Display Image digest
-        run: echo ${{ steps.docker_build.outputs.digest }}
