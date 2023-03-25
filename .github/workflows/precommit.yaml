@@ -43,22 +43,31 @@ jobs:
         run: |
           poetry run lint
     
-      - name: Unit Tests
+      - name: NDK Unit Tests
         env:
-          COVERAGE_FILE: .coverage.unit.${{ matrix.python-version }}
+          COVERAGE_FILE: .coverage.unit.ndk${{ matrix.python-version }}
         run: |
           poetry run ${{ env.COVPYTEST }} ndk
 
-      - name: Install dependencies [test]
-        run: |
-          poetry install --extras test
-
-      - name: Functional Tests
+      - name: NDK Relay Unit Tests
         env:
-          COVERAGE_FILE: .coverage.functional.${{ matrix.python-version }}
+          COVERAGE_FILE: .coverage.unit.relay.${{ matrix.python-version }}
+        run: |
+          poetry run ${{ env.COVPYTEST }} relay
+
+      - name: Functional Tests against In-Memory Relay
+        env:
+          COVERAGE_FILE: .coverage.functional.in-memory${{ matrix.python-version }}
         run: |
           poetry run pip install coverage
-          poetry run ${{ env.COVPYTEST }} functional_tests relay
+          poetry run ${{ env.COVPYTEST }} functional_tests
+
+      - name: Spec Tests against In-Memory Relay
+        env:
+          COVERAGE_FILE: .coverage.spec.in-memory${{ matrix.python-version }}
+        run: |
+          poetry run pip install coverage
+          poetry run ${{ env.COVPYTEST }} spec_tests
 
       - name: Install dependencies [cli]
         run: |
@@ -74,12 +83,19 @@ jobs:
           name: coverage
           path: .coverage.*
 
-      - name: Build python package
+      - name: Build ndk package
         run: |
           poetry build
 
+      - name: Upload ndk package
+        uses: actions/upload-artifact@v3
+        with:
+          name: ndk
+          path: dist/*.whl
+
   server_tests:
-    name: Spec tests against server built with NDK
+    name: Functional & Spec tests against server built with NDK
+    needs: [ci]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -91,9 +107,15 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Download ndk package
+        uses: actions/download-artifact@v3
+        with:
+          name: ndk
+          path: /tmp/ndk/
+
       - name: Install dependencies
         run: |
-          pip install -e .[test] coverage
+          pip install /tmp/ndk/$(ls /tmp/ndk/)[test] coverage
           sudo wget -qO /usr/local/bin/websocat https://github.com/vi/websocat/releases/latest/download/websocat.x86_64-unknown-linux-musl
           sudo chmod a+x /usr/local/bin/websocat
 
@@ -119,10 +141,15 @@ jobs:
         run: |
           while [[ $(websocat ws://${{ env.CLUSTER_IP }}:${{ env.CLUSTER_PORT }}) ]]; do echo "waiting for websocket" && sleep 1; done
 
+      - name: Run Functional Tests
+        env:
+          COVERAGE_FILE: .coverage.functional.ndk-server-minikube
+        run: coverage run -m pytest --timeout=10 functional_tests --relay-url=ws://${{ env.CLUSTER_IP }}:${{ env.CLUSTER_PORT }}
+
       - name: Run Spec Tests
         env:
-          COVERAGE_FILE: .coverage.spec
-        run: coverage run -m pytest --timeout=5 functional_tests --relay-url=ws://${{ env.CLUSTER_IP }}:${{ env.CLUSTER_PORT }}
+          COVERAGE_FILE: .coverage.spec.ndk-server-minikube
+        run: coverage run -m pytest --timeout=10 spec_tests --relay-url=ws://${{ env.CLUSTER_IP }}:${{ env.CLUSTER_PORT }}
 
       - name: Dump Server Logs
         if: always()
