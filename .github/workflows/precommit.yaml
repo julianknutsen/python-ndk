@@ -190,5 +190,6 @@ jobs:
         with:
           context: .
           file: relay/deploy/relay.dockerfile
+          platforms: linux/amd64
           push: true
           tags: registry.digitalocean.com/python-ndk/python-ndk-relay:latest

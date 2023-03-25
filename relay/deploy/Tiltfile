@@ -47,5 +47,5 @@ docker_build_with_restart(
         fall_back_on(["."]),
         sync("../..", "/app/python-ndk"),
     ],
-    entrypoint="python /app/python-ndk/relay/server.py"
+    entrypoint="/opt/venv/bin/python /app/python-ndk/relay/server.py"
 )

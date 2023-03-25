@@ -1,4 +1,4 @@
-FROM python:3.9-slim-bullseye
+FROM python:3.11-slim-bullseye
 
 ARG RELAY_HOST
 ARG RELAY_PORT
@@ -11,7 +11,7 @@ ENV RELAY_LOG_LEVEL=${RELAY_LOG_LEVEL:-INFO}
 WORKDIR /app
 COPY ../.. python-ndk
 
-RUN pip install -e ./python-ndk[relay]
+RUN python -m venv /opt/venv && /opt/venv/bin/pip install --upgrade pip && /opt/venv/bin/pip install -e ./python-ndk[relay]
 
 EXPOSE 2700
-ENTRYPOINT ["python /app/python-ndk/relay/server.py"]
+ENTRYPOINT ["/opt/venv/bin/python", "/app/python-ndk/relay/server.py"]
