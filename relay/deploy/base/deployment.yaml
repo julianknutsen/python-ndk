@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
         - name: relay
-          image: python-ndk-relay:test
+          image: badimage:badtag # This is a placeholder. The image is built and pushed by the CI/CD pipeline.
           ports:
             - containerPort: 2700
           livenessProbe:

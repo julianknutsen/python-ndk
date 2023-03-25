@@ -4,3 +4,8 @@ namespace: python-ndk-dev
 resources:
 - ../../base
 - service.yaml
+patches:
+- path: deployment.yaml
+  target:
+    kind: Deployment
+    name: relay
