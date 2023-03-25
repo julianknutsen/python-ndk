@@ -1,0 +1,10 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: relay
+spec:
+  template:
+    spec:
+      containers:
+        - name: relay
+          image: registry.digitalocean.com/python-ndk/python-ndk-relay:latest
