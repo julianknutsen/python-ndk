@@ -6,11 +6,17 @@ allow_k8s_contexts(DIGITALOCEAN_DEV_CONTEXT)
 config.define_string_list("target", args=False, usage="Deploy to Digital Ocean cluster")
 cfg = config.parse()
 
+def maybe_create_namespace(namespace):
+    if namespace not in str(local("kubectl get namespace")):
+        local("kubectl create namespace {}".format(namespace))
+
 def switch_ctx(ctx):
     if ctx == "local":
         local("kubectl config use-context minikube")
+        maybe_create_namespace("python-ndk-dev")
     elif ctx == "remote-dev":
         local("kubectl config use-context {}".format(DIGITALOCEAN_DEV_CONTEXT))
+        maybe_create_namespace("python-ndk-staging")
 
 def __get_context():
     return str(local("kubectl config current-context")).strip()
@@ -20,23 +26,25 @@ if target == "local":
     switch_ctx("local")
     if __get_context() != "minikube":
         fail("kubectl context doesn't match {} != {}".format(__get_context(), "minikube"))
-    k8s_yaml("relay.yaml")
+    k8s_yaml(kustomize("overlays/dev"))
 elif target == "remote-dev":
     default_registry("registry.digitalocean.com/python-ndk")
     switch_ctx("remote-dev")
     if __get_context() != DIGITALOCEAN_DEV_CONTEXT:
         fail("kubectl context doesn't match {} != {}".format(__get_context(), DIGITALOCEAN_DEV_CONTEXT))
-    k8s_yaml("relay.yaml")
+    k8s_yaml(kustomize("overlays/staging"))
 else:
     fail("target not specified")
 
 docker_build_with_restart(
-    "relay",
+    "python-ndk-relay",
+    extra_tag="test",
     context="../..",
     dockerfile="relay.dockerfile",
     build_args={"RELAY_HOST": "0.0.0.0", "RELAY_PORT": "2700","RELAY_LOG_LEVEL": "DEBUG"},
     ignore=["**/.*", "**/__pycache__", "functional_tests", "cli"],
     live_update=[
+        fall_back_on(["."]),
         sync("../..", "/app/python-ndk"),
     ],
     entrypoint="python /app/python-ndk/relay/server.py"

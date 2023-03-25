@@ -25,8 +25,9 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -73,7 +74,7 @@ jobs:
           name: coverage
           path: .coverage.*
 
-      - name: Build
+      - name: Build python package
         run: |
           poetry build
 
@@ -81,9 +82,10 @@ jobs:
     name: Spec tests against server built with NDK
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [ci]
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Setup Python 3.11
         uses: actions/setup-python@v4
         with:
@@ -109,9 +111,9 @@ jobs:
 
       - name: Wait for Relay to start
         run: |
-          while [[ $(kubectl get pods -l app=relay -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" ]]; do echo "waiting for pod" && sleep 1; done
-          echo "CLUSTER_IP=$(kubectl get svc -l app=relay -o 'jsonpath={$.items[0].status.loadBalancer.ingress[0].ip}')" >> $GITHUB_ENV
-          echo "CLUSTER_PORT=$(kubectl get svc -l app=relay -o 'jsonpath={$.items[0].spec.ports[0].port}')" >> $GITHUB_ENV
+          while [[ $(kubectl get pods --namespace python-ndk-dev -l app=relay -o jsonpath="{range .items[*]}{@.status.conditions[?(@.type=='Ready')].status}") != "True" ]]; do echo "waiting for pod" && sleep 1; done
+          echo "CLUSTER_IP=$(kubectl get svc --namespace python-ndk-dev relay-service -o 'jsonpath={$.status.loadBalancer.ingress[0].ip}')" >> $GITHUB_ENV
+          echo "CLUSTER_PORT=$(kubectl get svc --namespace python-ndk-dev relay-service -o 'jsonpath={$.spec.ports[0].port}')" >> $GITHUB_ENV
 
       - name: Wait for websocket to open
         run: |
@@ -137,7 +139,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ci, server_tests]
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Setup Python 3.11
         uses: actions/setup-python@v4
         with:
@@ -161,3 +165,30 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}  
+
+  publish:
+    name: Publish docker image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: [ci, server_tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to DigitalOcean Registry
+        uses: docker/login-action@v2
+        with:
+          registry: registry.digitalocean.com
+          username: ${{ secrets.DIGITAL_OCEAN_TOKEN }}
+          password: ${{ secrets.DIGITAL_OCEAN_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: relay/deploy/relay.dockerfile
+          push: true
+          tags: registry.digitalocean.com/python-ndk/python-ndk-relay:latest

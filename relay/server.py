@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 HOST = os.environ.get("RELAY_HOST", "localhost")
 PORT = int(os.environ.get("RELAY_PORT", "2700"))
-DEBUG_LEVEL = os.environ.get("RELAY_LOG_LEVEL", "DEBUG")
+DEBUG_LEVEL = os.environ.get("RELAY_LOG_LEVEL", "INFO")
 logging.basicConfig(level=DEBUG_LEVEL, format="%(asctime)s %(levelname)s %(message)s")
 
 
