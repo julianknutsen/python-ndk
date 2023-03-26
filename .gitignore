@@ -10,3 +10,4 @@ poetry.lock
 .coverage*
 cov.xml
 test-results.xml
+relay/deploy/overlays/staging/secrets.yaml

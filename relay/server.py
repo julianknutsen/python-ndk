@@ -44,7 +44,7 @@ if RELAY_EVENT_REPO == "postgres":
     DB_PORT = os.environ.get("DB_PORT")
     DB_NAME = os.environ.get("DB_NAME")
     DB_USER = os.environ.get("DB_USER")
-    DB_PASS = os.environ.get("DB_PASS")
+    DB_PASSWORD = os.environ.get("DB_PASSWORD")
 
 logging.basicConfig(level=DEBUG_LEVEL, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -86,7 +86,7 @@ async def main():
         repo = memory_event_repo.MemoryEventRepo()
     elif RELAY_EVENT_REPO == "postgres":
         repo = await postgres_event_repo.PostgresEventRepo.create(
-            DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME
+            DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
         )
     else:
         raise ValueError(f"Unknown event repo: {RELAY_EVENT_REPO}")
