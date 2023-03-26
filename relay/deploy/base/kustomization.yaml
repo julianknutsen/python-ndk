@@ -3,3 +3,4 @@ kind: Kustomization
 namespace: python-ndk-base
 resources:
   - deployment.yaml
+  - postgres.yaml

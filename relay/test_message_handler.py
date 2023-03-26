@@ -25,23 +25,24 @@ import pytest
 
 from ndk.event import event
 from ndk.messages import command_result, event_message, message_factory
-from relay import event_repo, message_handler
+from relay import message_handler
+from relay.event_repo import memory_event_repo
 
 
 @pytest.fixture
 def eh():
-    repo = event_repo.EventRepo()
+    repo = memory_event_repo.MemoryEventRepo()
     yield message_handler.MessageHandler(repo)
 
 
-def test_event_validation_failure(eh):
+async def test_event_validation_failure(eh):
     def raise_validation_error():
         raise event.ValidationError("Failed validation")
 
     with mock.patch.object(
         event.SignedEvent, "from_dict", lambda self, **kwargs: raise_validation_error()
     ):
-        response = eh.handle_event(event_message.Event({"id": "1"}))
+        response = await eh.handle_event(event_message.Event({"id": "1"}))
 
         assert len(response) == 1
         response_msg = message_factory.from_str(response[0])
@@ -50,14 +51,14 @@ def test_event_validation_failure(eh):
         assert not response_msg.accepted
 
 
-def test_accepted_event(eh):
+async def test_accepted_event(eh):
     mocked = mock.MagicMock()
     mocked.id = "1"
 
     with mock.patch.object(
         event.SignedEvent, "from_dict", lambda self, **kwargs: mocked
     ):
-        response = eh.handle_event(event_message.Event({"id": "1"}))
+        response = await eh.handle_event(event_message.Event({"id": "1"}))
 
         assert len(response) == 1
         response_msg = message_factory.from_str(response[0])

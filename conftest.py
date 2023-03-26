@@ -26,7 +26,8 @@ import pytest
 import websockets
 
 from ndk.repos.event_repo import protocol_handler, relay_event_repo
-from relay import event_repo, message_dispatcher, message_handler, server
+from relay import message_dispatcher, message_handler, server
+from relay.event_repo import memory_event_repo
 
 
 def pytest_addoption(parser):
@@ -96,7 +97,7 @@ async def remote_relay(ws_handlers):
 
 @pytest.fixture(scope="function")
 async def local_relay(response_queue, request_queue):
-    repo = event_repo.EventRepo()
+    repo = memory_event_repo.MemoryEventRepo()
     msg_handler = message_handler.MessageHandler(repo)
     md = message_dispatcher.MessageDispatcher(msg_handler)
     handler_task = asyncio.create_task(

@@ -22,88 +22,88 @@
 
 from ndk import crypto
 from ndk.event import event, metadata_event
-from relay import event_repo
+from relay.event_repo import memory_event_repo
 
 
-def test_get_empty():
-    repo = event_repo.EventRepo()
-    items = repo.get([{}])
+async def test_get_empty():
+    repo = memory_event_repo.MemoryEventRepo()
+    items = await repo.get([{}])
 
     assert len(items) == 0
 
 
-def test_get_matches_by_id():
-    repo = event_repo.EventRepo()
+async def test_get_matches_by_id():
+    repo = memory_event_repo.MemoryEventRepo()
 
     keys = crypto.KeyPair()
     unsigned = metadata_event.MetadataEvent.from_metadata_parts()
     signed = event.build_signed_event(unsigned, keys)
 
-    ev_id = repo.add(signed)
+    ev_id = await repo.add(signed)
 
-    items = repo.get([{"ids": [ev_id]}])
+    items = await repo.get([{"ids": [ev_id]}])
 
     assert len(items) == 1
     assert items[0] == signed
 
 
-def test_get_matches_by_author():
-    repo = event_repo.EventRepo()
+async def test_get_matches_by_author():
+    repo = memory_event_repo.MemoryEventRepo()
 
     keys = crypto.KeyPair()
     unsigned = metadata_event.MetadataEvent.from_metadata_parts()
     signed = event.build_signed_event(unsigned, keys)
 
-    _ = repo.add(signed)
+    _ = await repo.add(signed)
 
-    items = repo.get([{"authors": [keys.public]}])
+    items = await repo.get([{"authors": [keys.public]}])
 
     assert len(items) == 1
     assert items[0] == signed
 
 
-def test_get_matches_by_author_and_id():
-    repo = event_repo.EventRepo()
+async def test_get_matches_by_author_and_id():
+    repo = memory_event_repo.MemoryEventRepo()
 
     keys = crypto.KeyPair()
     unsigned = metadata_event.MetadataEvent.from_metadata_parts()
     signed = event.build_signed_event(unsigned, keys)
 
-    ev_id = repo.add(signed)
+    ev_id = await repo.add(signed)
 
-    items = repo.get([{"ids": [ev_id], "authors": [keys.public]}])
+    items = await repo.get([{"ids": [ev_id], "authors": [keys.public]}])
 
     assert len(items) == 1
     assert items[0] == signed
 
 
-def test_get_matches_by_id_only_last():
-    repo = event_repo.EventRepo()
+async def test_get_matches_by_id_only_last():
+    repo = memory_event_repo.MemoryEventRepo()
 
     keys = crypto.KeyPair()
     unsigned = metadata_event.MetadataEvent.from_metadata_parts()
     signed = event.build_signed_event(unsigned, keys)
     signed2 = event.build_signed_event(unsigned, keys)
 
-    _ = repo.add(signed)
-    _ = repo.add(signed2)
+    _ = await repo.add(signed)
+    _ = await repo.add(signed2)
 
-    items = repo.get([{"authors": [keys.public], "limit": 1}])
+    items = await repo.get([{"authors": [keys.public], "limit": 1}])
 
     assert len(items) == 1
     assert items[0] == signed2
 
 
-def test_get_matches_by_id_limit_greater():
-    repo = event_repo.EventRepo()
+async def test_get_matches_by_id_limit_greater():
+    repo = memory_event_repo.MemoryEventRepo()
 
     keys = crypto.KeyPair()
     unsigned = metadata_event.MetadataEvent.from_metadata_parts()
     signed = event.build_signed_event(unsigned, keys)
 
-    _ = repo.add(signed)
+    _ = await repo.add(signed)
 
-    items = repo.get([{"authors": [keys.public], "limit": 2}])
+    items = await repo.get([{"authors": [keys.public], "limit": 2}])
 
     assert len(items) == 1
     assert items[0] == signed

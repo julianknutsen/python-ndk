@@ -8,3 +8,15 @@ spec:
       containers:
         - name: relay
           image: python-ndk-relay
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 2700
+            failureThreshold: 1
+            periodSeconds: 30
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 2700
+            failureThreshold: 6
+            periodSeconds: 5
