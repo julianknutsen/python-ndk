@@ -30,18 +30,22 @@ from websockets.legacy.server import serve
 
 from ndk.repos.event_repo import protocol_handler
 from relay import message_dispatcher, message_handler
-from relay.event_repo import postgres_event_repo
+from relay.event_repo import memory_event_repo, postgres_event_repo
 
 logger = logging.getLogger(__name__)
 
+RELAY_EVENT_REPO = os.environ.get("RELAY_EVENT_REPO", "memory").lower()
 HOST = os.environ.get("RELAY_HOST", "localhost")
 PORT = int(os.environ.get("RELAY_PORT", "2700"))
 DEBUG_LEVEL = os.environ.get("RELAY_LOG_LEVEL", "INFO")
-DB_HOST = os.environ.get("DB_HOST")
-DB_PORT = os.environ.get("DB_PORT")
-DB_NAME = os.environ.get("DB_NAME")
-DB_USER = os.environ.get("DB_USER")
-DB_PASS = os.environ.get("DB_PASS")
+
+if RELAY_EVENT_REPO == "postgres":
+    DB_HOST = os.environ.get("DB_HOST")
+    DB_PORT = os.environ.get("DB_PORT")
+    DB_NAME = os.environ.get("DB_NAME")
+    DB_USER = os.environ.get("DB_USER")
+    DB_PASS = os.environ.get("DB_PASS")
+
 logging.basicConfig(level=DEBUG_LEVEL, format="%(asctime)s %(levelname)s %(message)s")
 
 
@@ -78,9 +82,16 @@ async def health_check(path, _):
 async def main():
     logger.info("Logging set to %s", DEBUG_LEVEL)
 
-    repo = await postgres_event_repo.PostgresEventRepo.create(
-        DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME
-    )
+    if RELAY_EVENT_REPO == "memory":
+        repo = memory_event_repo.MemoryEventRepo()
+    elif RELAY_EVENT_REPO == "postgres":
+        repo = await postgres_event_repo.PostgresEventRepo.create(
+            DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME
+        )
+    else:
+        raise ValueError(f"Unknown event repo: {RELAY_EVENT_REPO}")
+    logger.debug("%s initialized", repo.__class__)
+
     mh = message_handler.MessageHandler(repo)
     mb = message_dispatcher.MessageDispatcher(mh)
 
