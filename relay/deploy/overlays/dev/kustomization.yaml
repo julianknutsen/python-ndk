@@ -4,6 +4,7 @@ namespace: python-ndk-dev
 resources:
 - ../../base
 - service.yaml
+- postgres.yaml
 patches:
 - path: deployment.yaml
   target:

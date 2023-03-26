@@ -30,7 +30,7 @@ from ndk.messages import (
     relay_event,
     request,
 )
-from relay import event_repo
+from relay.event_repo import event_repo
 
 logger = logging.getLogger(__name__)
 
@@ -53,11 +53,11 @@ class MessageHandler:
     def __init__(self, repo: event_repo.EventRepo):
         self._repo = repo
 
-    def handle_event(self, msg: event_message.Event) -> list[str]:
+    async def handle_event(self, msg: event_message.Event) -> list[str]:
         try:
             signed_ev = event.SignedEvent.from_dict(msg.event_dict)
 
-            self._repo.add(signed_ev)
+            await self._repo.add(signed_ev)
 
             return [create_cmd_result(signed_ev.id, True, "")]
         except event.ValidationError:
@@ -66,11 +66,11 @@ class MessageHandler:
             ev_id = msg.event_dict["id"]  # guaranteed if passed Type check above
             return [create_cmd_result(ev_id, False, text)]
 
-    def handle_close(self, _: close.Close) -> list[str]:
+    async def handle_close(self, _: close.Close) -> list[str]:
         return []
 
-    def handle_request(self, msg: request.Request) -> list[str]:
-        fetched = self._repo.get(msg.filter_list)
+    async def handle_request(self, msg: request.Request) -> list[str]:
+        fetched = await self._repo.get(msg.filter_list)
 
         return [create_relay_event(msg.sub_id, ev.__dict__) for ev in fetched] + [
             create_eose(msg.sub_id)

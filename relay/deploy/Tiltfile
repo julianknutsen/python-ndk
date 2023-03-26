@@ -41,7 +41,7 @@ docker_build_with_restart(
     context="../..",
     dockerfile="relay.dockerfile",
     build_args={"RELAY_HOST": "0.0.0.0", "RELAY_PORT": "2700","RELAY_LOG_LEVEL": "DEBUG"},
-    ignore=["**/.*", "**/__pycache__", "functional_tests", "spec_tests", "cli"],
+    ignore=["**/.*", "**/__pycache__", "**/cov.xml", "functional_tests", "spec_tests", "cli"],
     live_update=[
         fall_back_on(["."]),
         sync("../..", "/app/python-ndk"),

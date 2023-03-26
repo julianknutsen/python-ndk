@@ -8,3 +8,39 @@ spec:
       containers:
         - name: relay
           image: python-ndk-relay
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 2700
+            failureThreshold: 1
+            periodSeconds: 30
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 2700
+            failureThreshold: 6
+            periodSeconds: 5
+          env:
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: DB_NAME
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: DB_PASSWORD
+            - name: DB_HOST
+              value: postgres
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: DB_PORT
+              

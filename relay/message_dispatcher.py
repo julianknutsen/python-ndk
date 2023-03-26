@@ -36,21 +36,21 @@ class MessageDispatcher:
     def __init__(self, ev_handler: message_handler.MessageHandler):
         self._ev_handler = ev_handler
 
-    def process_message(self, data: str) -> list[str]:
+    async def process_message(self, data: str) -> list[str]:
         try:
             msg = message_factory.from_str(data)
-            return self._handle_msg(msg)
+            return await self._handle_msg(msg)
         except exceptions.ParseError:
             text = f"Unable to parse message: {data}"
             logger.debug(text, exc_info=True)
             return [create_notice(text)]
 
-    def _handle_msg(self, msg: message.Message) -> list[str]:
+    async def _handle_msg(self, msg: message.Message) -> list[str]:
         if isinstance(msg, event_message.Event):
-            return self._ev_handler.handle_event(msg)
+            return await self._ev_handler.handle_event(msg)
         elif isinstance(msg, request.Request):
-            return self._ev_handler.handle_request(msg)
+            return await self._ev_handler.handle_request(msg)
         elif isinstance(msg, close.Close):
-            return self._ev_handler.handle_close(msg)
+            return await self._ev_handler.handle_close(msg)
         else:
             return [create_notice(f"Relay does not support message of type: {msg}")]

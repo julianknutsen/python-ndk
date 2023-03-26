@@ -19,20 +19,22 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+
 from ndk.event import event
+from relay.event_repo import event_repo
 
 
-class EventRepo:
+class MemoryEventRepo(event_repo.EventRepo):
     _stored_events: list[event.SignedEvent]
 
     def __init__(self):
         self._stored_events = []
 
-    def add(self, ev: event.SignedEvent) -> event.EventID:
+    async def add(self, ev: event.SignedEvent) -> event.EventID:
         self._stored_events.append(ev)
         return ev.id
 
-    def get(self, fltrs: list[dict]) -> list[event.SignedEvent]:
+    async def get(self, fltrs: list[dict]) -> list[event.SignedEvent]:
         fetched: list[event.SignedEvent] = []
 
         for fltr in fltrs:

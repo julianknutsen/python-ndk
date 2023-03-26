@@ -24,23 +24,24 @@ import pytest
 
 from ndk import serialize
 from ndk.messages import close, eose, event_message, message_factory, notice, request
-from relay import event_repo, message_dispatcher, message_handler
+from relay import message_dispatcher, message_handler
+from relay.event_repo import memory_event_repo
 
 
 @pytest.fixture
 def md():
-    repo = event_repo.EventRepo()
+    repo = memory_event_repo.MemoryEventRepo()
     ev_handler = message_handler.MessageHandler(repo)
     return message_dispatcher.MessageDispatcher(ev_handler)
 
 
-def test_init(md):  # pylint: disable=unused-argument
+async def test_init(md):  # pylint: disable=unused-argument
     # done in fixture
     pass
 
 
-def test_process_invalid_obj(md):
-    response = md.process_message(serialize.serialize_as_str({}))
+async def test_process_invalid_obj(md):
+    response = await md.process_message(serialize.serialize_as_str({}))
 
     assert len(response) == 1
     response_msg = message_factory.from_str(response[0])
@@ -48,8 +49,8 @@ def test_process_invalid_obj(md):
     assert isinstance(response_msg, notice.Notice)
 
 
-def test_process_invalid_list(md):
-    response = md.process_message(serialize.serialize_as_str([]))
+async def test_process_invalid_list(md):
+    response = await md.process_message(serialize.serialize_as_str([]))
 
     assert len(response) == 1
     response_msg = message_factory.from_str(response[0])
@@ -57,9 +58,9 @@ def test_process_invalid_list(md):
     assert isinstance(response_msg, notice.Notice)
 
 
-def test_process_unsupported_ev(md):
+async def test_process_unsupported_ev(md):
     req = notice.Notice("huh?")
-    response = md.process_message(req.serialize())
+    response = await md.process_message(req.serialize())
 
     assert len(response) == 1
     response_msg = message_factory.from_str(response[0])
@@ -67,8 +68,8 @@ def test_process_unsupported_ev(md):
     assert isinstance(response_msg, notice.Notice)
 
 
-def test_event_missing_required_fields(md):
-    response = md.process_message(event_message.Event({}).serialize())
+async def test_event_missing_required_fields(md):
+    response = await md.process_message(event_message.Event({}).serialize())
 
     assert len(response) == 1
     response_msg = message_factory.from_str(response[0])
@@ -76,14 +77,14 @@ def test_event_missing_required_fields(md):
     assert isinstance(response_msg, notice.Notice)
 
 
-def test_close_does_nothing(md):
-    response = md.process_message(close.Close("1").serialize())
+async def test_close_does_nothing(md):
+    response = await md.process_message(close.Close("1").serialize())
 
     assert len(response) == 0
 
 
-def test_handle_request_no_match(md):
-    response = md.process_message(request.Request("1", [{}]).serialize())
+async def test_handle_request_no_match(md):
+    response = await md.process_message(request.Request("1", [{}]).serialize())
 
     assert len(response) == 1
     response_msg = message_factory.from_str(response[0])

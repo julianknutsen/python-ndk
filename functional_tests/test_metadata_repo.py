@@ -75,10 +75,16 @@ async def test_overwrite_write(mykeys, repo):
 
 
 async def test_overwrite(mykeys, repo):
-    await repo.overwrite(mykeys, name="bob")
-    await repo.overwrite(mykeys, about="#nostr")
+    cur = time.time()
+    with mock.patch("time.time", return_value=cur):
+        await repo.overwrite(mykeys, name="bob")
 
-    result = await repo.get(mykeys.public)
+    with mock.patch("time.time", return_value=cur + 1):
+        await repo.overwrite(mykeys, about="#nostr")
+
+    with mock.patch("time.time", return_value=cur + 2):
+        result = await repo.get(mykeys.public)
+
     assert result["about"] == "#nostr"
 
 

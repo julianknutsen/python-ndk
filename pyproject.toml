@@ -36,10 +36,14 @@ isort = { version = "*", optional = true }
 mock = { version = "*", optional = true }
 mypy = { version = "*", optional = true }
 pipreqs = { version = "*", optional = true }
+asyncpg  = { version = "*", optional = true }
+psycopg2-binary = { version = "*", optional = true }
 pylint = { version = "*", optional = true }
 pytest = { version = "*", optional = true }
 pytest-asyncio = { version = "*", optional = true }
 pytest-timeout = { version = "*", optional = true }
+pytest-xdist = { version = "*", optional = true }
+sqlalchemy = { version = "*", optional = true, extras=["asyncio"] }
 types-mock = { version = "*", optional = true }
 websockets = { version = "*", optional = true }
 
@@ -50,9 +54,9 @@ lint = "scripts.verify_format_lint:main"
 
 [tool.poetry.extras]
 cli = ["click", "websockets"]
-dev = ["black", "coverage", "isort", "mock", "mypy", "pipreqs", "pylint", "pytest", "pytest-timeout", "pytest-asyncio", "types-mock", "websockets"]
-relay = ["websockets"]
-test = ["mock", "pytest", "pytest-asyncio", "pytest-timeout", "types-mock", "websockets"]
+dev =  ["asyncpg", "black", "coverage", "isort", "mock", "mypy", "pipreqs", "psycopg2-binary", "pylint", "pytest", "pytest-asyncio", "pytest-timeout", "pytest-xdist", "sqlalchemy", "types-mock", "websockets"]
+relay = ["asyncpg", "psycopg2-binary", "sqlalchemy", "websockets"]
+test = ["asyncpg", "mock", "psycopg2-binary", "pytest", "pytest-asyncio", "pytest-timeout", "sqlalchemy", "types-mock", "websockets"]
 
 [tool.isort]
 profile = "black"
@@ -75,4 +79,8 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "setuptools.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "sqlalchemy.*"
 ignore_missing_imports = true
