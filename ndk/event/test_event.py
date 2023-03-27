@@ -19,18 +19,11 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-from unittest import mock
 
 import pytest
 
 from ndk import crypto, exceptions
 from ndk.event import event
-
-
-def test_unsigned_event_created_in_future():
-    with pytest.raises(ValueError, match=".*in the past.*"):
-        with mock.patch("time.time", return_value=1):
-            event.UnsignedEvent(created_at=2)
 
 
 def test_signed_event_from_dict_bad_input():

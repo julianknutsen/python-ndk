@@ -22,7 +22,7 @@
 import logging
 
 import sqlalchemy
-from sqlalchemy.dialects.postgresql import insert as pq_insert
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext import asyncio as pq_asyncio
 
 from ndk import serialize
@@ -35,14 +35,34 @@ METADATA = sqlalchemy.MetaData()
 EVENTS_TABLE = sqlalchemy.Table(
     "events",
     METADATA,
-    sqlalchemy.Column("id", sqlalchemy.String, primary_key=True),
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("event_id", sqlalchemy.String),
     sqlalchemy.Column("pubkey", sqlalchemy.String),
     sqlalchemy.Column("created_at", sqlalchemy.Integer),
     sqlalchemy.Column("kind", sqlalchemy.Integer),
-    sqlalchemy.Column("tags", sqlalchemy.ARRAY(sqlalchemy.String)),
     sqlalchemy.Column("content", sqlalchemy.String),
     sqlalchemy.Column("sig", sqlalchemy.String),
-    sqlalchemy.Column("encoded_tags", sqlalchemy.String),
+    sqlalchemy.Column("serialized", sqlalchemy.String),
+)
+
+TAGS_TABLE = sqlalchemy.Table(
+    "tags",
+    METADATA,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("identifier", sqlalchemy.String),
+    sqlalchemy.Column("value", sqlalchemy.String),
+    sqlalchemy.UniqueConstraint("identifier", "value", name="uq_identifier_value"),
+)
+
+# Create the bridge table
+EVENT_TAGS_TABLE = sqlalchemy.Table(
+    "event_tags",
+    METADATA,
+    sqlalchemy.Column(
+        "event_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("events.id")
+    ),
+    sqlalchemy.Column("tag_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("tags.id")),
+    sqlalchemy.PrimaryKeyConstraint("event_id", "tag_id"),
 )
 
 
@@ -66,32 +86,94 @@ class PostgresEventRepo(event_repo.EventRepo):
         return PostgresEventRepo(engine)
 
     async def add(self, ev: event.SignedEvent) -> event.EventID:
-        async with self._engine.connect() as conn:
-            insert_stmt = pq_insert(EVENTS_TABLE).values(
-                id=ev.id,
+        logger.debug([row[:2] for row in ev.tags])
+        async with self._engine.begin() as conn:
+            # if it is already in the db, do nothing
+            select_stmt = sqlalchemy.select(EVENTS_TABLE).where(
+                EVENTS_TABLE.c.event_id == ev.id
+            )
+
+            if (await conn.execute(select_stmt)).fetchone():
+                return ev.id
+
+            event_insert_stmt = postgresql.insert(EVENTS_TABLE).values(
+                event_id=ev.id,
                 pubkey=ev.pubkey,
                 created_at=ev.created_at,
                 kind=ev.kind,
-                tags=ev.tags,
                 content=ev.content,
                 sig=ev.sig,
-                encoded_tags=serialize.serialize_as_str(ev.tags),
+                serialized=serialize.serialize_as_str(ev),
             )
-            on_conflict_stmt = insert_stmt.on_conflict_do_nothing()
 
-            await conn.execute(on_conflict_stmt)
+            event_id = (await conn.execute(event_insert_stmt)).inserted_primary_key[0]
+
+            for tag in ev.tags:
+                if len(tag) == 0:
+                    continue
+
+                # Check if the tag already exists
+                select_stmt = sqlalchemy.select(TAGS_TABLE).where(
+                    (TAGS_TABLE.c.identifier == tag[0]) & (TAGS_TABLE.c.value == tag[1])
+                )
+
+                existing_tag = (await conn.execute(select_stmt)).fetchone()
+
+                if existing_tag:
+                    # Use the existing tag if it already exists
+                    tag_id = existing_tag.id
+                else:
+                    # Insert the tag if it doesn't exist
+                    tag_insert_stmt = sqlalchemy.insert(TAGS_TABLE).values(
+                        identifier=tag[0],
+                        value=tag[1],
+                    )
+
+                    # Get the tag_id of the inserted tag
+                    tag_id = (await conn.execute(tag_insert_stmt)).inserted_primary_key[
+                        0
+                    ]
+
+                # Insert the event_tag relationship
+                tag_event_insert_stmt = sqlalchemy.insert(EVENT_TAGS_TABLE).values(
+                    event_id=event_id,
+                    tag_id=tag_id,
+                )
+                await conn.execute(tag_event_insert_stmt)
+
             await conn.commit()
-            return event.EventID(ev.id)
+            return ev.id
+
+    def tag_query_from(self, identifier: str, tag_list: list[str]):
+        tag_id_query = sqlalchemy.select(TAGS_TABLE.c.id).where(
+            sqlalchemy.and_(
+                TAGS_TABLE.c.identifier == identifier, TAGS_TABLE.c.value.in_(tag_list)
+            )
+        )
+
+        subquery = (
+            sqlalchemy.select(EVENT_TAGS_TABLE.c.event_id)
+            .select_from(
+                sqlalchemy.join(
+                    TAGS_TABLE,
+                    EVENT_TAGS_TABLE,
+                    TAGS_TABLE.c.id == EVENT_TAGS_TABLE.c.tag_id,
+                )
+            )
+            .where(TAGS_TABLE.c.id.in_(tag_id_query))
+        )
+
+        return EVENTS_TABLE.c.id.in_(subquery)
 
     async def get(self, fltrs: list[dict]) -> list[event.SignedEvent]:
         query = sqlalchemy.select(EVENTS_TABLE)
 
         queries = []
-        limit = float("inf")
+        limit = float("-inf")
         for f in fltrs:
             conditions = []
             if "ids" in f:
-                conditions.append(EVENTS_TABLE.c.id.in_(f["ids"]))
+                conditions.append(EVENTS_TABLE.c.event_id.in_(f["ids"]))
 
             if "authors" in f:
                 conditions.append(EVENTS_TABLE.c.pubkey.in_(f["authors"]))
@@ -100,13 +182,13 @@ class PostgresEventRepo(event_repo.EventRepo):
                 conditions.append(EVENTS_TABLE.c.kind.in_(f["kinds"]))
 
             if "#e" in f:
-                conditions.append(EVENTS_TABLE.c.tags.any("{#e}").in_(f["#e"]))
+                conditions.append(self.tag_query_from("e", f["#e"]))
 
             if "#p" in f:
-                conditions.append(EVENTS_TABLE.c.tags.any("{#p}").in_(f["#p"]))
+                conditions.append(self.tag_query_from("p", f["#p"]))
 
             if "since" in f:
-                conditions.append(EVENTS_TABLE.c.created_at >= f["since"])
+                conditions.append(EVENTS_TABLE.c.created_at > f["since"])
 
             if "until" in f:
                 conditions.append(EVENTS_TABLE.c.created_at < f["until"])
@@ -114,14 +196,12 @@ class PostgresEventRepo(event_repo.EventRepo):
             if "limit" in f:
                 limit = max(limit, f["limit"])
 
-            assert len(conditions) > 0, f
             queries.append(sqlalchemy.and_(*conditions))
 
-        assert len(queries) > 0
         final = query.where(sqlalchemy.or_(*queries)).order_by(
             sqlalchemy.desc(EVENTS_TABLE.c.created_at)
         )
-        if limit != float("inf"):
+        if limit != float("-inf"):
             final = final.limit(int(limit))
         logger.debug(final.compile(dialect=self._engine.dialect).string)
 
@@ -129,14 +209,6 @@ class PostgresEventRepo(event_repo.EventRepo):
             result = (await conn.execute(final)).fetchall()
 
             return [
-                event.SignedEvent(
-                    id=row[0],
-                    pubkey=row[1],
-                    created_at=row[2],
-                    kind=row[3],
-                    tags=serialize.deserialize(row[7]),
-                    content=row[5],
-                    sig=row[6],
-                )
+                event.SignedEvent.from_dict(serialize.deserialize(row[7]))
                 for row in result
             ]

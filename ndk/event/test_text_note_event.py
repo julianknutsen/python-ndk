@@ -18,13 +18,20 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
+from ndk.event import event, text_note_event
 
-from ndk.event import event
+
+def test_from_content_no_tags():
+    ev = text_note_event.TextNoteEvent.from_content("Hello World!")
+    assert ev.kind == event.EventKind.TEXT_NOTE
+    assert ev.tags == event.EventTags([[]])
+    assert ev.content == "Hello World!"
 
 
-class TextNoteEvent(event.UnsignedEvent):
-    @classmethod
-    def from_content(
-        cls, content: str, tags: event.EventTags = event.EventTags([[]])
-    ) -> "TextNoteEvent":
-        return cls(kind=event.EventKind.TEXT_NOTE, content=content, tags=tags)
+def test_from_content_with_tags():
+    ev = text_note_event.TextNoteEvent.from_content(
+        "Hello World!", tags=event.EventTags([["p", "pubkeygoeshere"]])
+    )
+    assert ev.kind == event.EventKind.TEXT_NOTE
+    assert ev.tags == event.EventTags([["p", "pubkeygoeshere"]])
+    assert ev.content == "Hello World!"
