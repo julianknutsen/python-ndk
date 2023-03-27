@@ -37,11 +37,27 @@ def pytest_addoption(parser):
         default=None,
         help="The URL of the relay server to test",
     )
+    parser.addoption(
+        "--db-url",
+        action="store",
+        default=None,
+        help="The URL of the relay server to test",
+    )
 
 
 @pytest.fixture(scope="session")
 def relay_url(pytestconfig):
     url = pytestconfig.option.relay_url
+
+    if not url:
+        pytest.skip()
+
+    return url
+
+
+@pytest.fixture(scope="session")
+def db_url(pytestconfig):
+    url = pytestconfig.option.db_url
 
     if not url:
         pytest.skip()

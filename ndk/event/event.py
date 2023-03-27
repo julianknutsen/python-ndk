@@ -56,11 +56,7 @@ class UnsignedEvent:
     content: str = ""
 
     def __post_init__(self):
-        now = int(time.time())
-        if self.created_at > now:
-            raise ValueError(
-                f"UnsignedEvent created_at timestamp must be in the past: {self.created_at} >= {now}"  # pylint: disable=line-too-long
-            )
+        pass
 
     @classmethod
     def from_signed_event(cls, ev: "SignedEvent"):
