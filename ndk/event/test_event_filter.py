@@ -242,6 +242,17 @@ def test_matches_event_tags_many():
     assert not f.matches_event(mock_ev)
 
 
+def test_matches_event_tags_many_in_event():
+    f = event_filter.EventFilter(e_tags=["eventid"])
+
+    mock_ev = mock.MagicMock()
+    mock_ev.tags = [["e", "eventid"], ["e", "eventid2"]]
+    assert f.matches_event(mock_ev)
+
+    f = event_filter.EventFilter(e_tags=["eventid2"])
+    assert f.matches_event(mock_ev)
+
+
 def test_matches_event_tags_unknown_identifier_ignored():
     f = event_filter.EventFilter(e_tags=["eventid"])
 
@@ -287,6 +298,20 @@ def test_matches_pubkey_tags_many():
 
     mock_ev.tags = [["p", "notmatches"]]
     assert not f.matches_event(mock_ev)
+
+
+def test_matches_pubkey_tags_many_in_event():
+    f = event_filter.EventFilter(p_tags=["matches"])
+
+    mock_ev = mock.MagicMock()
+    mock_ev.tags = [["p", "matches"], ["p", "matches2"]]
+    assert f.matches_event(mock_ev)
+
+    f = event_filter.EventFilter(p_tags=["matches"])
+    assert f.matches_event(mock_ev)
+
+    f = event_filter.EventFilter(p_tags=["matches2"])
+    assert f.matches_event(mock_ev)
 
 
 def test_matches_event_and_pubkey_tags():

@@ -317,7 +317,30 @@ async def test_text_note_find_by_tag_ptag_with_relay(
 
 
 @pytest.mark.usefixtures("ctx")
-async def test_text_note_find_by_tag_multiple_ptag(request_queue, response_queue, keys):
+async def test_text_note_find_by_tag_multiple_ptag_in_event(
+    request_queue, response_queue, keys
+):
+    keys2 = crypto.KeyPair()
+    signed_event = build_with_tags(keys, tags=[["p", keys.public], ["p", keys2.public]])
+    await send_and_expect_command_result(signed_event, request_queue, response_queue)
+
+    fltr = {"authors": [keys.public], "#p": [keys.public]}
+
+    await send_req_with_filter([fltr], request_queue)
+    await expect_text_note_event(response_queue)
+    await expect_eose(response_queue)
+
+    fltr = {"authors": [keys.public], "#p": [keys2.public]}
+
+    await send_req_with_filter([fltr], request_queue)
+    await expect_text_note_event(response_queue)
+    await expect_eose(response_queue)
+
+
+@pytest.mark.usefixtures("ctx")
+async def test_text_note_find_by_tag_multiple_ptag_in_filter(
+    request_queue, response_queue, keys
+):
     signed_event = build_with_tags(
         keys, tags=[["p", keys.public, "ws://relay.example.com"]]
     )
