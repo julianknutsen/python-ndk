@@ -47,7 +47,7 @@ class MessageDispatcher:
 
     async def _handle_msg(self, msg: message.Message) -> list[str]:
         if isinstance(msg, event_message.Event):
-            return await self._ev_handler.handle_event(msg)
+            return await self._ev_handler.handle_event_message(msg)
         elif isinstance(msg, request.Request):
             return await self._ev_handler.handle_request(msg)
         elif isinstance(msg, close.Close):

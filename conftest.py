@@ -26,7 +26,7 @@ import pytest
 import websockets
 
 from ndk.repos.event_repo import protocol_handler, relay_event_repo
-from relay import message_dispatcher, message_handler, server
+from relay import message_dispatcher, message_handler, server, subscription_handler
 from relay.event_repo import memory_event_repo
 
 
@@ -113,9 +113,12 @@ async def remote_relay(ws_handlers):
 
 @pytest.fixture(scope="function")
 async def local_relay(response_queue, request_queue):
+    sh = subscription_handler.SubscriptionHandler(response_queue)
     repo = memory_event_repo.MemoryEventRepo()
-    msg_handler = message_handler.MessageHandler(repo)
+    msg_handler = message_handler.MessageHandler(repo, sh)
     md = message_dispatcher.MessageDispatcher(msg_handler)
+    repo.register_insert_cb(sh.handle_event)
+
     handler_task = asyncio.create_task(
         server.connection_handler(request_queue, response_queue, md)
     )  # intentionally swapped

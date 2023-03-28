@@ -19,8 +19,10 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import asyncio
 import logging
 
+import asyncpg
 import sqlalchemy
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext import asyncio as pq_asyncio
@@ -65,17 +67,48 @@ EVENT_TAGS_TABLE = sqlalchemy.Table(
     sqlalchemy.PrimaryKeyConstraint("event_id", "tag_id"),
 )
 
+CREATE_TRIGGER_STMT = """
+CREATE TRIGGER event_insert_trigger AFTER INSERT ON events
+FOR EACH ROW
+EXECUTE FUNCTION notify_event_insert();
+"""
+
+IMPLEMENT_TRIGGER_STMT = """
+CREATE OR REPLACE FUNCTION notify_event_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+  PERFORM pg_notify('event_insert', NEW.serialized);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+"""
+
+
+async def _listen_for_inserts(conn, cb):
+    await conn.execute(IMPLEMENT_TRIGGER_STMT)
+    await conn.execute(CREATE_TRIGGER_STMT)
+    await conn.add_listener("event_insert", cb)
+
 
 class PostgresEventRepo(event_repo.EventRepo):
     _engine: pq_asyncio.AsyncEngine
+    _event_insert_conn: asyncpg.Connection
 
-    def __init__(self, engine: pq_asyncio.AsyncEngine):
+    def __init__(self, engine: pq_asyncio.AsyncEngine, insert_conn: asyncpg.Connection):
         self._engine = engine
+        self._event_insert_conn = insert_conn
+        asyncio.create_task(
+            _listen_for_inserts(self._event_insert_conn, self._after_insert_listener)
+        )
+        super().__init__()
+
+    def __del__(self):
+        self._event_insert_conn.terminate()
 
     @classmethod
     async def create(cls, host, port, user, password, database):
         engine = pq_asyncio.create_async_engine(
-            f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{database}"
+            f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{database}",
         )
 
         async with engine.begin() as conn:  # transaction
@@ -86,8 +119,16 @@ class PostgresEventRepo(event_repo.EventRepo):
             )
             await conn.run_sync(METADATA.create_all)
 
+        insert_conn = await asyncpg.connect(
+            host=host,
+            port=port,
+            user=user,
+            password=password,
+            database=database,
+        )
+
         logger.info("Database initialized")
-        return PostgresEventRepo(engine)
+        return PostgresEventRepo(engine, insert_conn)
 
     async def add(self, ev: event.SignedEvent) -> event.EventID:
         logger.debug([row[:2] for row in ev.tags])
@@ -218,3 +259,11 @@ class PostgresEventRepo(event_repo.EventRepo):
                 event.SignedEvent.from_dict(serialize.deserialize(row[7]))
                 for row in result
             ]
+
+    async def _after_insert_listener(
+        self, connection, pid, channel, payload
+    ):  # pylint: disable=unused-argument
+        logger.debug("Inserted new row with values: %s", payload)
+        await self._insert_event_handler.handle_event(
+            event.SignedEvent.from_dict(serialize.deserialize(payload))
+        )

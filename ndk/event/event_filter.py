@@ -56,7 +56,7 @@ class EventFilter:
         lst = self.__dict__[field_name]
         if len(lst) > 0:
             if not isinstance(lst[0], lst_val_type):
-                raise ValueError(f"{field_name} must be a list of lst_val_type")
+                raise ValueError(f"{field_name} must be a list of {lst_val_type}")
 
     def set_falsy_to_none(self, field_name):
         if self.__dict__[field_name] is not None and not self.__dict__[field_name]:

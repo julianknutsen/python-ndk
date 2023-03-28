@@ -1,0 +1,126 @@
+# Copyright 2023 Julian Knutsen
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of
+# this software and associated documentation files (the “Software”), to deal in
+# the Software without restriction, including without limitation the rights to use,
+# copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the
+# Software, and to permit persons to whom the Software is furnished to do so,
+# subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+# OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+# OTHER DEALINGS IN THE SOFTWARE.
+
+import asyncio
+
+import mock
+import pytest
+
+from ndk import crypto
+from ndk.event import event, metadata_event
+from relay import subscription_handler
+
+
+def test_init():
+    subscription_handler.SubscriptionHandler(asyncio.Queue())
+
+
+def test_clear_with_no_set_filter():
+    q = asyncio.Queue()
+    sh = subscription_handler.SubscriptionHandler(q)
+    with pytest.raises(ValueError):
+        sh.clear_filters("subid")
+
+
+async def test_no_output_with_no_filter():
+    q = asyncio.Queue()
+    sh = subscription_handler.SubscriptionHandler(q)
+
+    ev = mock.MagicMock()
+    await sh.handle_event(ev)
+    assert q.empty()
+
+
+async def test_no_output_with_wrong_filter():
+    q = asyncio.Queue()
+    sh = subscription_handler.SubscriptionHandler(q)
+
+    fltr = mock.MagicMock()
+    fltr.matches_event.return_value = False
+    sh.set_filters("subid", [fltr])
+
+    ev = mock.MagicMock()
+    await sh.handle_event(ev)
+    assert q.empty()
+
+
+async def test_output_with_matching_filter():
+    q = asyncio.Queue()
+    sh = subscription_handler.SubscriptionHandler(q)
+
+    fltr = mock.MagicMock()
+    fltr.matches_event.return_value = True
+    sh.set_filters("subid", [fltr])
+
+    keys = crypto.KeyPair()
+    unsigned = metadata_event.MetadataEvent.from_metadata_parts()
+    signed = event.build_signed_event(unsigned, keys)
+    await sh.handle_event(signed)
+    assert not q.empty()
+
+
+async def test_two_output_with_two_matching_filter():
+    q = asyncio.Queue()
+    sh = subscription_handler.SubscriptionHandler(q)
+
+    fltr = mock.MagicMock()
+    fltr.matches_event.return_value = True
+    sh.set_filters("subid", [fltr])
+    sh.set_filters("subid2", [fltr])
+
+    keys = crypto.KeyPair()
+    unsigned = metadata_event.MetadataEvent.from_metadata_parts()
+    signed = event.build_signed_event(unsigned, keys)
+    await sh.handle_event(signed)
+    assert q.qsize() == 2
+
+
+async def test_output_with_filter_overwrite():
+    q = asyncio.Queue()
+    sh = subscription_handler.SubscriptionHandler(q)
+
+    fltr = mock.MagicMock()
+    fltr.matches_event.return_value = True
+    sh.set_filters("subid", [fltr])
+
+    fltr2 = mock.MagicMock()
+    fltr2.matches_event.return_value = False
+    sh.set_filters("subid", [fltr2])
+
+    ev = mock.MagicMock()
+    await sh.handle_event(ev)
+    assert q.empty()
+
+
+async def test_no_output_with_matching_filter_after_clear():
+    q = asyncio.Queue()
+    sh = subscription_handler.SubscriptionHandler(q)
+
+    fltr = mock.MagicMock()
+    fltr.matches_event.return_value = True
+    sh.set_filters("subid", [fltr])
+    sh.clear_filters(
+        "subid",
+    )
+
+    ev = mock.MagicMock()
+    await sh.handle_event(ev)
+    assert q.empty()
