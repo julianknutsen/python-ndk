@@ -19,6 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import collections
 import dataclasses
 import typing
 
@@ -113,26 +114,26 @@ class EventFilter:
             return False
 
         if self.e_tags or self.p_tags and ev.tags:
-            ev_tags = {}
+            ev_tags = collections.defaultdict(list)
             for tag in ev.tags:
                 if not tag:
                     continue
 
                 if tag[0] == "e":
-                    ev_tags["e"] = tag[1]
+                    ev_tags["e"].append(tag[1])
                 elif tag[0] == "p":
-                    ev_tags["p"] = tag[1]
+                    ev_tags["p"].append(tag[1])
 
             if self.e_tags:
                 if "e" not in ev_tags:
                     return False
-                elif ev_tags["e"] not in self.e_tags:
+                elif not any(t in ev_tags["e"] for t in self.e_tags):
                     return False
 
             if self.p_tags:
                 if "p" not in ev_tags:
                     return False
-                elif ev_tags["p"] not in self.p_tags:
+                elif not any(t in ev_tags["p"] for t in self.p_tags):
                     return False
 
         if self.until and ev.created_at >= self.until:
