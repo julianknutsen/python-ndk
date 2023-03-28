@@ -21,7 +21,7 @@
 
 import logging
 
-from ndk.event import event
+from ndk.event import event, event_filter
 from ndk.messages import (
     close,
     command_result,
@@ -70,7 +70,9 @@ class MessageHandler:
         return []
 
     async def handle_request(self, msg: request.Request) -> list[str]:
-        fetched = await self._repo.get(msg.filter_list)
+        fetched = await self._repo.get(
+            [event_filter.EventFilter.from_dict(fltr) for fltr in msg.filter_list]
+        )
 
         return [create_relay_event(msg.sub_id, ev.__dict__) for ev in fetched] + [
             create_eose(msg.sub_id)

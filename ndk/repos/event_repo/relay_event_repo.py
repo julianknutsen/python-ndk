@@ -32,7 +32,7 @@ import logging
 import typing
 
 from ndk import crypto
-from ndk.event import event
+from ndk.event import event, event_filter
 from ndk.repos.event_repo import event_repo, protocol_handler
 
 SendFn = typing.Callable[[str], int]
@@ -67,7 +67,9 @@ class RelayEventRepo(event_repo.EventRepo):
         return event.EventID(result.event_id)
 
     async def get(self, ev_id: event.EventID) -> event.UnsignedEvent:
-        events = await self._protocol.query_events([{"ids": [ev_id]}])
+        events = await self._protocol.query_events(
+            [event_filter.EventFilter(ids=[ev_id])]
+        )
 
         if not events:
             raise event_repo.GetItemError("No event returned from query for {ev_id}")
@@ -85,12 +87,9 @@ class RelayEventRepo(event_repo.EventRepo):
         author: crypto.PublicKeyStr,
         limit: int = 0,
     ) -> typing.Sequence[event.UnsignedEvent]:
-        fltr = {
-            "kinds": [kind],
-            "authors": [author],
-        }
+        fltr = event_filter.EventFilter(kinds=[kind], authors=[author])
 
         if limit:
-            fltr["limit"] = limit
+            fltr.limit = limit
 
         return await self._protocol.query_events([fltr])

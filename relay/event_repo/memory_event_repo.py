@@ -19,7 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-from ndk.event import event
+from ndk.event import event, event_filter
 from relay.event_repo import event_repo
 
 
@@ -33,46 +33,16 @@ class MemoryEventRepo(event_repo.EventRepo):
         self._stored_events.append(ev)
         return ev.id
 
-    def _tag_matches(
-        self, ev: event.SignedEvent, match_tag: str, match_list: list[str]
-    ):
-        # event has no tags, so cant match filter
-        if ev.tags in [[], [[]]]:
-            return False
-
-        ev_tag_map = {}
-        for tag in ev.tags:
-            ev_tag_map[tag[0]] = tag[1]
-
-        # the current event doesn't reference a required tag
-        if match_tag not in ev_tag_map:
-            return False
-
-        if ev_tag_map[match_tag] not in match_list:
-            return False
-
-        return True
-
-    async def get(self, fltrs: list[dict]) -> list[event.SignedEvent]:
+    async def get(
+        self, fltrs: list[event_filter.EventFilter]
+    ) -> list[event.SignedEvent]:
         fetched: list[event.SignedEvent] = []
 
         for fltr in fltrs:
-            tmp = [
-                event
-                for event in self._stored_events
-                if ("ids" not in fltr or event.id in fltr["ids"])
-                and ("authors" not in fltr or event.pubkey in fltr["authors"])
-                and ("kinds" not in fltr or event.kind in fltr["kinds"])
-                and ("since" not in fltr or event.created_at > fltr["since"])
-                and ("until" not in fltr or event.created_at < fltr["until"])
-                and (
-                    "#e" not in fltr or self._tag_matches(event, "e", fltr["#e"])
-                )  # first item in each tag is used for match
-                and ("#p" not in fltr or self._tag_matches(event, "p", fltr["#p"]))
-            ]
+            tmp = [event for event in self._stored_events if fltr.matches_event(event)]
 
-            if "limit" in fltr:
-                tmp = tmp[-fltr["limit"] :]
+            if fltr.limit is not None:
+                tmp = tmp[-fltr.limit :]
 
             fetched.extend(tmp)
 

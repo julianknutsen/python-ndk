@@ -25,7 +25,7 @@ import asyncio
 import pytest
 
 from ndk import crypto, serialize
-from ndk.event import event, metadata_event
+from ndk.event import event, event_filter, metadata_event
 from ndk.messages import command_result, event_message
 from ndk.repos.event_repo import protocol_handler
 
@@ -113,7 +113,9 @@ async def test_event_received_before_query(read_queue, caplog):
 
 
 async def test_query_sends_correct_message(write_queue, protocol):
-    future_events = asyncio.create_task(protocol.query_events([{"kind": 0}]))
+    future_events = asyncio.create_task(
+        protocol.query_events([event_filter.EventFilter(kinds=[0])])
+    )
 
     # verify correct message was sent to server
     data = await write_queue.get()
@@ -127,7 +129,9 @@ async def test_query_sends_correct_message(write_queue, protocol):
 
 
 async def test_query_success_empty(read_queue, write_queue, protocol):
-    future_events = asyncio.create_task(protocol.query_events([{"kind": 0}]))
+    future_events = asyncio.create_task(
+        protocol.query_events([event_filter.EventFilter(kinds=[0])])
+    )
 
     data = await write_queue.get()
     write_queue.task_done()
@@ -141,7 +145,9 @@ async def test_query_success_empty(read_queue, write_queue, protocol):
 
 
 async def test_query_success(read_queue, write_queue, protocol, unsigned, signed):
-    future_events = asyncio.create_task(protocol.query_events([{"kind": 0}]))
+    future_events = asyncio.create_task(
+        protocol.query_events([event_filter.EventFilter(kinds=[0])])
+    )
 
     data = await write_queue.get()
     write_queue.task_done()

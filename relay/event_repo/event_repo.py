@@ -21,7 +21,7 @@
 
 import abc
 
-from ndk.event import event
+from ndk.event import event, event_filter
 
 
 class EventRepo(abc.ABC):
@@ -30,5 +30,7 @@ class EventRepo(abc.ABC):
         pass
 
     @abc.abstractmethod
-    async def get(self, fltrs: list[dict]) -> list[event.SignedEvent]:
+    async def get(
+        self, fltrs: list[event_filter.EventFilter]
+    ) -> list[event.SignedEvent]:
         pass
