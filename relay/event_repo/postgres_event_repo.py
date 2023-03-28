@@ -79,7 +79,11 @@ class PostgresEventRepo(event_repo.EventRepo):
         )
 
         async with engine.begin() as conn:  # transaction
-            await conn.run_sync(METADATA.drop_all)
+            await conn.run_sync(
+                METADATA.drop_all,
+                tables=[EVENT_TAGS_TABLE, TAGS_TABLE, EVENTS_TABLE],
+                checkfirst=True,
+            )
             await conn.run_sync(METADATA.create_all)
 
         logger.info("Database initialized")
