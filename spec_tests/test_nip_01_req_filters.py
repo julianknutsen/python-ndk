@@ -110,6 +110,25 @@ async def test_text_note_find_by_id(signed_event, request_queue, response_queue)
 
 
 @pytest.mark.usefixtures("ctx")
+async def test_text_note_two_inserts_one_result(
+    signed_event, request_queue, response_queue
+):
+    cmd_result1 = await send_and_expect_command_result(
+        signed_event, request_queue, response_queue
+    )
+    cmd_result2 = await send_and_expect_command_result(
+        signed_event, request_queue, response_queue
+    )
+    assert cmd_result1.event_id == cmd_result2.event_id
+
+    fltr = {"ids": [cmd_result1.event_id]}
+
+    await send_req_with_filter([fltr], request_queue)
+    await expect_text_note_event(response_queue)
+    await expect_eose(response_queue)
+
+
+@pytest.mark.usefixtures("ctx")
 async def test_text_note_find_by_author(request_queue, response_queue, signed_event):
     await send_and_expect_command_result(signed_event, request_queue, response_queue)
 
