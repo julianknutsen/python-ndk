@@ -25,7 +25,7 @@ import typing
 import uuid
 
 from ndk import exceptions
-from ndk.event import event, stored_events
+from ndk.event import event, event_filter, stored_events
 from ndk.messages import (
     close,
     command_result,
@@ -122,11 +122,11 @@ class ProtocolHandler:
         return await asyncio.wait_for(awaitable, timeout=10.0)
 
     async def query_events(
-        self, fltrs: list[dict]
+        self, fltrs: list[event_filter.EventFilter]
     ) -> typing.Sequence[event.UnsignedEvent]:
         logger.debug("query_events(%s)", fltrs)
         sub_id = str(uuid.uuid4())
-        req = request.Request(sub_id, fltrs)
+        req = request.Request(sub_id, [fltr.for_req() for fltr in fltrs])
 
         stored = stored_events.StoredEvents()
 

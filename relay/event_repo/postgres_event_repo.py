@@ -26,7 +26,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext import asyncio as pq_asyncio
 
 from ndk import serialize
-from ndk.event import event
+from ndk.event import event, event_filter
 from relay.event_repo import event_repo
 
 logger = logging.getLogger(__name__)
@@ -165,36 +165,38 @@ class PostgresEventRepo(event_repo.EventRepo):
 
         return EVENTS_TABLE.c.id.in_(subquery)
 
-    async def get(self, fltrs: list[dict]) -> list[event.SignedEvent]:
+    async def get(
+        self, fltrs: list[event_filter.EventFilter]
+    ) -> list[event.SignedEvent]:
         query = sqlalchemy.select(EVENTS_TABLE)
 
         queries = []
         limit = float("-inf")
         for f in fltrs:
             conditions = []
-            if "ids" in f:
-                conditions.append(EVENTS_TABLE.c.event_id.in_(f["ids"]))
+            if f.ids:
+                conditions.append(EVENTS_TABLE.c.event_id.in_(f.ids))
 
-            if "authors" in f:
-                conditions.append(EVENTS_TABLE.c.pubkey.in_(f["authors"]))
+            if f.authors:
+                conditions.append(EVENTS_TABLE.c.pubkey.in_(f.authors))
 
-            if "kinds" in f:
-                conditions.append(EVENTS_TABLE.c.kind.in_(f["kinds"]))
+            if f.kinds:
+                conditions.append(EVENTS_TABLE.c.kind.in_(f.kinds))
 
-            if "#e" in f:
-                conditions.append(self.tag_query_from("e", f["#e"]))
+            if f.e_tags:
+                conditions.append(self.tag_query_from("e", f.e_tags))
 
-            if "#p" in f:
-                conditions.append(self.tag_query_from("p", f["#p"]))
+            if f.p_tags:
+                conditions.append(self.tag_query_from("p", f.p_tags))
 
-            if "since" in f:
-                conditions.append(EVENTS_TABLE.c.created_at > f["since"])
+            if f.since:
+                conditions.append(EVENTS_TABLE.c.created_at > f.since)  # type: ignore[arg-type]
 
-            if "until" in f:
-                conditions.append(EVENTS_TABLE.c.created_at < f["until"])
+            if f.until:
+                conditions.append(EVENTS_TABLE.c.created_at < f.until)  # type: ignore[arg-type]
 
-            if "limit" in f:
-                limit = max(limit, f["limit"])
+            if f.limit:
+                limit = max(limit, f.limit)
 
             queries.append(sqlalchemy.and_(*conditions))
 

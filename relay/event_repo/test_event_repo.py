@@ -27,7 +27,7 @@ import mock
 import pytest
 
 from ndk import crypto
-from ndk.event import event, metadata_event, text_note_event
+from ndk.event import event, event_filter, metadata_event, text_note_event
 from relay.event_repo import memory_event_repo, postgres_event_repo
 
 
@@ -66,7 +66,7 @@ def signed(keys, unsigned):
 
 
 async def test_get_empty(repo):
-    items = await repo.get([{}])
+    items = await repo.get([event_filter.EventFilter()])
 
     assert len(items) == 0
 
@@ -74,7 +74,7 @@ async def test_get_empty(repo):
 async def test_get_matches_by_id(repo, signed):
     ev_id = await repo.add(signed)
 
-    items = await repo.get([{"ids": [ev_id]}])
+    items = await repo.get([event_filter.EventFilter(ids=[ev_id])])
 
     assert len(items) == 1
     assert items[0] == signed
@@ -83,7 +83,7 @@ async def test_get_matches_by_id(repo, signed):
 async def test_get_matches_by_author(repo, keys, signed):
     _ = await repo.add(signed)
 
-    items = await repo.get([{"authors": [keys.public]}])
+    items = await repo.get([event_filter.EventFilter(authors=[keys.public])])
 
     assert len(items) == 1
     assert items[0] == signed
@@ -92,7 +92,9 @@ async def test_get_matches_by_author(repo, keys, signed):
 async def test_get_matches_by_author_and_id(repo, keys, signed):
     ev_id = await repo.add(signed)
 
-    items = await repo.get([{"ids": [ev_id], "authors": [keys.public]}])
+    items = await repo.get(
+        [event_filter.EventFilter(ids=[ev_id], authors=[keys.public])]
+    )
 
     assert len(items) == 1
     assert items[0] == signed
@@ -111,7 +113,7 @@ async def test_get_matches_by_id_only_last(repo, keys):
     _ = await repo.add(signed1)
     _ = await repo.add(signed2)
 
-    items = await repo.get([{"authors": [keys.public], "limit": 1}])
+    items = await repo.get([event_filter.EventFilter(authors=[keys.public], limit=1)])
 
     assert len(items) == 1
     assert items[0] == signed2
@@ -120,7 +122,7 @@ async def test_get_matches_by_id_only_last(repo, keys):
 async def test_get_matches_by_id_limit_greater(repo, signed, keys):
     _ = await repo.add(signed)
 
-    items = await repo.get([{"authors": [keys.public], "limit": 2}])
+    items = await repo.get([event_filter.EventFilter(authors=[keys.public], limit=2)])
 
     assert len(items) == 1
     assert items[0] == signed
@@ -129,7 +131,9 @@ async def test_get_matches_by_id_limit_greater(repo, signed, keys):
 async def test_get_no_matches_by_etag(repo, signed, keys):
     _ = await repo.add(signed)
 
-    items = await repo.get([{"authors": [keys.public], "#e": [keys.public]}])
+    items = await repo.get(
+        [event_filter.EventFilter(authors=[keys.public], e_tags=[keys.public])]
+    )
 
     assert len(items) == 0
 
@@ -149,7 +153,9 @@ async def test_matches_by_etag(repo, keys):
 
     _ = await repo.add(signed)
 
-    items = await repo.get([{"authors": [keys.public], "#e": [keys.public]}])
+    items = await repo.get(
+        [event_filter.EventFilter(authors=[keys.public], e_tags=[keys.public])]
+    )
 
     assert len(items) == 1
 
@@ -159,8 +165,12 @@ async def test_matches_by_etag_event_has_multiple_tags(repo, keys):
 
     _ = await repo.add(signed)
 
-    items1 = await repo.get([{"authors": [keys.public], "#e": [keys.public]}])
-    items2 = await repo.get([{"authors": [keys.public], "#p": [keys.public]}])
+    items1 = await repo.get(
+        [event_filter.EventFilter(authors=[keys.public], e_tags=[keys.public])]
+    )
+    items2 = await repo.get(
+        [event_filter.EventFilter(authors=[keys.public], p_tags=[keys.public])]
+    )
 
     assert len(items1) == 1
     assert len(items2) == 1
@@ -171,7 +181,9 @@ async def test_get_no_matches_by_ptag(repo, keys):
 
     _ = await repo.add(signed)
 
-    items = await repo.get([{"authors": [keys.public], "#p": [keys.public]}])
+    items = await repo.get(
+        [event_filter.EventFilter(authors=[keys.public], p_tags=[keys.public])]
+    )
 
     assert len(items) == 0
 
@@ -181,7 +193,9 @@ async def test_matches_by_ptag(repo, keys):
 
     _ = await repo.add(signed)
 
-    items = await repo.get([{"authors": [keys.public], "#p": [keys.public]}])
+    items = await repo.get(
+        [event_filter.EventFilter(authors=[keys.public], p_tags=[keys.public])]
+    )
 
     assert len(items) == 1
 
@@ -195,7 +209,11 @@ async def test_matches_by_ptags(repo, keys):
     _ = await repo.add(signed2)
 
     items = await repo.get(
-        [{"authors": [keys.public], "#p": [keys.public, keys2.public]}]
+        [
+            event_filter.EventFilter(
+                authors=[keys.public], p_tags=[keys.public, keys2.public]
+            )
+        ]
     )
 
     assert len(items) == 2
@@ -209,6 +227,11 @@ async def test_matches_multiple_filters_or(repo, keys):
     _ = await repo.add(signed)
     _ = await repo.add(signed2)
 
-    items = await repo.get([{"authors": [keys.public]}, {"authors": [keys2.public]}])
+    items = await repo.get(
+        [
+            event_filter.EventFilter(authors=[keys.public]),
+            event_filter.EventFilter(authors=[keys2.public]),
+        ]
+    )
 
     assert len(items) == 2
