@@ -522,15 +522,23 @@ async def test_text_note_receive_two_events_from_two_subs(
         event_message.Event.from_signed_event(signed_event).serialize()
     )
 
-    # due to the ordering of the db commit, the sub response will arrive
-    # before the command result
-    msg = await expect_relay_event(response_queue)
-    assert msg.sub_id == "1"
+    # due to the ordering of the db commit cb, the sub response may
+    # arrive before the command result
+    msgs = []
+    msgs.append(message_factory.from_str(await response_queue.get()))
+    msgs.append(message_factory.from_str(await response_queue.get()))
+    msgs.append(message_factory.from_str(await response_queue.get()))
 
-    msg = await expect_relay_event(response_queue)
-    assert msg.sub_id == "2"
-
-    await expect_successful_command_result(response_queue)
+    remaining_cmd_result = 1
+    remaining_relay_event_subs = set(["1", "2"])
+    for msg in msgs:
+        assert remaining_cmd_result > 0
+        if isinstance(msg, command_result.CommandResult):
+            assert remaining_cmd_result > 0
+            remaining_cmd_result -= 1
+        else:
+            assert isinstance(msg, relay_event.RelayEvent)
+            remaining_relay_event_subs.remove(msg.sub_id)
 
 
 @pytest.mark.parametrize(
