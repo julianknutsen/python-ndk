@@ -30,46 +30,37 @@ from ndk.messages import (
     relay_event,
     request,
 )
-from relay import subscription_handler
+from relay import event_handler, subscription_handler
 from relay.event_repo import event_repo
 
 logger = logging.getLogger(__name__)
 
 
-def create_cmd_result(ev_id: str, accepted: bool, msg: str) -> str:
-    return command_result.CommandResult(ev_id, accepted, msg).serialize()
-
-
-def create_relay_event(sub_id: str, ev_dict: dict) -> str:
-    return relay_event.RelayEvent(sub_id, ev_dict).serialize()
-
-
-def create_eose(sub_id: str) -> str:
-    return eose.EndOfStoredEvents(sub_id).serialize()
-
-
 class MessageHandler:
     _repo: event_repo.EventRepo
     _subscription_handler: subscription_handler.SubscriptionHandler
+    _event_handler: event_handler.EventHandler
 
     def __init__(
-        self, repo: event_repo.EventRepo, sh: subscription_handler.SubscriptionHandler
+        self,
+        repo: event_repo.EventRepo,
+        sh: subscription_handler.SubscriptionHandler,
+        eh: event_handler.EventHandler,
     ):
         self._repo = repo
         self._subscription_handler = sh
+        self._event_handler = eh
 
     async def handle_event_message(self, msg: event_message.Event) -> list[str]:
         try:
             signed_ev = event.SignedEvent.from_dict(msg.event_dict)
-
-            await self._repo.add(signed_ev)
-
-            return [create_cmd_result(signed_ev.id, True, "")]
+            await self._event_handler.handle_event(signed_ev)
+            return [command_result.CommandResult(signed_ev.id, True, "").serialize()]
         except event.ValidationError:
             text = f"Event validation failed: {msg}"
             logger.debug(text, exc_info=True)
             ev_id = msg.event_dict["id"]  # guaranteed if passed Type check above
-            return [create_cmd_result(ev_id, False, text)]
+            return [command_result.CommandResult(ev_id, False, text).serialize()]
 
     async def handle_close(self, msg: close.Close) -> list[str]:
         self._subscription_handler.clear_filters(msg.sub_id)
@@ -80,6 +71,7 @@ class MessageHandler:
         fetched = await self._repo.get(fltrs)
         self._subscription_handler.set_filters(msg.sub_id, fltrs)
 
-        return [create_relay_event(msg.sub_id, ev.__dict__) for ev in fetched] + [
-            create_eose(msg.sub_id)
-        ]
+        return [
+            relay_event.RelayEvent(msg.sub_id, ev.__dict__).serialize()
+            for ev in fetched
+        ] + [eose.EndOfStoredEvents(msg.sub_id).serialize()]

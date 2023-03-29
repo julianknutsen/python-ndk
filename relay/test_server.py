@@ -24,7 +24,13 @@ import asyncio
 from ndk import crypto
 from ndk.event import event, metadata_event
 from ndk.repos.event_repo import protocol_handler, relay_event_repo
-from relay import message_dispatcher, message_handler, server, subscription_handler
+from relay import (
+    event_handler,
+    message_dispatcher,
+    message_handler,
+    server,
+    subscription_handler,
+)
 from relay.event_repo import memory_event_repo
 
 
@@ -33,7 +39,8 @@ async def test_init():
     wq = asyncio.Queue()
     sh = subscription_handler.SubscriptionHandler(wq)
     repo = memory_event_repo.MemoryEventRepo()
-    mh = message_handler.MessageHandler(repo, sh)
+    eh = event_handler.EventHandler(repo)
+    mh = message_handler.MessageHandler(repo, sh, eh)
     mb = message_dispatcher.MessageDispatcher(mh)
     handler_task = asyncio.create_task(server.connection_handler(rq, wq, mb))
 

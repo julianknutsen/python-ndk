@@ -22,55 +22,58 @@
 import mock
 import pytest
 
+from ndk.event import event, metadata_event
 from relay import event_handler
+from relay.event_repo import memory_event_repo
 
 
 def test_init():
-    event_handler.EventHandler()
+    repo = mock.AsyncMock()
+    event_handler.EventHandler(repo)
 
 
-async def test_register_callback_is_called():
-    h = event_handler.EventHandler()
+async def test_handle_event_metadata_saves():
+    repo = mock.AsyncMock()
+    eh = event_handler.EventHandler(repo)
 
-    cb = mock.AsyncMock(spec=event_handler.EventHandlerCb)
-    h.register(cb)
+    ev = mock.MagicMock(type=metadata_event.MetadataEvent)
+    await eh.handle_event(ev)
 
-    ev = mock.AsyncMock()
-    await h.handle_event(ev)
-    assert cb.called
-
-
-async def test_register_callback_twice_both_called():
-    h = event_handler.EventHandler()
-
-    cb = mock.AsyncMock(spec=event_handler.EventHandlerCb)
-    cb2 = mock.AsyncMock(spec=event_handler.EventHandlerCb)
-    h.register(cb)
-    h.register(cb2)
-
-    ev = mock.AsyncMock()
-    await h.handle_event(ev)
-    assert cb.called
-    assert cb2.called
+    repo.add.assert_called_once_with(ev)
 
 
-async def test_register_callback_is_not_called_after_unregister():
-    h = event_handler.EventHandler()
+async def test_handle_event_text_note_saves():
+    repo = mock.AsyncMock()
+    eh = event_handler.EventHandler(repo)
 
-    cb = mock.AsyncMock(spec=event_handler.EventHandlerCb)
-    cb_id = h.register(cb)
+    ev = mock.MagicMock()
+    await eh.handle_event(ev)
 
-    ev = mock.AsyncMock()
-    await h.handle_event(ev)
-    cb.assert_called_once_with(ev)
-
-    cb.reset_mock()
-    h.unregister(cb_id)
-    await h.handle_event(ev)
-    cb.assert_not_called()
+    repo.add.assert_called_once_with(ev)
 
 
-async def test_unregister_with_bad_cbid_raises():
-    h = event_handler.EventHandler()
-    with pytest.raises(ValueError):
-        h.unregister(event_handler.EventHandlerCbId("unknown cb id"))
+async def test_handle_contact_list_saves():
+    repo = mock.AsyncMock()
+    eh = event_handler.EventHandler(repo)
+
+    ev = mock.MagicMock()
+    await eh.handle_event(ev)
+
+    repo.add.assert_called_once_with(ev)
+
+
+@pytest.mark.parametrize(
+    "kind", [event.EventKind.CONTACT_LIST, event.EventKind.SET_METADATA]
+)
+async def test_handle_contact_list_deletes_old(kind):
+    repo = mock.AsyncMock(wraps=memory_event_repo.MemoryEventRepo())
+    eh = event_handler.EventHandler(repo)
+
+    ev_old = mock.MagicMock(kind=kind, pubkey="pubkey", created_at=1)
+    await eh.handle_event(ev_old)
+
+    ev_new = mock.MagicMock(kind=kind, pubkey="pubkey", created_at=2)
+    await eh.handle_event(ev_new)
+
+    repo.add.assert_has_calls([mock.call(ev_old), mock.call(ev_new)])
+    repo.remove.assert_called_once_with(ev_old.id)

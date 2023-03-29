@@ -25,23 +25,34 @@ import pytest
 
 from ndk.event import event, event_filter
 from ndk.messages import close, command_result, event_message, message_factory, request
-from relay import message_handler
+from relay import event_handler, message_handler, subscription_handler
 from relay.event_repo import memory_event_repo
 
 
 @pytest.fixture
-def sh_mock():
-    return mock.AsyncMock()
+def repo():
+    return memory_event_repo.MemoryEventRepo()
 
 
 @pytest.fixture
-def mh(sh_mock):
-    repo = memory_event_repo.MemoryEventRepo()
+def sh_mock():
+    return mock.AsyncMock(
+        wraps=subscription_handler.SubscriptionHandler(mock.MagicMock())
+    )
+
+
+@pytest.fixture
+def eh_mock(repo):
+    return mock.AsyncMock(wraps=event_handler.EventHandler(repo))
+
+
+@pytest.fixture
+def mh(repo, sh_mock, eh_mock):
     repo.register_insert_cb(sh_mock.handle_event)
-    yield message_handler.MessageHandler(repo, sh_mock)
+    yield message_handler.MessageHandler(repo, sh_mock, eh_mock)
 
 
-async def test_event_validation_failure(mh):
+async def test_event_validation_failure_returns_command_result_false(mh):
     def raise_validation_error():
         raise event.ValidationError("Failed validation")
 
@@ -57,7 +68,7 @@ async def test_event_validation_failure(mh):
         assert not response_msg.accepted
 
 
-async def test_accepted_event(mh):
+async def test_accepted_returns_command_result_true(mh):
     mocked = mock.MagicMock()
     mocked.id = "1"
 
@@ -71,6 +82,18 @@ async def test_accepted_event(mh):
 
         assert isinstance(response_msg, command_result.CommandResult)
         assert response_msg.accepted
+
+
+async def test_accepted_calls_event_handler(mh, eh_mock):
+    mocked = mock.MagicMock()
+    mocked.id = "1"
+
+    with mock.patch.object(
+        event.SignedEvent, "from_dict", lambda self, **kwargs: mocked
+    ):
+        await mh.handle_event_message(event_message.Event({"id": "1"}))
+
+    eh_mock.handle_event.assert_called_with(mocked)
 
 
 async def test_req_sets_filter(mh, sh_mock):
@@ -98,7 +121,9 @@ async def test_new_req_overwrites_filter(mh, sh_mock):
     )
 
 
-async def test_accepted_calls_subscription_handler(mh, sh_mock):
+async def test_accepted_calls_subscription_handler(mh, sh_mock, repo):
+    repo.register_insert_cb(sh_mock.handle_event)
+
     mocked = mock.AsyncMock()
     mocked.id = "1"
     with mock.patch.object(

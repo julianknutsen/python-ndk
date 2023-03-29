@@ -19,37 +19,31 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-import abc
+import typing
+import uuid
 
-from ndk.event import event, event_filter
-from relay.event_repo import event_notifier
+from ndk.event import event
+
+EventNotifierCbId = typing.NewType("EventNotifierCbId", str)
+EventNotifierCb = typing.Callable[[event.SignedEvent], typing.Awaitable]
 
 
-class EventRepo(abc.ABC):
-    _insert_event_handler: event_notifier.EventNotifier
+class EventNotifier:
+    _cbs: dict[EventNotifierCbId, EventNotifierCb]
 
-    def __init__(self) -> None:
-        self._insert_event_handler = event_notifier.EventNotifier()
-        super().__init__()
+    def __init__(self):
+        self._cbs = {}
 
-    @abc.abstractmethod
-    async def add(self, ev: event.SignedEvent) -> event.EventID:
-        pass
+    def register(self, cb: EventNotifierCb) -> EventNotifierCbId:
+        cb_id = EventNotifierCbId(str(uuid.uuid4()))
+        self._cbs[cb_id] = cb
+        return cb_id
 
-    @abc.abstractmethod
-    async def get(
-        self, fltrs: list[event_filter.EventFilter]
-    ) -> list[event.SignedEvent]:
-        pass
+    def unregister(self, cb_id: EventNotifierCbId):
+        if cb_id not in self._cbs:
+            raise ValueError(f"Unknown callback id {cb_id}")
+        del self._cbs[cb_id]
 
-    @abc.abstractmethod
-    async def remove(self, event_id: event.EventID):
-        pass
-
-    def register_insert_cb(
-        self, cb: event_notifier.EventNotifierCb
-    ) -> event_notifier.EventNotifierCbId:
-        return self._insert_event_handler.register(cb)
-
-    def unregister_insert_cb(self, cb_id: event_notifier.EventNotifierCbId):
-        self._insert_event_handler.unregister(cb_id)
+    async def handle_event(self, ev: event.SignedEvent):
+        for cb in self._cbs.values():
+            await cb(ev)

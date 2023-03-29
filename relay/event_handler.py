@@ -19,31 +19,22 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-import typing
-import uuid
-
-from ndk.event import event
-
-EventHandlerCbId = typing.NewType("EventHandlerCbId", str)
-EventHandlerCb = typing.Callable[[event.SignedEvent], typing.Awaitable]
+from ndk.event import event, event_filter
+from relay.event_repo import event_repo
 
 
 class EventHandler:
-    _cbs: dict[EventHandlerCbId, EventHandlerCb]
+    _repo: event_repo.EventRepo
 
-    def __init__(self):
-        self._cbs = {}
-
-    def register(self, cb: EventHandlerCb) -> EventHandlerCbId:
-        cb_id = EventHandlerCbId(str(uuid.uuid4()))
-        self._cbs[cb_id] = cb
-        return cb_id
-
-    def unregister(self, cb_id: EventHandlerCbId):
-        if cb_id not in self._cbs:
-            raise ValueError(f"Unknown callback id {cb_id}")
-        del self._cbs[cb_id]
+    def __init__(self, repo: event_repo.EventRepo):
+        self._repo = repo
 
     async def handle_event(self, ev: event.SignedEvent):
-        for cb in self._cbs.values():
-            await cb(ev)
+        await self._repo.add(ev)
+
+        if ev.kind in [event.EventKind.SET_METADATA, event.EventKind.CONTACT_LIST]:
+            existing_evs = await self._repo.get(
+                [event_filter.EventFilter(authors=[ev.pubkey], kinds=[ev.kind])]
+            )
+            for e in existing_evs[1:]:  # first entry (latest) is the one we just added
+                await self._repo.remove(e.id)

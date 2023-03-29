@@ -283,3 +283,15 @@ async def test_insert_callback_after_unregister(repo, keys):
     await repo.add(build_signed_text_note(keys))
 
     cb.assert_not_called()
+
+
+async def test_delete_with_no_entry_raises(repo):
+    with pytest.raises(ValueError):
+        await repo.remove("foo")
+
+
+async def test_delete_deletes(repo, signed):
+    ev_id = await repo.add(signed)
+    await repo.remove(ev_id)
+    events = await repo.get([event_filter.EventFilter(ids=[ev_id])])
+    assert len(events) == 0
