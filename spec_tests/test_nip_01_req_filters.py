@@ -495,10 +495,14 @@ async def test_text_note_receive_event_from_sub(
         event_message.Event.from_signed_event(signed_event).serialize()
     )
 
-    # due to the ordering of the db commit, the sub response will arrive
+    # due to the ordering of the db commit cb, the sub response may arrive
     # before the command result
-    await expect_text_note_event(response_queue)
-    await expect_successful_command_result(response_queue)
+
+    msg = message_factory.from_str(await response_queue.get())
+    if isinstance(msg, command_result.CommandResult):
+        await expect_text_note_event(response_queue)
+    else:
+        await expect_successful_command_result(response_queue)
 
 
 @pytest.mark.usefixtures("ctx")
