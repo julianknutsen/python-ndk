@@ -91,10 +91,28 @@ async def test_duplicate_insert_one_result(repo, signed):
     assert items[0] == signed
 
 
+async def test_get_matches_by_id_prefix(repo, signed):
+    ev_id = await repo.add(signed)
+
+    items = await repo.get([event_filter.EventFilter(ids=[ev_id[0]])])
+
+    assert len(items) == 1
+    assert items[0] == signed
+
+
 async def test_get_matches_by_author(repo, keys, signed):
     _ = await repo.add(signed)
 
     items = await repo.get([event_filter.EventFilter(authors=[keys.public])])
+
+    assert len(items) == 1
+    assert items[0] == signed
+
+
+async def test_get_matches_by_author_prefix(repo, keys, signed):
+    _ = await repo.add(signed)
+
+    items = await repo.get([event_filter.EventFilter(authors=[keys.public[:3]])])
 
     assert len(items) == 1
     assert items[0] == signed

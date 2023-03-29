@@ -220,10 +220,30 @@ class PostgresEventRepo(event_repo.EventRepo):
         for f in fltrs:
             conditions = []
             if f.ids:
-                conditions.append(EVENTS_TABLE.c.event_id.in_(f.ids))
+                conditions.append(
+                    sqlalchemy.or_(
+                        EVENTS_TABLE.c.event_id.in_(f.ids),
+                        sqlalchemy.or_(
+                            *[
+                                EVENTS_TABLE.c.event_id.startswith(prefix)
+                                for prefix in f.ids
+                            ]
+                        ),
+                    )
+                )
 
             if f.authors:
-                conditions.append(EVENTS_TABLE.c.pubkey.in_(f.authors))
+                conditions.append(
+                    sqlalchemy.or_(
+                        EVENTS_TABLE.c.pubkey.in_(f.authors),
+                        sqlalchemy.or_(
+                            *[
+                                EVENTS_TABLE.c.pubkey.startswith(prefix)
+                                for prefix in f.authors
+                            ]
+                        ),
+                    )
+                )
 
             if f.kinds:
                 conditions.append(EVENTS_TABLE.c.kind.in_(f.kinds))
