@@ -29,7 +29,12 @@ import signal
 from websockets.legacy.server import serve
 
 from ndk.repos.event_repo import protocol_handler
-from relay import message_dispatcher, message_handler, subscription_handler
+from relay import (
+    event_handler,
+    message_dispatcher,
+    message_handler,
+    subscription_handler,
+)
 from relay.event_repo import event_repo, memory_event_repo, postgres_event_repo
 
 logger = logging.getLogger(__name__)
@@ -68,7 +73,8 @@ async def handler_wrapper(repo: event_repo.EventRepo, websocket):
     response_queue: asyncio.Queue[str] = asyncio.Queue()
 
     sh = subscription_handler.SubscriptionHandler(response_queue)
-    mh = message_handler.MessageHandler(repo, sh)
+    eh = event_handler.EventHandler(repo)
+    mh = message_handler.MessageHandler(repo, sh, eh)
     md = message_dispatcher.MessageDispatcher(mh)
     repo.register_insert_cb(sh.handle_event)
 

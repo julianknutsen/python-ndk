@@ -11,3 +11,5 @@ poetry.lock
 cov.xml
 test-results.xml
 relay/deploy/overlays/staging/secrets.yaml
+.vscode/
+scripts/check-merged*

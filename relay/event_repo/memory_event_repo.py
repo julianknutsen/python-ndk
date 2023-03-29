@@ -24,7 +24,7 @@ from relay.event_repo import event_repo
 
 
 class MemoryEventRepo(event_repo.EventRepo):
-    _stored_events: dict[str, event.SignedEvent]
+    _stored_events: dict[event.EventID, event.SignedEvent]
 
     def __init__(self):
         self._stored_events = {}
@@ -52,4 +52,9 @@ class MemoryEventRepo(event_repo.EventRepo):
 
             fetched.extend(tmp)
 
-        return fetched
+        return sorted(fetched, key=lambda ev: ev.created_at, reverse=True)
+
+    async def remove(self, event_id: event.EventID):
+        if event_id not in self._stored_events:
+            raise ValueError(f"Event {event_id} not found")
+        del self._stored_events[event_id]

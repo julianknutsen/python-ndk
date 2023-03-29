@@ -280,6 +280,22 @@ class PostgresEventRepo(event_repo.EventRepo):
                 for row in result
             ]
 
+    async def remove(self, event_id: event.EventID):
+        async with self._engine.begin() as conn:
+            select_stmt = sqlalchemy.select(EVENTS_TABLE).where(
+                EVENTS_TABLE.c.event_id == event_id
+            )
+
+            existing_ev = (await conn.execute(select_stmt)).fetchone()
+
+            if not existing_ev:
+                raise ValueError(f"Event {event_id} does not exist")
+
+            delete_stmt = EVENTS_TABLE.delete().where(
+                EVENTS_TABLE.c.event_id == event_id
+            )
+            await conn.execute(delete_stmt)
+
     async def _after_insert_listener(
         self, connection, pid, channel, payload
     ):  # pylint: disable=unused-argument
