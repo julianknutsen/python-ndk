@@ -54,9 +54,7 @@ class UnsignedEvent:
     kind: EventKind = EventKind.INVALID
     tags: EventTags = dataclasses.field(default_factory=lambda: EventTags([[]]))
     content: str = ""
-
-    def __post_init__(self):
-        pass
+    skip_validate: dataclasses.InitVar[bool] = False
 
     @classmethod
     def from_signed_event(cls, ev: "SignedEvent"):
@@ -78,14 +76,28 @@ class SignedEvent(UnsignedEvent):
         tags: EventTags,
         content: str,
         sig: crypto.SchnorrSigStr,
+        skip_validate: bool = False,
     ):
         self.id = id
         self.pubkey = pubkey
         self.sig = sig
 
-        super().__init__(created_at=created_at, kind=kind, tags=tags, content=content)
+        super().__init__(
+            created_at=created_at,
+            kind=kind,
+            tags=tags,
+            content=content,
+            skip_validate=skip_validate,
+        )
 
-    def __post_init__(self):
+        if not skip_validate:
+            self.validate()
+
+    def validate(self):
+        if self.kind == EventKind.INVALID:
+            raise ValidationError("Invalid event kind {self.kind}")
+
+
         payload = serialize.serialize_as_bytes(
             [0, self.pubkey, self.created_at, self.kind, self.tags, self.content]
         )
@@ -111,6 +123,7 @@ class SignedEvent(UnsignedEvent):
         required = set(cls.__annotations__.keys())
         for base_cls in cls.__bases__:
             required.update(base_cls.__annotations__)
+        required.remove("skip_validate")
         actual = set(fields.keys())
         if not required == actual:
             raise exceptions.ParseError(
@@ -118,6 +131,10 @@ class SignedEvent(UnsignedEvent):
             )
 
         return cls(**fields)
+
+    @classmethod
+    def from_validated_dict(cls, fields: dict):
+        return cls(**fields, skip_validate=True)
 
 
 def build_signed_event(ev: UnsignedEvent, keys: crypto.KeyPair) -> SignedEvent:

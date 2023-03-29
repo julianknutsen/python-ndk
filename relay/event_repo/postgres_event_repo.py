@@ -284,7 +284,7 @@ class PostgresEventRepo(event_repo.EventRepo):
             result = (await conn.execute(final)).fetchall()
 
             return [
-                event.SignedEvent.from_dict(serialize.deserialize(row[7]))
+                event.SignedEvent.from_validated_dict(serialize.deserialize(row[7]))
                 for row in result
             ]
 
@@ -307,6 +307,7 @@ class PostgresEventRepo(event_repo.EventRepo):
     async def _after_insert_listener(
         self, connection, pid, channel, payload
     ):  # pylint: disable=unused-argument
+        # since this came from the db, it already passed validation so we can optimize
         await self._insert_event_handler.handle_event(
-            event.SignedEvent.from_dict(serialize.deserialize(payload))
+            event.SignedEvent.from_validated_dict(serialize.deserialize(payload))
         )
