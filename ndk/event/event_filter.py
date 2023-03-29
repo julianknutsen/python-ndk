@@ -104,10 +104,10 @@ class EventFilter:
         return d
 
     def matches_event(self, ev: event.SignedEvent) -> bool:
-        if self.ids and ev.id not in self.ids:
+        if self.ids and not any(ev.id.startswith(x) for x in self.ids):
             return False
 
-        if self.authors and ev.pubkey not in self.authors:
+        if self.authors and not any(ev.pubkey.startswith(x) for x in self.authors):
             return False
 
         if self.kinds and ev.kind not in self.kinds:
