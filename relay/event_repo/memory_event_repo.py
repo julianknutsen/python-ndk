@@ -24,14 +24,14 @@ from relay.event_repo import event_repo
 
 
 class MemoryEventRepo(event_repo.EventRepo):
-    _stored_events: list[event.SignedEvent]
+    _stored_events: dict[str, event.SignedEvent]
 
     def __init__(self):
-        self._stored_events = []
+        self._stored_events = {}
         super().__init__()
 
     async def add(self, ev: event.SignedEvent) -> event.EventID:
-        self._stored_events.append(ev)
+        self._stored_events[ev.id] = ev
         await self._insert_event_handler.handle_event(ev)
         return ev.id
 
@@ -41,7 +41,11 @@ class MemoryEventRepo(event_repo.EventRepo):
         fetched: list[event.SignedEvent] = []
 
         for fltr in fltrs:
-            tmp = [event for event in self._stored_events if fltr.matches_event(event)]
+            tmp = [
+                event
+                for event in self._stored_events.values()
+                if fltr.matches_event(event)
+            ]
 
             if fltr.limit is not None:
                 tmp = tmp[-fltr.limit :]

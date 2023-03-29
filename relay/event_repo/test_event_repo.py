@@ -80,6 +80,17 @@ async def test_get_matches_by_id(repo, signed):
     assert items[0] == signed
 
 
+async def test_duplicate_insert_one_result(repo, signed):
+    ev_id1 = await repo.add(signed)
+    ev_id2 = await repo.add(signed)
+    assert ev_id1 == ev_id2
+
+    items = await repo.get([event_filter.EventFilter(ids=[ev_id1])])
+
+    assert len(items) == 1
+    assert items[0] == signed
+
+
 async def test_get_matches_by_author(repo, keys, signed):
     _ = await repo.add(signed)
 
