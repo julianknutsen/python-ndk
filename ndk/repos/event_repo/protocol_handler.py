@@ -124,7 +124,7 @@ class ProtocolHandler:
     async def query_events(
         self, fltrs: list[event_filter.EventFilter]
     ) -> typing.Sequence[event.UnsignedEvent]:
-        logger.debug("query_events(%s)", fltrs)
+        # logger.debug("query_events(%s)", fltrs)
         sub_id = str(uuid.uuid4())
         req = request.Request(sub_id, [fltr.for_req() for fltr in fltrs])
 

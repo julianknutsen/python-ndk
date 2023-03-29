@@ -189,6 +189,18 @@ async def test_matches_by_etag(repo, keys):
     assert len(items) == 1
 
 
+async def test_matches_by_etag_duplicated(repo, keys):
+    signed = build_signed_text_note(keys, [["e", keys.public], ["e", keys.public]])
+
+    _ = await repo.add(signed)
+
+    items = await repo.get(
+        [event_filter.EventFilter(authors=[keys.public], e_tags=[keys.public])]
+    )
+
+    assert len(items) == 1
+
+
 async def test_matches_by_etag_event_has_multiple_tags(repo, keys):
     signed = build_signed_text_note(keys, [["e", keys.public], ["p", keys.public]])
 

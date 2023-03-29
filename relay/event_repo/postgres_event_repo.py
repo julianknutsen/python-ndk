@@ -131,7 +131,6 @@ class PostgresEventRepo(event_repo.EventRepo):
         return PostgresEventRepo(engine, insert_conn)
 
     async def add(self, ev: event.SignedEvent) -> event.EventID:
-        logger.debug([row[:2] for row in ev.tags])
         async with self._engine.begin() as conn:
             # if it is already in the db, do nothing
             select_stmt = sqlalchemy.select(EVENTS_TABLE).where(
@@ -179,12 +178,21 @@ class PostgresEventRepo(event_repo.EventRepo):
                         0
                     ]
 
-                # Insert the event_tag relationship
-                tag_event_insert_stmt = sqlalchemy.insert(EVENT_TAGS_TABLE).values(
-                    event_id=event_id,
-                    tag_id=tag_id,
+                # Insert the event_tag relationship, if it doesn't exist
+                event_tag_select_stmt = sqlalchemy.select(EVENT_TAGS_TABLE).where(
+                    (EVENT_TAGS_TABLE.c.tag_id == tag_id)
+                    & (EVENT_TAGS_TABLE.c.event_id == event_id)
                 )
-                await conn.execute(tag_event_insert_stmt)
+
+                existing_tag_event = (
+                    await conn.execute(event_tag_select_stmt)
+                ).fetchone()
+                if not existing_tag_event:
+                    tag_event_insert_stmt = sqlalchemy.insert(EVENT_TAGS_TABLE).values(
+                        event_id=event_id,
+                        tag_id=tag_id,
+                    )
+                    await conn.execute(tag_event_insert_stmt)
 
             await conn.commit()
             return ev.id
@@ -270,7 +278,7 @@ class PostgresEventRepo(event_repo.EventRepo):
         )
         if limit != float("-inf"):
             final = final.limit(int(limit))
-        logger.debug(final.compile(dialect=self._engine.dialect).string)
+        # logger.debug(final.compile(dialect=self._engine.dialect).string)
 
         async with self._engine.connect() as conn:
             result = (await conn.execute(final)).fetchall()
@@ -299,7 +307,6 @@ class PostgresEventRepo(event_repo.EventRepo):
     async def _after_insert_listener(
         self, connection, pid, channel, payload
     ):  # pylint: disable=unused-argument
-        logger.debug("Inserted new row with values: %s", payload)
         await self._insert_event_handler.handle_event(
             event.SignedEvent.from_dict(serialize.deserialize(payload))
         )
