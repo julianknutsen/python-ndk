@@ -62,7 +62,11 @@ async def connection_handler(
     while True:
         data = await read_queue.get()
         read_queue.task_done()
-        responses = await md.process_message(data)
+        try:
+            responses = await md.process_message(data)
+        except:  # pylint: disable=bare-except
+            logger.exception("Error processing message: %s", data)
+            continue
         for response in responses:
             await write_queue.put(response)
 
