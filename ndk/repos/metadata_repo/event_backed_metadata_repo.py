@@ -64,7 +64,6 @@ class EventBackedMetadataRepo(metadata_repo.MetadataRepo):
         return True
 
     async def get(self, pubkey: crypto.PublicKeyStr) -> dict[str, object]:
-        logger.debug("get(%s)", pubkey)
         metadata = {}
         mev = await self._event_repo.get_latest_by_author(
             event.EventKind.SET_METADATA, pubkey
