@@ -23,7 +23,7 @@
 import pytest
 
 from ndk import crypto, exceptions
-from ndk.event import event
+from ndk.event import event, metadata_event
 
 
 def test_signed_event_from_dict_bad_input():
@@ -33,7 +33,7 @@ def test_signed_event_from_dict_bad_input():
 
 def test_signed_event_from_dict_bad_sig():
     keys = crypto.KeyPair()
-    unsigned = event.UnsignedEvent()
+    unsigned = metadata_event.MetadataEvent.from_metadata_parts()
     signed = event.build_signed_event(unsigned, keys)
 
     base_dict = signed.__dict__
@@ -46,7 +46,7 @@ def test_signed_event_from_dict_bad_sig():
 def test_signed_event_from_dict_wrong_sig():
     keys = crypto.KeyPair()
     keys2 = crypto.KeyPair()
-    unsigned = event.UnsignedEvent()
+    unsigned = metadata_event.MetadataEvent.from_metadata_parts()
     signed = event.build_signed_event(unsigned, keys)
     signed2 = event.build_signed_event(unsigned, keys2)
 
@@ -60,7 +60,7 @@ def test_signed_event_from_dict_wrong_sig():
 def test_signed_event_from_dict_wrong_id():
     keys = crypto.KeyPair()
     keys2 = crypto.KeyPair()
-    unsigned = event.UnsignedEvent()
+    unsigned = metadata_event.MetadataEvent.from_metadata_parts()
     signed = event.build_signed_event(unsigned, keys)
     signed2 = event.build_signed_event(unsigned, keys2)
 
@@ -73,7 +73,7 @@ def test_signed_event_from_dict_wrong_id():
 
 def test_signed_event_from_dict_ok():
     keys = crypto.KeyPair()
-    unsigned = event.UnsignedEvent()
+    unsigned = metadata_event.MetadataEvent.from_metadata_parts()
     signed = event.build_signed_event(unsigned, keys)
 
     event.SignedEvent.from_dict(signed.__dict__)
@@ -81,9 +81,9 @@ def test_signed_event_from_dict_ok():
 
 def test_unsigned_from_signed():
     keys = crypto.KeyPair()
-    unsigned = event.UnsignedEvent()
+    unsigned = metadata_event.MetadataEvent.from_metadata_parts()
     signed = event.build_signed_event(unsigned, keys)
 
-    unsigned2 = event.UnsignedEvent.from_signed_event(signed)
+    unsigned2 = metadata_event.MetadataEvent.from_signed_event(signed)
 
     assert unsigned == unsigned2
