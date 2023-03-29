@@ -22,9 +22,16 @@
 import abc
 
 from ndk.event import event, event_filter
+from relay import event_handler
 
 
 class EventRepo(abc.ABC):
+    _insert_event_handler: event_handler.EventHandler
+
+    def __init__(self) -> None:
+        self._insert_event_handler = event_handler.EventHandler()
+        super().__init__()
+
     @abc.abstractmethod
     async def add(self, ev: event.SignedEvent) -> event.EventID:
         pass
@@ -34,3 +41,11 @@ class EventRepo(abc.ABC):
         self, fltrs: list[event_filter.EventFilter]
     ) -> list[event.SignedEvent]:
         pass
+
+    def register_insert_cb(
+        self, cb: event_handler.EventHandlerCb
+    ) -> event_handler.EventHandlerCbId:
+        return self._insert_event_handler.register(cb)
+
+    def unregister_insert_cb(self, cb_id: event_handler.EventHandlerCbId):
+        self._insert_event_handler.unregister(cb_id)

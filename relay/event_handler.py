@@ -19,33 +19,31 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-from ndk.event import event, event_filter
-from relay.event_repo import event_repo
+import typing
+import uuid
+
+from ndk.event import event
+
+EventHandlerCbId = typing.NewType("EventHandlerCbId", str)
+EventHandlerCb = typing.Callable[[event.SignedEvent], typing.Awaitable]
 
 
-class MemoryEventRepo(event_repo.EventRepo):
-    _stored_events: list[event.SignedEvent]
+class EventHandler:
+    _cbs: dict[EventHandlerCbId, EventHandlerCb]
 
     def __init__(self):
-        self._stored_events = []
-        super().__init__()
+        self._cbs = {}
 
-    async def add(self, ev: event.SignedEvent) -> event.EventID:
-        self._stored_events.append(ev)
-        await self._insert_event_handler.handle_event(ev)
-        return ev.id
+    def register(self, cb: EventHandlerCb) -> EventHandlerCbId:
+        cb_id = EventHandlerCbId(str(uuid.uuid4()))
+        self._cbs[cb_id] = cb
+        return cb_id
 
-    async def get(
-        self, fltrs: list[event_filter.EventFilter]
-    ) -> list[event.SignedEvent]:
-        fetched: list[event.SignedEvent] = []
+    def unregister(self, cb_id: EventHandlerCbId):
+        if cb_id not in self._cbs:
+            raise ValueError(f"Unknown callback id {cb_id}")
+        del self._cbs[cb_id]
 
-        for fltr in fltrs:
-            tmp = [event for event in self._stored_events if fltr.matches_event(event)]
-
-            if fltr.limit is not None:
-                tmp = tmp[-fltr.limit :]
-
-            fetched.extend(tmp)
-
-        return fetched
+    async def handle_event(self, ev: event.SignedEvent):
+        for cb in self._cbs.values():
+            await cb(ev)

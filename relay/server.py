@@ -29,8 +29,8 @@ import signal
 from websockets.legacy.server import serve
 
 from ndk.repos.event_repo import protocol_handler
-from relay import message_dispatcher, message_handler
-from relay.event_repo import memory_event_repo, postgres_event_repo
+from relay import message_dispatcher, message_handler, subscription_handler
+from relay.event_repo import event_repo, memory_event_repo, postgres_event_repo
 
 logger = logging.getLogger(__name__)
 
@@ -52,26 +52,31 @@ logging.basicConfig(level=DEBUG_LEVEL, format="%(asctime)s %(levelname)s %(messa
 async def connection_handler(
     read_queue: asyncio.Queue[str],
     write_queue: asyncio.Queue[str],
-    mh: message_dispatcher.MessageDispatcher,
+    md: message_dispatcher.MessageDispatcher,
 ):
     while True:
         data = await read_queue.get()
         read_queue.task_done()
-        responses = await mh.process_message(data)
+        responses = await md.process_message(data)
         for response in responses:
             await write_queue.put(response)
 
 
-async def handler_wrapper(mh: message_dispatcher.MessageDispatcher, websocket):
+async def handler_wrapper(repo: event_repo.EventRepo, websocket):
     logger.debug("New connection established from: %s", websocket.remote_address)
-    rq: asyncio.Queue[str] = asyncio.Queue()
-    wq: asyncio.Queue[str] = asyncio.Queue()
+    request_queue: asyncio.Queue[str] = asyncio.Queue()
+    response_queue: asyncio.Queue[str] = asyncio.Queue()
+
+    sh = subscription_handler.SubscriptionHandler(response_queue)
+    mh = message_handler.MessageHandler(repo, sh)
+    md = message_dispatcher.MessageDispatcher(mh)
+    repo.register_insert_cb(sh.handle_event)
 
     # XXX: Need to clean these up
-    asyncio.create_task(protocol_handler.read_handler(websocket, rq))
-    asyncio.create_task(protocol_handler.write_handler(websocket, wq))
+    asyncio.create_task(protocol_handler.read_handler(websocket, request_queue))
+    asyncio.create_task(protocol_handler.write_handler(websocket, response_queue))
 
-    return await connection_handler(rq, wq, mh)
+    return await connection_handler(request_queue, response_queue, md)
 
 
 async def health_check(path, _):
@@ -92,15 +97,15 @@ async def main():
         raise ValueError(f"Unknown event repo: {RELAY_EVENT_REPO}")
     logger.debug("%s initialized", repo.__class__)
 
-    mh = message_handler.MessageHandler(repo)
-    mb = message_dispatcher.MessageDispatcher(mh)
-
     loop = asyncio.get_event_loop()
     stop = loop.create_future()
     loop.add_signal_handler(signal.SIGTERM, stop.set_result, None)
 
     async with serve(
-        functools.partial(handler_wrapper, mb), HOST, PORT, process_request=health_check
+        functools.partial(handler_wrapper, repo),
+        HOST,
+        PORT,
+        process_request=health_check,
     ):
         await stop
 

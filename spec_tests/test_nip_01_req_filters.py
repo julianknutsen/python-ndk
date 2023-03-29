@@ -424,3 +424,61 @@ async def test_text_note_multiple_filters_or(
     await expect_text_note_event(response_queue)
     await expect_text_note_event(response_queue)
     await expect_eose(response_queue)
+
+
+@pytest.mark.usefixtures("ctx")
+async def test_text_note_receive_event_from_sub(
+    request_queue, response_queue, keys, signed_event
+):
+    fltr = {
+        "authors": [keys.public],
+    }
+    await send_req_with_filter([fltr], request_queue)
+    await expect_eose(response_queue)
+
+    await request_queue.put(
+        event_message.Event.from_signed_event(signed_event).serialize()
+    )
+
+    # due to the ordering of the db commit, the sub response will arrive
+    # before the command result
+    await expect_text_note_event(response_queue)
+    cmd_result = message_factory.from_str(await response_queue.get())
+
+    assert isinstance(cmd_result, command_result.CommandResult)
+    assert cmd_result.accepted
+    return cmd_result
+
+
+@pytest.mark.usefixtures("ctx")
+async def test_text_note_receive_two_events_from_two_subs(
+    request_queue, response_queue, keys, signed_event
+):
+    fltr = {
+        "authors": [keys.public],
+    }
+    await send_req_with_filter([fltr], request_queue)
+    await expect_eose(response_queue)
+
+    r = request.Request("2", [fltr])
+    await request_queue.put(r.serialize())
+    await expect_eose(response_queue)
+
+    await request_queue.put(
+        event_message.Event.from_signed_event(signed_event).serialize()
+    )
+
+    # due to the ordering of the db commit, the sub response will arrive
+    # before the command result
+    msg = message_factory.from_str(await response_queue.get())
+    assert isinstance(msg, relay_event.RelayEvent)
+    assert msg.sub_id == "1"
+
+    msg = message_factory.from_str(await response_queue.get())
+    assert isinstance(msg, relay_event.RelayEvent)
+    assert msg.sub_id == "2"
+
+    cmd_result = message_factory.from_str(await response_queue.get())
+    assert isinstance(cmd_result, command_result.CommandResult)
+    assert cmd_result.accepted
+    return cmd_result

@@ -30,6 +30,7 @@ from ndk.messages import (
     relay_event,
     request,
 )
+from relay import subscription_handler
 from relay.event_repo import event_repo
 
 logger = logging.getLogger(__name__)
@@ -49,11 +50,15 @@ def create_eose(sub_id: str) -> str:
 
 class MessageHandler:
     _repo: event_repo.EventRepo
+    _subscription_handler: subscription_handler.SubscriptionHandler
 
-    def __init__(self, repo: event_repo.EventRepo):
+    def __init__(
+        self, repo: event_repo.EventRepo, sh: subscription_handler.SubscriptionHandler
+    ):
         self._repo = repo
+        self._subscription_handler = sh
 
-    async def handle_event(self, msg: event_message.Event) -> list[str]:
+    async def handle_event_message(self, msg: event_message.Event) -> list[str]:
         try:
             signed_ev = event.SignedEvent.from_dict(msg.event_dict)
 
@@ -66,13 +71,14 @@ class MessageHandler:
             ev_id = msg.event_dict["id"]  # guaranteed if passed Type check above
             return [create_cmd_result(ev_id, False, text)]
 
-    async def handle_close(self, _: close.Close) -> list[str]:
+    async def handle_close(self, msg: close.Close) -> list[str]:
+        self._subscription_handler.clear_filters(msg.sub_id)
         return []
 
     async def handle_request(self, msg: request.Request) -> list[str]:
-        fetched = await self._repo.get(
-            [event_filter.EventFilter.from_dict(fltr) for fltr in msg.filter_list]
-        )
+        fltrs = [event_filter.EventFilter.from_dict(fltr) for fltr in msg.filter_list]
+        fetched = await self._repo.get(fltrs)
+        self._subscription_handler.set_filters(msg.sub_id, fltrs)
 
         return [create_relay_event(msg.sub_id, ev.__dict__) for ev in fetched] + [
             create_eose(msg.sub_id)

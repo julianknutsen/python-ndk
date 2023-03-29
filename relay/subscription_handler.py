@@ -19,33 +19,31 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import asyncio
+
 from ndk.event import event, event_filter
-from relay.event_repo import event_repo
+from ndk.messages import relay_event
 
 
-class MemoryEventRepo(event_repo.EventRepo):
-    _stored_events: list[event.SignedEvent]
+class SubscriptionHandler:
+    _sub_id_to_fltrs: dict[str, list[event_filter.EventFilter]]
+    _response_queue: asyncio.Queue[str]
 
-    def __init__(self):
-        self._stored_events = []
-        super().__init__()
+    def __init__(self, response_queue: asyncio.Queue[str]):
+        self._sub_id_to_fltrs = {}
+        self._response_queue = response_queue
 
-    async def add(self, ev: event.SignedEvent) -> event.EventID:
-        self._stored_events.append(ev)
-        await self._insert_event_handler.handle_event(ev)
-        return ev.id
+    async def handle_event(self, ev: event.SignedEvent):
+        for sub_id, fltrs in self._sub_id_to_fltrs.items():
+            if fltrs and any(fltr.matches_event(ev) for fltr in fltrs):
+                await self._response_queue.put(
+                    relay_event.RelayEvent(sub_id, ev.__dict__).serialize()
+                )
 
-    async def get(
-        self, fltrs: list[event_filter.EventFilter]
-    ) -> list[event.SignedEvent]:
-        fetched: list[event.SignedEvent] = []
+    def set_filters(self, sub_id: str, fltrs: list[event_filter.EventFilter]):
+        self._sub_id_to_fltrs[sub_id] = fltrs
 
-        for fltr in fltrs:
-            tmp = [event for event in self._stored_events if fltr.matches_event(event)]
-
-            if fltr.limit is not None:
-                tmp = tmp[-fltr.limit :]
-
-            fetched.extend(tmp)
-
-        return fetched
+    def clear_filters(self, sub_id: str):
+        if sub_id not in self._sub_id_to_fltrs:
+            raise ValueError(f"Subscription {sub_id} does not exist")
+        del self._sub_id_to_fltrs[sub_id]

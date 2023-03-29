@@ -20,18 +20,21 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 # pylint: disable=redefined-outer-name
 
+import asyncio
+
 import pytest
 
 from ndk import serialize
 from ndk.messages import close, eose, event_message, message_factory, notice, request
-from relay import message_dispatcher, message_handler
+from relay import message_dispatcher, message_handler, subscription_handler
 from relay.event_repo import memory_event_repo
 
 
 @pytest.fixture
 def md():
+    sh = subscription_handler.SubscriptionHandler(asyncio.Queue())
     repo = memory_event_repo.MemoryEventRepo()
-    ev_handler = message_handler.MessageHandler(repo)
+    ev_handler = message_handler.MessageHandler(repo, sh)
     return message_dispatcher.MessageDispatcher(ev_handler)
 
 
@@ -77,10 +80,9 @@ async def test_event_missing_required_fields(md):
     assert isinstance(response_msg, notice.Notice)
 
 
-async def test_close_does_nothing(md):
-    response = await md.process_message(close.Close("1").serialize())
-
-    assert len(response) == 0
+async def test_close_without_req_raises(md):
+    with pytest.raises(ValueError):
+        await md.process_message(close.Close("1").serialize())
 
 
 async def test_handle_request_no_match(md):

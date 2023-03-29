@@ -235,3 +235,22 @@ async def test_matches_multiple_filters_or(repo, keys):
     )
 
     assert len(items) == 2
+
+
+async def test_insert_callback(repo, keys):
+    cb = mock.AsyncMock()
+    repo.register_insert_cb(cb)
+
+    await repo.add(build_signed_text_note(keys))
+
+    cb.assert_called_once()
+
+
+async def test_insert_callback_after_unregister(repo, keys):
+    cb = mock.AsyncMock()
+    cb_id = repo.register_insert_cb(cb)
+    repo.unregister_insert_cb(cb_id)
+
+    await repo.add(build_signed_text_note(keys))
+
+    cb.assert_not_called()
