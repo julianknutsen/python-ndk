@@ -98,6 +98,9 @@ jobs:
     needs: [ci]
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      INGRESS: "relay-ingress.test"
+      INGRESS_PORT: "8443"
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -122,34 +125,39 @@ jobs:
       - name: Install Tilt
         run: curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.sh | bash
 
-      - name: start minikube
+      - name: Start minikube
         id: minikube
         uses: medyagh/setup-minikube@master
 
       - name: Start Tilt
         run: |
+          minikube addons enable ingress
           tilt up --stream -f relay/deploy/Tiltfile > /tmp/server.log 2>&1 &
-          minikube tunnel &
+          kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller ${{ env.INGRESS_PORT }}:443 &
 
       - name: Wait for Relay to start
         run: |
           while [[ $(kubectl get pods --namespace python-ndk-dev -l app=relay -o jsonpath="{range .items[*]}{@.status.conditions[?(@.type=='Ready')].status}") != "True" ]]; do echo "waiting for pod" && sleep 1; done
-          echo "CLUSTER_IP=$(kubectl get svc --namespace python-ndk-dev relay-service -o 'jsonpath={$.status.loadBalancer.ingress[0].ip}')" >> $GITHUB_ENV
-          echo "CLUSTER_PORT=$(kubectl get svc --namespace python-ndk-dev relay-service -o 'jsonpath={$.spec.ports[0].port}')" >> $GITHUB_ENV
+          kubectl wait --for=condition=Available --timeout=300s -n cert-manager deployment/cert-manager
+          kubectl wait --for=condition=Available --timeout=300s -n cert-manager deployment/cert-manager-cainjector
+          kubectl wait --for=condition=Available --timeout=300s -n cert-manager deployment/cert-manager-webhook
+
+      - name: Add relay-ingress.test to /etc/hosts
+        run: sudo -- sh -c "echo '127.0.0.1 ${{ env.INGRESS }}' >> /etc/hosts"
 
       - name: Wait for websocket to open
         run: |
-          while [[ $(websocat wss://${{ env.CLUSTER_IP }}:${{ env.CLUSTER_PORT }}) ]]; do echo "waiting for websocket" && sleep 1; done
+          for i in {1..60}; do websocat --insecure wss://${{ env.INGRESS }}:${{ env.INGRESS_PORT }} && break || echo "Retrying in 1s..." && sleep 1; done
 
       - name: Run Functional Tests
         env:
           COVERAGE_FILE: .coverage.functional.ndk-server-minikube
-        run: coverage run -m pytest --timeout=10 functional_tests --relay-url=wss://${{ env.CLUSTER_IP }}:${{ env.CLUSTER_PORT }}
+        run: coverage run -m pytest --timeout=10 functional_tests --relay-url=wss://${{ env.INGRESS }}:${{ env.INGRESS_PORT }}
 
       - name: Run Spec Tests
         env:
           COVERAGE_FILE: .coverage.spec.ndk-server-minikube
-        run: coverage run -m pytest --timeout=10 spec_tests --relay-url=wss://${{ env.CLUSTER_IP }}:${{ env.CLUSTER_PORT }}
+        run: coverage run -m pytest --timeout=10 spec_tests --relay-url=wss://${{ env.INGRESS }}:${{ env.INGRESS_PORT }}
 
       - name: Dump Server Logs
         if: always()

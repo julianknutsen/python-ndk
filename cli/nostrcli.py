@@ -20,15 +20,28 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 
 import asyncio
+import dataclasses
 import logging
+import ssl
 import sys
 
 import click
 import websockets
+from websockets.client import connect
 
 from cli.read_cmd import metadata
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+
+
+@dataclasses.dataclass
+class Context:
+    relay_url: str
+    event_loop: asyncio.AbstractEventLoop
+    ws_conn: websockets.client.WebSocketClientProtocol
+
+    def __del__(self):
+        self.event_loop.run_until_complete(self.ws_conn.close())
 
 
 @click.group("cli")
@@ -36,28 +49,30 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 @click.option("--relay-url")
 @click.option("--ssl-no-verify", is_flag=True, default=False)
 def cli(ctx: click.Context, relay_url: str, ssl_no_verify: bool):
-    ctx.obj = {}
-    ctx.obj["relay_url"] = relay_url
-    ctx.obj["ssl_no_verify"] = ssl_no_verify
+    ssl_context = None
+    if "wss" in relay_url:
+        ssl_context = ssl.create_default_context()
+        if ssl_no_verify:
+            ssl_context = ssl.SSLContext()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
 
-
-async def ping_websocket(ctx_obj):
-    relay_url = ctx_obj["relay_url"]
-    ws = await websockets.connect(relay_url)
-
-    if ws.open:
-        click.echo(f"Connection to {relay_url} succeeded.")
-    else:
-        click.echo(f"Failed connection to {relay_url} {ws.close_reason}")
-
-    await ws.close()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    ctx.obj = Context(
+        relay_url, loop, loop.run_until_complete(connect(relay_url, ssl=ssl_context))
+    )
 
 
 @click.command()
 @click.pass_obj
 def ping(ctx_obj):
-    relay_url = ctx_obj.relay_url
-    asyncio.get_event_loop().run_until_complete(ping_websocket(relay_url))
+    if ctx_obj.ws_conn.open:
+        click.echo(f"Connection to {ctx_obj.relay_url} succeeded.")
+    else:
+        click.echo(
+            f"Failed connection to {ctx_obj.relay_url} {ctx_obj.ws.close_reason}"
+        )
 
 
 @click.group
