@@ -18,7 +18,7 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
-
+# pylint: disable=redefined-outer-name
 
 import pytest
 
@@ -26,16 +26,23 @@ from ndk import crypto, exceptions
 from ndk.event import event, metadata_event
 
 
+@pytest.fixture
+def unsigned():
+    return metadata_event.MetadataEvent.from_metadata_parts()
+
+
+@pytest.fixture
+def signed(unsigned):
+    keys = crypto.KeyPair()
+    return event.build_signed_event(unsigned, keys)
+
+
 def test_signed_event_from_dict_bad_input():
     with pytest.raises(exceptions.ParseError):
         event.SignedEvent.from_dict({})
 
 
-def test_signed_event_from_dict_bad_sig():
-    keys = crypto.KeyPair()
-    unsigned = metadata_event.MetadataEvent.from_metadata_parts()
-    signed = event.build_signed_event(unsigned, keys)
-
+def test_signed_event_from_dict_bad_sig(signed):
     base_dict = signed.__dict__
     base_dict["sig"] = "badsig"
 
@@ -43,11 +50,9 @@ def test_signed_event_from_dict_bad_sig():
         event.SignedEvent.from_dict(base_dict)
 
 
-def test_signed_event_from_dict_wrong_sig():
-    keys = crypto.KeyPair()
+def test_signed_event_from_dict_wrong_sig(signed):
     keys2 = crypto.KeyPair()
     unsigned = metadata_event.MetadataEvent.from_metadata_parts()
-    signed = event.build_signed_event(unsigned, keys)
     signed2 = event.build_signed_event(unsigned, keys2)
 
     base_dict = signed.__dict__
@@ -57,11 +62,9 @@ def test_signed_event_from_dict_wrong_sig():
         event.SignedEvent.from_dict(base_dict)
 
 
-def test_signed_event_from_dict_wrong_id():
-    keys = crypto.KeyPair()
+def test_signed_event_from_dict_wrong_id(signed):
     keys2 = crypto.KeyPair()
     unsigned = metadata_event.MetadataEvent.from_metadata_parts()
-    signed = event.build_signed_event(unsigned, keys)
     signed2 = event.build_signed_event(unsigned, keys2)
 
     base_dict = signed.__dict__
@@ -71,19 +74,36 @@ def test_signed_event_from_dict_wrong_id():
         event.SignedEvent.from_dict(base_dict)
 
 
-def test_signed_event_from_dict_ok():
-    keys = crypto.KeyPair()
-    unsigned = metadata_event.MetadataEvent.from_metadata_parts()
-    signed = event.build_signed_event(unsigned, keys)
-
+def test_signed_event_from_dict_ok(signed):
     event.SignedEvent.from_dict(signed.__dict__)
 
 
-def test_unsigned_from_signed():
-    keys = crypto.KeyPair()
-    unsigned = metadata_event.MetadataEvent.from_metadata_parts()
-    signed = event.build_signed_event(unsigned, keys)
+def test_from_dict_bad_id_errors(signed):
+    d = signed.__dict__
+    d["id"] = "uh oh"
+    with pytest.raises(event.ValidationError):
+        event.SignedEvent.from_dict(d)
 
+
+def test_from_dict_invalid_id_errors(signed):
+    d = signed.__dict__
+    d["kind"] = event.EventKind.INVALID
+    with pytest.raises(event.ValidationError):
+        event.SignedEvent.from_dict(d)
+
+
+def test_unsigned_from_signed(unsigned, signed):
     unsigned2 = metadata_event.MetadataEvent.from_signed_event(signed)
 
     assert unsigned == unsigned2
+
+
+def test_from_validated_dict_correct(signed):
+    signed2 = event.SignedEvent.from_validated_dict(signed.__dict__)
+    assert signed == signed2
+
+
+def test_from_validated_dict_bad_no_error(signed):
+    d = signed.__dict__
+    d["id"] = "uh oh"
+    event.SignedEvent.from_validated_dict(d)

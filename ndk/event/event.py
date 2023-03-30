@@ -94,8 +94,9 @@ class SignedEvent(UnsignedEvent):
             self.validate()
 
     def validate(self):
-        if self.kind == EventKind.INVALID:
-            raise ValidationError("Invalid event kind {self.kind}")
+        valid_kinds = [kind.value for kind in EventKind if kind != EventKind.INVALID]
+        if self.kind not in valid_kinds:
+            raise ValidationError(f"Invalid event kind {self.kind}")
 
         payload = serialize.serialize_as_bytes(
             [0, self.pubkey, self.created_at, self.kind, self.tags, self.content]
