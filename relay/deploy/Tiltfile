@@ -21,11 +21,23 @@ def switch_ctx(ctx):
 def __get_context():
     return str(local("kubectl config current-context")).strip()
 
+def deploy_cert_manager():
+    existsCheck = str(local("kubectl get namespaces"))
+    if existsCheck.find("cert-manager") == -1:
+        local("kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.11.0/cert-manager.yaml")
+        print("Installing cert-manager")
+
+    print("Waiting for cert-manager to start")
+    local("kubectl wait --for=condition=Available --timeout=300s -n cert-manager deployment/cert-manager")
+    local("kubectl wait --for=condition=Available --timeout=300s -n cert-manager deployment/cert-manager-cainjector")
+    local("kubectl wait --for=condition=Available --timeout=300s -n cert-manager deployment/cert-manager-webhook")
+
 target = cfg.get("target", ["local"])[0]
 if target == "local":
     switch_ctx("local")
     if __get_context() != "minikube":
         fail("kubectl context doesn't match {} != {}".format(__get_context(), "minikube"))
+    deploy_cert_manager()
     k8s_yaml(kustomize("overlays/dev"))
 elif target == "remote-dev":
     default_registry("registry.digitalocean.com/python-ndk")

@@ -13,14 +13,18 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: relay-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "selfsigned-cluster-issuer"
+    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - localhost
+    - relay-ingress.test
     secretName: tls
   rules:
-  - host: localhost
+  - host: relay-ingress.test
     http:
       paths:
       - path: /
