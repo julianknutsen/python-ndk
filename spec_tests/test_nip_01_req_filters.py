@@ -532,7 +532,6 @@ async def test_text_note_receive_two_events_from_two_subs(
     remaining_cmd_result = 1
     remaining_relay_event_subs = set(["1", "2"])
     for msg in msgs:
-        assert remaining_cmd_result > 0
         if isinstance(msg, command_result.CommandResult):
             assert remaining_cmd_result > 0
             remaining_cmd_result -= 1
