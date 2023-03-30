@@ -21,6 +21,7 @@
 # pylint: disable=redefined-outer-name, unused-argument
 
 import asyncio
+import ssl
 
 import pytest
 import websockets
@@ -92,7 +93,12 @@ async def protocol(response_queue, request_queue):
 
 @pytest.fixture(scope="function")
 async def ws(relay_url):
-    ws = await websockets.connect(relay_url)
+    ssl_context = None
+    if "wss" in relay_url:
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+    ws = await websockets.connect(relay_url, ssl=ssl_context)
     yield ws
     await ws.close()
 

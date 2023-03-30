@@ -5,6 +5,7 @@ resources:
 - ../../base
 - service.yaml
 - secrets.yaml
+- ingress.yaml
 patches:
 - path: deployment.yaml
   target:

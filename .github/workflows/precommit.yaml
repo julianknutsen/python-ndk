@@ -139,17 +139,17 @@ jobs:
 
       - name: Wait for websocket to open
         run: |
-          while [[ $(websocat ws://${{ env.CLUSTER_IP }}:${{ env.CLUSTER_PORT }}) ]]; do echo "waiting for websocket" && sleep 1; done
+          while [[ $(websocat wss://${{ env.CLUSTER_IP }}:${{ env.CLUSTER_PORT }}) ]]; do echo "waiting for websocket" && sleep 1; done
 
       - name: Run Functional Tests
         env:
           COVERAGE_FILE: .coverage.functional.ndk-server-minikube
-        run: coverage run -m pytest --timeout=10 functional_tests --relay-url=ws://${{ env.CLUSTER_IP }}:${{ env.CLUSTER_PORT }}
+        run: coverage run -m pytest --timeout=10 functional_tests --relay-url=wss://${{ env.CLUSTER_IP }}:${{ env.CLUSTER_PORT }}
 
       - name: Run Spec Tests
         env:
           COVERAGE_FILE: .coverage.spec.ndk-server-minikube
-        run: coverage run -m pytest --timeout=10 spec_tests --relay-url=ws://${{ env.CLUSTER_IP }}:${{ env.CLUSTER_PORT }}
+        run: coverage run -m pytest --timeout=10 spec_tests --relay-url=wss://${{ env.CLUSTER_IP }}:${{ env.CLUSTER_PORT }}
 
       - name: Dump Server Logs
         if: always()

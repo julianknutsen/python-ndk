@@ -21,6 +21,7 @@
 import asyncio
 import logging
 import pprint
+import ssl
 import traceback
 
 import click
@@ -33,20 +34,30 @@ from ndk.repos.metadata_repo import event_backed_metadata_repo
 logger = logging.getLogger(__name__)
 
 
-async def _start_websocket(relay_url: str):
-    return await connect(relay_url)
+async def _start_websocket(relay_url: str, ssl_no_verify: bool):
+    ssl_context = None
+    if "wss" in relay_url:
+        ssl_context = ssl.create_default_context()
+        if ssl_no_verify:
+            ssl_context = ssl.SSLContext()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+
+    return await connect(relay_url, ssl=ssl_context)
 
 
 class ProtocolContext:
     protocol: protocol_handler.ProtocolHandler
     _relay_url: str
+    _verify_ssl: bool
     _rq: asyncio.Queue
     _wq: asyncio.Queue
     _ws: WebSocketClientProtocol
     _tasks: list
 
-    def __init__(self, relay_url: str):
+    def __init__(self, relay_url: str, verify_ssl: bool):
         self._relay_url = relay_url
+        self._verify_ssl = verify_ssl
 
     def __enter__(self):
         logger.debug("__aenter__")
@@ -54,7 +65,9 @@ class ProtocolContext:
         self._wq = asyncio.Queue()
         self._loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._loop)
-        self._ws = self._loop.run_until_complete(_start_websocket(self._relay_url))
+        self._ws = self._loop.run_until_complete(
+            _start_websocket(self._relay_url, self._verify_ssl)
+        )
 
         reader_task = self._loop.create_task(
             protocol_handler.read_handler(self._ws, self._rq)
@@ -86,8 +99,8 @@ class ProtocolContext:
 @click.command()
 @click.pass_obj
 @click.argument("pubkey")
-def metadata(relay_url, pubkey):
-    with ProtocolContext(relay_url) as pc:
+def metadata(ctx_obj, pubkey):
+    with ProtocolContext(ctx_obj["relay_url"], ctx_obj["ssl_no_verify"]) as pc:
         ev_repo = relay_event_repo.RelayEventRepo(pc.protocol)
         repo = event_backed_metadata_repo.EventBackedMetadataRepo(ev_repo)
 

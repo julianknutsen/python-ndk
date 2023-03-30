@@ -34,11 +34,15 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 @click.group("cli")
 @click.pass_context
 @click.option("--relay-url")
-def cli(ctx, relay_url):
-    ctx.obj = relay_url
+@click.option("--ssl-no-verify", is_flag=True, default=False)
+def cli(ctx: click.Context, relay_url: str, ssl_no_verify: bool):
+    ctx.obj = {}
+    ctx.obj["relay_url"] = relay_url
+    ctx.obj["ssl_no_verify"] = ssl_no_verify
 
 
-async def ping_websocket(relay_url):
+async def ping_websocket(ctx_obj):
+    relay_url = ctx_obj["relay_url"]
     ws = await websockets.connect(relay_url)
 
     if ws.open:
@@ -51,7 +55,8 @@ async def ping_websocket(relay_url):
 
 @click.command()
 @click.pass_obj
-def ping(relay_url):
+def ping(ctx_obj):
+    relay_url = ctx_obj.relay_url
     asyncio.get_event_loop().run_until_complete(ping_websocket(relay_url))
 
 
