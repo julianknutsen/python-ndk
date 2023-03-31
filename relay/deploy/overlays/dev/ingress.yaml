@@ -21,10 +21,10 @@ spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - relay-ingress.test
+    - localhost
     secretName: tls
   rules:
-  - host: relay-ingress.test
+  - host: localhost
     http:
       paths:
       - path: /
