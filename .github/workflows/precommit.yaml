@@ -99,7 +99,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      INGRESS: "relay-ingress.test"
       INGRESS_PORT: "8443"
     steps:
       - name: Checkout code
@@ -141,9 +140,7 @@ jobs:
           kubectl wait --for=condition=Available --timeout=300s -n cert-manager deployment/cert-manager
           kubectl wait --for=condition=Available --timeout=300s -n cert-manager deployment/cert-manager-cainjector
           kubectl wait --for=condition=Available --timeout=300s -n cert-manager deployment/cert-manager-webhook
-
-      - name: Add relay-ingress.test to /etc/hosts
-        run: sudo -- sh -c "echo '127.0.0.1 ${{ env.INGRESS }}' >> /etc/hosts"
+          echo "INGRESS=$(kubectl get ingress --namespace python-ndk-dev relay-ingress -o 'jsonpath={$.spec.tls[0].hosts[0]}')" >> $GITHUB_ENV
 
       - name: Wait for websocket to open
         run: |
