@@ -5,10 +5,13 @@ resources:
 - ../../base
 - service.yaml
 - secrets.yaml
-- ingress.yaml
 - self-signed-cluster-issuer.yaml
 patches:
-- path: deployment.yaml
+- path: patch-deployment.yaml
   target:
     kind: Deployment
     name: relay
+- path: patch-ingress.yaml
+  target:
+    kind: Ingress
+    name: relay-ingress

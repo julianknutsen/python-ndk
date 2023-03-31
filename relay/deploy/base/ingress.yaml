@@ -15,16 +15,16 @@ metadata:
   name: relay-ingress
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    cert-manager.io/cluster-issuer: "selfsigned-cluster-issuer"
+    cert-manager.io/cluster-issuer: "cluster-issuer"
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - localhost
+    - badhost
     secretName: tls
   rules:
-  - host: localhost
+  - host: badhost
     http:
       paths:
       - path: /

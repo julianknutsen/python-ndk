@@ -1,0 +1,18 @@
+kind: Ingress
+metadata:
+  name: relay-ingress
+spec:
+  tls:
+  - hosts:
+    - localhost
+  rules:
+  - host: localhost
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: relay-service
+            port:
+              number: 2700
