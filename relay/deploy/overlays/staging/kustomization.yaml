@@ -4,3 +4,4 @@ namespace: python-ndk-staging
 resources:
 - ../../base
 - service.yaml
+- staging-issuer.yaml
