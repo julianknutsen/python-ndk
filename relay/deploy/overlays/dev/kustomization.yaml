@@ -6,7 +6,7 @@ resources:
 - service.yaml
 - secrets.yaml
 - ingress.yaml
-- self-signed-cert-manager.yaml
+- self-signed-cluster-issuer.yaml
 patches:
 - path: deployment.yaml
   target:
