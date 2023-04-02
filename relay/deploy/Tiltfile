@@ -1,52 +1,34 @@
-DIGITALOCEAN_DEV_CONTEXT = "do-sfo3-k8s-1-26-3-do-0-sfo3-1679680354406"
-
 load("ext://restart_process", "docker_build_with_restart")
-allow_k8s_contexts(DIGITALOCEAN_DEV_CONTEXT)
+load("ext://helm_resource", "helm_resource")
+local("kubectl config use-context minikube")
 
-config.define_string_list("target", args=False, usage="Deploy to Digital Ocean cluster")
-cfg = config.parse()
-
-def maybe_create_namespace(namespace):
-    if namespace not in str(local("kubectl get namespace")):
+def create_namespace(namespace):
+    existsCheck = str(local("kubectl get namespaces"))
+    if existsCheck.find(namespace) == -1:
+        print("Installing namspace: {}".format(namespace))
         local("kubectl create namespace {}".format(namespace))
-
-def switch_ctx(ctx):
-    if ctx == "local":
-        local("kubectl config use-context minikube")
-        maybe_create_namespace("python-ndk-dev")
-    elif ctx == "remote-dev":
-        local("kubectl config use-context {}".format(DIGITALOCEAN_DEV_CONTEXT))
-        maybe_create_namespace("python-ndk-staging")
-
-def __get_context():
-    return str(local("kubectl config current-context")).strip()
 
 def deploy_cert_manager():
     existsCheck = str(local("kubectl get namespaces"))
     if existsCheck.find("cert-manager") == -1:
-        local("kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.11.0/cert-manager.yaml")
         print("Installing cert-manager")
+        local("kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.11.0/cert-manager.yaml")
 
     print("Waiting for cert-manager to start")
     local("kubectl wait --for=condition=Available --timeout=300s -n cert-manager deployment/cert-manager")
     local("kubectl wait --for=condition=Available --timeout=300s -n cert-manager deployment/cert-manager-cainjector")
     local("kubectl wait --for=condition=Available --timeout=300s -n cert-manager deployment/cert-manager-webhook")
 
-target = cfg.get("target", ["local"])[0]
-if target == "local":
-    switch_ctx("local")
-    if __get_context() != "minikube":
-        fail("kubectl context doesn't match {} != {}".format(__get_context(), "minikube"))
-    deploy_cert_manager()
-    k8s_yaml(kustomize("overlays/dev"))
-elif target == "remote-dev":
-    default_registry("registry.digitalocean.com/python-ndk")
-    switch_ctx("remote-dev")
-    if __get_context() != DIGITALOCEAN_DEV_CONTEXT:
-        fail("kubectl context doesn't match {} != {}".format(__get_context(), DIGITALOCEAN_DEV_CONTEXT))
-    k8s_yaml(kustomize("overlays/staging"))
-else:
-    fail("target not specified")
+
+local("kubectl config use-context minikube")
+create_namespace("python-ndk-dev")
+create_namespace("traefik")
+helm_resource("traefik", "overlays/dev/traefik", namespace="traefik")
+deploy_cert_manager()
+k8s_yaml(kustomize("overlays/dev"))
+k8s_resource(objects=["relay-ingress:ingressroute"], resource_deps=["traefik"], new_name="relay-ingressroute")
+k8s_resource(workload="postgres", resource_deps=["traefik"])
+k8s_resource(workload="relay", resource_deps=["traefik", "postgres"])
 
 docker_build_with_restart(
     "python-ndk-relay",

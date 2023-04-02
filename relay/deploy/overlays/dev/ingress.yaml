@@ -1,0 +1,18 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: relay-ingress
+spec:
+  entryPoints:
+  - websecure
+  routes:
+  - kind: Rule
+    match: PathPrefix(`/`)
+    services:
+    - kind: Service
+      name: relay-service
+      port: web
+  tls:
+    secretName: self-signed-cert
+    domains:
+    - main: relay-ingress.test

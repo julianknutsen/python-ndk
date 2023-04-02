@@ -99,6 +99,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
+      INGRESS_HOST: "localhost"
       INGRESS_PORT: "8443"
     steps:
       - name: Checkout code
@@ -132,29 +133,32 @@ jobs:
         run: |
           minikube addons enable ingress
           tilt up --stream -f relay/deploy/Tiltfile > /tmp/server.log 2>&1 &
-          kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller ${{ env.INGRESS_PORT }}:443 &
+
+      - name: Wait for Traefik to come up
+        run: |
+          while [[ $(kubectl get pods -n traefik --selector "app.kubernetes.io/name=traefik" -o jsonpath="{range .items[*]}{@.status.conditions[?(@.type=='Ready')].status}") != "True" ]]; do echo "waiting for traefik pod" && sleep 1; done
+          kubectl port-forward $(kubectl get pods -n traefik --selector "app.kubernetes.io/name=traefik" --output=name) 8443:8443 -n traefik &
 
       - name: Wait for Relay to start
         run: |
-          while [[ $(kubectl get pods --namespace python-ndk-dev -l app=relay -o jsonpath="{range .items[*]}{@.status.conditions[?(@.type=='Ready')].status}") != "True" ]]; do echo "waiting for pod" && sleep 1; done
+          while [[ $(kubectl get pods --namespace python-ndk-dev -l app=relay -o jsonpath="{range .items[*]}{@.status.conditions[?(@.type=='Ready')].status}") != "True" ]]; do echo "waiting for relay pod" && sleep 1; done
           kubectl wait --for=condition=Available --timeout=300s -n cert-manager deployment/cert-manager
           kubectl wait --for=condition=Available --timeout=300s -n cert-manager deployment/cert-manager-cainjector
           kubectl wait --for=condition=Available --timeout=300s -n cert-manager deployment/cert-manager-webhook
-          echo "INGRESS=$(kubectl get ingress --namespace python-ndk-dev relay-ingress -o 'jsonpath={$.spec.tls[0].hosts[0]}')" >> $GITHUB_ENV
 
       - name: Wait for websocket to open
         run: |
-          for i in {1..60}; do websocat --insecure wss://${{ env.INGRESS }}:${{ env.INGRESS_PORT }} && break || echo "Retrying in 1s..." && sleep 1; done
+          for i in {1..60}; do websocat --insecure wss://${{ env.INGRESS_HOST }}:${{ env.INGRESS_PORT }} && break || echo "Retrying in 1s..." && sleep 1; done
 
       - name: Run Functional Tests
         env:
           COVERAGE_FILE: .coverage.functional.ndk-server-minikube
-        run: coverage run -m pytest --timeout=10 functional_tests --relay-url=wss://${{ env.INGRESS }}:${{ env.INGRESS_PORT }}
+        run: coverage run -m pytest --timeout=10 functional_tests --relay-url=wss://${{ env.INGRESS_HOST }}:${{ env.INGRESS_PORT }}
 
       - name: Run Spec Tests
         env:
           COVERAGE_FILE: .coverage.spec.ndk-server-minikube
-        run: coverage run -m pytest --timeout=10 spec_tests --relay-url=wss://${{ env.INGRESS }}:${{ env.INGRESS_PORT }}
+        run: coverage run -m pytest --timeout=10 spec_tests --relay-url=wss://${{ env.INGRESS_HOST }}:${{ env.INGRESS_PORT }}
 
       - name: Dump Server Logs
         if: always()
