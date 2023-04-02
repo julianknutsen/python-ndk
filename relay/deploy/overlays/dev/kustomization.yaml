@@ -5,6 +5,7 @@ resources:
 - ../../base
 - secrets.yaml
 - self-signed-cluster-issuer.yaml
+- ingress.yaml
 patches:
 - path: patch-deployment.yaml
   target:
