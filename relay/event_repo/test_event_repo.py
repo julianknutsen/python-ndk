@@ -28,7 +28,7 @@ import pytest
 
 from ndk import crypto
 from ndk.event import event, event_filter, metadata_event, text_note_event
-from relay.event_repo import memory_event_repo, postgres_event_repo
+from relay.event_repo import memory_event_repo, mysql_event_repo
 
 
 @pytest.fixture
@@ -37,15 +37,13 @@ def fake():
 
 
 @pytest.fixture
-def postgres(db_url):
+def db(db_url):
     return asyncio.get_event_loop().run_until_complete(
-        postgres_event_repo.PostgresEventRepo.create(
-            db_url, 5432, "nostr", "nostr", "nostr"
-        )
+        mysql_event_repo.MySqlEventRepo.create(db_url, 3306, "nostr", "nostr", "nostr")
     )
 
 
-@pytest.fixture(params=["fake", "postgres"])
+@pytest.fixture(params=["fake", "db"])
 def repo(request):
     return request.getfixturevalue(request.param)
 

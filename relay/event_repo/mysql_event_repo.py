@@ -22,8 +22,7 @@
 import logging
 
 import sqlalchemy
-from sqlalchemy.dialects import postgresql
-from sqlalchemy.ext import asyncio as pq_asyncio
+from sqlalchemy.ext import asyncio as sa_asyncio
 
 from ndk import serialize
 from ndk.event import event, event_filter
@@ -36,21 +35,21 @@ EVENTS_TABLE = sqlalchemy.Table(
     "events",
     METADATA,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
-    sqlalchemy.Column("event_id", sqlalchemy.String),
-    sqlalchemy.Column("pubkey", sqlalchemy.String),
+    sqlalchemy.Column("event_id", sqlalchemy.String(64)),
+    sqlalchemy.Column("pubkey", sqlalchemy.String(64)),
     sqlalchemy.Column("created_at", sqlalchemy.Integer),
     sqlalchemy.Column("kind", sqlalchemy.Integer),
-    sqlalchemy.Column("content", sqlalchemy.String),
-    sqlalchemy.Column("sig", sqlalchemy.String),
-    sqlalchemy.Column("serialized", sqlalchemy.String),
+    sqlalchemy.Column("content", sqlalchemy.TEXT),
+    sqlalchemy.Column("sig", sqlalchemy.String(128)),
+    sqlalchemy.Column("serialized", sqlalchemy.TEXT),
 )
 
 TAGS_TABLE = sqlalchemy.Table(
     "tags",
     METADATA,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
-    sqlalchemy.Column("identifier", sqlalchemy.String),
-    sqlalchemy.Column("value", sqlalchemy.String),
+    sqlalchemy.Column("identifier", sqlalchemy.String(255)),
+    sqlalchemy.Column("value", sqlalchemy.String(255)),
     sqlalchemy.UniqueConstraint("identifier", "value", name="uq_identifier_value"),
 )
 
@@ -66,17 +65,17 @@ EVENT_TAGS_TABLE = sqlalchemy.Table(
 )
 
 
-class PostgresEventRepo(event_repo.EventRepo):
-    _engine: pq_asyncio.AsyncEngine
+class MySqlEventRepo(event_repo.EventRepo):
+    _engine: sa_asyncio.AsyncEngine
 
-    def __init__(self, engine: pq_asyncio.AsyncEngine):
+    def __init__(self, engine: sa_asyncio.AsyncEngine):
         self._engine = engine
         super().__init__()
 
     @classmethod
     async def create(cls, host, port, user, password, database):
-        engine = pq_asyncio.create_async_engine(
-            f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{database}",
+        engine = sa_asyncio.create_async_engine(
+            f"mysql+aiomysql://{user}:{password}@{host}:{port}/{database}",
         )
 
         async with engine.begin() as conn:  # transaction
@@ -88,7 +87,7 @@ class PostgresEventRepo(event_repo.EventRepo):
             await conn.run_sync(METADATA.create_all)
 
         logger.info("Database initialized")
-        return PostgresEventRepo(engine)
+        return MySqlEventRepo(engine)
 
     async def add(self, ev: event.SignedEvent) -> event.EventID:
         async with self._engine.begin() as conn:
@@ -100,7 +99,7 @@ class PostgresEventRepo(event_repo.EventRepo):
             if (await conn.execute(select_stmt)).fetchone():
                 return ev.id
 
-            event_insert_stmt = postgresql.insert(EVENTS_TABLE).values(
+            event_insert_stmt = sqlalchemy.insert(EVENTS_TABLE).values(
                 event_id=ev.id,
                 pubkey=ev.pubkey,
                 created_at=ev.created_at,

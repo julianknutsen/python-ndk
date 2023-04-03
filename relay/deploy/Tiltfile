@@ -27,8 +27,8 @@ helm_resource("traefik", "overlays/dev/traefik", namespace="traefik")
 deploy_cert_manager()
 k8s_yaml(kustomize("overlays/dev"))
 k8s_resource(objects=["relay-ingress:ingressroute"], resource_deps=["traefik"], new_name="relay-ingressroute")
-k8s_resource(workload="postgres", resource_deps=["traefik"])
-k8s_resource(workload="relay", resource_deps=["traefik", "postgres"])
+k8s_resource(workload="db", resource_deps=["traefik"])
+k8s_resource(workload="relay", resource_deps=["traefik", "db"])
 
 docker_build_with_restart(
     "python-ndk-relay",
@@ -38,7 +38,7 @@ docker_build_with_restart(
         "RELAY_HOST": "0.0.0.0",
         "RELAY_PORT": "2700",
         "RELAY_LOG_LEVEL": "DEBUG",
-        "RELAY_EVENT_REPO": "postgres"
+        "RELAY_EVENT_REPO": "mysql"
     },
     ignore=["**/.*", "**/__pycache__", "**/cov.xml", "functional_tests", "spec_tests", "cli"],
     live_update=[
