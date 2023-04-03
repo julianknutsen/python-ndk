@@ -11,4 +11,4 @@ spec:
     - protocol: TCP
       port: 2700
       name: web
-  type: LoadBalancer
+  type: ClusterIP

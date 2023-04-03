@@ -35,7 +35,7 @@ from relay import (
     message_handler,
     subscription_handler,
 )
-from relay.event_repo import event_repo, memory_event_repo, postgres_event_repo
+from relay.event_repo import event_repo, memory_event_repo, mysql_event_repo
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ HOST = os.environ.get("RELAY_HOST", "localhost")
 PORT = int(os.environ.get("RELAY_PORT", "2700"))
 DEBUG_LEVEL = os.environ.get("RELAY_LOG_LEVEL", "INFO")
 
-if RELAY_EVENT_REPO == "postgres":
+if RELAY_EVENT_REPO == "mysql":
     DB_HOST = os.environ.get("DB_HOST")
     DB_PORT = os.environ.get("DB_PORT")
     DB_NAME = os.environ.get("DB_NAME")
@@ -99,8 +99,8 @@ async def main():
 
     if RELAY_EVENT_REPO == "memory":
         repo = memory_event_repo.MemoryEventRepo()
-    elif RELAY_EVENT_REPO == "postgres":
-        repo = await postgres_event_repo.PostgresEventRepo.create(
+    elif RELAY_EVENT_REPO == "mysql":
+        repo = await mysql_event_repo.MySqlEventRepo.create(
             DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
         )
     else:

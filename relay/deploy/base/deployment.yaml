@@ -32,22 +32,19 @@ spec:
             - name: DB_NAME
               valueFrom:
                 secretKeyRef:
-                  name: postgres-config
+                  name: db-config
                   key: DB_NAME
             - name: DB_USER
               valueFrom:
                 secretKeyRef:
-                  name: postgres-config
+                  name: db-config
                   key: DB_USER
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: postgres-config
+                  name: db-config
                   key: DB_PASSWORD
             - name: DB_HOST
-              value: postgres
+              value: db
             - name: DB_PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: postgres-config
-                  key: DB_PORT
+              value: "3306"
