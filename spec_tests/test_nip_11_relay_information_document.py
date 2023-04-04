@@ -37,7 +37,8 @@ def response(relay_url):
     )
 
     if response.status_code != 200:
-        warnings.warn(f"Got {response.status_code} from {url}")
+        warnings.warn(f"No support for NIP11, got {response.status_code} from {url}")
+        pytest.skip()
     else:
         return serialize.deserialize(response.content.decode())
 
@@ -59,6 +60,30 @@ def test_basic(response):
         "foobar",
     ],
 )
-def test_has_known_fields(field, response):
+def test_has_known_general_fields(field, response):
     if field not in response:
         warnings.warn(f"No '{field}' field in response")
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "max_message_length",
+        "max_subscriptions",
+        "max_filters",
+        "max_limit",
+        "max_subid_length",
+        "min_prefix",
+        "max_event_tags",
+        "max_content_length",
+        "min_pow_difficulty",
+        "auth_required",
+        "payment_required",
+    ],
+)
+def test_has_known_limitation_fields(field, response):
+    if "limitation" not in response:
+        warnings.warn("No limitation section")
+
+    elif field not in response["limitation"]:
+        warnings.warn(f"No '{field}' field in limitation section")
