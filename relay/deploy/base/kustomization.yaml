@@ -3,5 +3,3 @@ kind: Kustomization
 namespace: python-ndk-base
 resources:
   - deployment.yaml
-  - mysql.yaml
-  - service.yaml
