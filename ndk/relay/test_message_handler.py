@@ -25,8 +25,8 @@ import pytest
 
 from ndk.event import event, event_filter
 from ndk.messages import close, command_result, event_message, message_factory, request
-from relay import event_handler, message_handler, subscription_handler
-from relay.event_repo import memory_event_repo
+from ndk.relay import event_handler, message_handler, subscription_handler
+from ndk.relay.event_repo import memory_event_repo
 
 
 @pytest.fixture

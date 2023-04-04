@@ -20,41 +20,21 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 
 from ndk.event import event, event_filter
-from relay.event_repo import event_repo
+from ndk.relay.event_repo import event_repo
 
 
-class MemoryEventRepo(event_repo.EventRepo):
-    _stored_events: dict[event.EventID, event.SignedEvent]
+class EventHandler:
+    _repo: event_repo.EventRepo
 
-    def __init__(self):
-        self._stored_events = {}
-        super().__init__()
+    def __init__(self, repo: event_repo.EventRepo):
+        self._repo = repo
 
-    async def add(self, ev: event.SignedEvent) -> event.EventID:
-        self._stored_events[ev.id] = ev
-        await self._insert_event_handler.handle_event(ev)
-        return ev.id
+    async def handle_event(self, ev: event.SignedEvent):
+        await self._repo.add(ev)
 
-    async def get(
-        self, fltrs: list[event_filter.EventFilter]
-    ) -> list[event.SignedEvent]:
-        fetched: list[event.SignedEvent] = []
-
-        for fltr in fltrs:
-            tmp = [
-                event
-                for event in self._stored_events.values()
-                if fltr.matches_event(event)
-            ]
-
-            if fltr.limit is not None:
-                tmp = tmp[-fltr.limit :]
-
-            fetched.extend(tmp)
-
-        return sorted(fetched, key=lambda ev: ev.created_at, reverse=True)
-
-    async def remove(self, event_id: event.EventID):
-        if event_id not in self._stored_events:
-            raise ValueError(f"Event {event_id} not found")
-        del self._stored_events[event_id]
+        if ev.kind in [event.EventKind.SET_METADATA, event.EventKind.CONTACT_LIST]:
+            existing_evs = await self._repo.get(
+                [event_filter.EventFilter(authors=[ev.pubkey], kinds=[ev.kind])]
+            )
+            for e in existing_evs[1:]:  # first entry (latest) is the one we just added
+                await self._repo.remove(e.id)

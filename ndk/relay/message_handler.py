@@ -30,8 +30,8 @@ from ndk.messages import (
     relay_event,
     request,
 )
-from relay import event_handler, subscription_handler
-from relay.event_repo import event_repo
+from ndk.relay import event_handler, subscription_handler
+from ndk.relay.event_repo import event_repo
 
 logger = logging.getLogger(__name__)
 

@@ -23,7 +23,7 @@ import logging
 
 from ndk import exceptions
 from ndk.messages import close, event_message, message, message_factory, notice, request
-from relay import message_handler
+from ndk.relay import message_handler
 
 logger = logging.getLogger(__name__)
 

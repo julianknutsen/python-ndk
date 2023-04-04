@@ -28,14 +28,14 @@ import signal
 
 from websockets.legacy.server import serve
 
-from ndk.repos.event_repo import protocol_handler
-from relay import (
+from ndk.relay import (
     event_handler,
     message_dispatcher,
     message_handler,
     subscription_handler,
 )
-from relay.event_repo import event_repo, memory_event_repo, mysql_event_repo
+from ndk.relay.event_repo import event_repo, memory_event_repo, mysql_event_repo
+from ndk.repos.event_repo import protocol_handler
 
 logger = logging.getLogger(__name__)
 

@@ -22,7 +22,7 @@
 import mock
 import pytest
 
-from relay.event_repo import event_notifier
+from ndk.relay.event_repo import event_notifier
 
 
 def test_init():
