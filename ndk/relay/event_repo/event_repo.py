@@ -22,7 +22,7 @@
 import abc
 
 from ndk.event import event, event_filter
-from relay.event_repo import event_notifier
+from ndk.relay.event_repo import event_notifier
 
 
 class EventRepo(abc.ABC):

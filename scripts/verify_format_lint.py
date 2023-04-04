@@ -36,7 +36,7 @@ def main():
     py_files = []
     for root, _, files in os.walk("."):
         for file in files:
-            if any(item in root for item in ["venv", "docs"]):
+            if any(item in root for item in ["venv", "docs", ".tmp"]):
                 continue
             if file.endswith(".py"):
                 py_files.append(os.path.join(root, file))

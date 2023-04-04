@@ -26,7 +26,7 @@ from sqlalchemy.ext import asyncio as sa_asyncio
 
 from ndk import serialize
 from ndk.event import event, event_filter
-from relay.event_repo import event_repo
+from ndk.relay.event_repo import event_repo
 
 logger = logging.getLogger(__name__)
 

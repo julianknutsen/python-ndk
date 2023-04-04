@@ -28,7 +28,7 @@ import pytest
 
 from ndk import crypto
 from ndk.event import event, event_filter, metadata_event, text_note_event
-from relay.event_repo import memory_event_repo, mysql_event_repo
+from ndk.relay.event_repo import memory_event_repo, mysql_event_repo
 
 
 @pytest.fixture

@@ -23,8 +23,8 @@ import mock
 import pytest
 
 from ndk.event import event, metadata_event
-from relay import event_handler
-from relay.event_repo import memory_event_repo
+from ndk.relay import event_handler
+from ndk.relay.event_repo import memory_event_repo
 
 
 def test_init():

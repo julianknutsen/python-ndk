@@ -26,7 +26,7 @@ import pytest
 
 from ndk import crypto
 from ndk.event import event, metadata_event
-from relay import subscription_handler
+from ndk.relay import subscription_handler
 
 
 def test_init():
