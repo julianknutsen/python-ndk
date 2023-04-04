@@ -19,7 +19,9 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import argparse
 import asyncio
+import configparser
 import functools
 import http
 import logging
@@ -32,6 +34,7 @@ from ndk.relay import (
     event_handler,
     message_dispatcher,
     message_handler,
+    relay_information_document,
     subscription_handler,
 )
 from ndk.relay.event_repo import event_repo, memory_event_repo, mysql_event_repo
@@ -89,12 +92,63 @@ async def handler_wrapper(repo: event_repo.EventRepo, websocket):
     return await connection_handler(request_queue, response_queue, md)
 
 
-async def health_check(path, _):
+async def health_check(
+    rid: relay_information_document.RelayInformationDocument, path, headers
+):
     if path == "/healthz":
-        return http.HTTPStatus.OK, [], b"OK\n"
+        return http.HTTPStatus.OK, [], b"OK"
+
+    if (
+        path == "/"
+        and "Accept" in headers
+        and headers["Accept"] == "application/nostr+json"
+    ):
+        return (
+            http.HTTPStatus.OK,
+            [
+                ("Access-Control-Allow-Origin", "*"),
+                ("Access-Control-Allow-Headers", "*"),
+                ("Access-Control-Allow-Methods", "GET"),
+            ],
+            rid.serialize_as_bytes(),
+        )
+
+    if "Upgrade" not in headers or headers["Upgrade"] != "websocket":
+        return (http.HTTPStatus.NOT_FOUND, [], b"404 Not Found")
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Generate load on a relay")
+    parser.add_argument(
+        "--config",
+        help="path to the config file",
+        type=str,
+        required=False,
+        default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.ini"),
+    )
+    return parser.parse_args()
+
+
+def parse_config(config_path):
+    config = configparser.ConfigParser()
+    config.read(config_path)
+    return config
+
+
+def build_rid(config):
+    return relay_information_document.RelayInformationDocument(
+        name=config.get("General", "name"),
+        description=config.get("General", "description"),
+        software=config.get("General", "software"),
+        supported_nips=config.get("General", "supported_nips"),
+        version=config.get("General", "version"),
+    )
 
 
 async def main():
+    args = parse_args()
+    config = parse_config(args.config)
+
     logger.info("Logging set to %s", DEBUG_LEVEL)
 
     if RELAY_EVENT_REPO == "memory":
@@ -115,7 +169,7 @@ async def main():
         functools.partial(handler_wrapper, repo),
         HOST,
         PORT,
-        process_request=health_check,
+        process_request=functools.partial(health_check, build_rid(config)),
     ):
         await stop
 
