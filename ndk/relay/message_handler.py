@@ -58,7 +58,7 @@ class MessageHandler:
             return [command_result.CommandResult(signed_ev.id, True, "").serialize()]
         except event.ValidationError:
             text = f"Event validation failed: {msg}"
-            logger.debug(text, exc_info=True)
+            logger.info(text, exc_info=True)
             ev_id = msg.event_dict["id"]  # guaranteed if passed Type check above
             return [command_result.CommandResult(ev_id, False, text).serialize()]
 

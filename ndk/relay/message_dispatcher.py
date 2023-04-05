@@ -42,7 +42,7 @@ class MessageDispatcher:
             return await self._handle_msg(msg)
         except exceptions.ParseError:
             text = f"Unable to parse message: {data}"
-            logger.debug(text, exc_info=True)
+            logger.info(text, exc_info=True)
             return [create_notice(text)]
 
     async def _handle_msg(self, msg: message.Message) -> list[str]:
