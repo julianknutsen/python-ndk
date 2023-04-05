@@ -85,11 +85,22 @@ async def handler_wrapper(repo: event_repo.EventRepo, websocket):
     md = message_dispatcher.MessageDispatcher(mh)
     repo.register_insert_cb(sh.handle_event)
 
-    # XXX: Need to clean these up
-    asyncio.create_task(protocol_handler.read_handler(websocket, request_queue))
-    asyncio.create_task(protocol_handler.write_handler(websocket, response_queue))
+    consumer_task = asyncio.create_task(
+        protocol_handler.read_handler(websocket, request_queue)
+    )
+    producer_task = asyncio.create_task(
+        protocol_handler.write_handler(websocket, response_queue)
+    )
+    processing_task = asyncio.create_task(
+        connection_handler(request_queue, response_queue, md)
+    )
 
-    return await connection_handler(request_queue, response_queue, md)
+    _, pending = await asyncio.wait(
+        [consumer_task, producer_task, processing_task],
+        return_when=asyncio.FIRST_COMPLETED,
+    )
+    for task in pending:
+        task.cancel()
 
 
 async def health_check(

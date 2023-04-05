@@ -24,6 +24,8 @@ import logging
 import typing
 import uuid
 
+from websockets import exceptions as websockets_exceptions
+
 from ndk import exceptions
 from ndk.event import event, event_filter, stored_events
 from ndk.messages import (
@@ -43,7 +45,11 @@ logger.propagate = True
 
 
 async def read_handler(websocket, read_queue: asyncio.Queue):
-    async for data in websocket:
+    while True:
+        try:
+            data = await websocket.recv()
+        except websockets_exceptions.ConnectionClosed:
+            break
         logger.debug("Read: %s", data)
         await read_queue.put(data)
 
@@ -53,7 +59,10 @@ async def write_handler(websocket, write_queue: asyncio.Queue):
         data = await write_queue.get()
         write_queue.task_done()
         logger.debug("Sending: %s", data)
-        await websocket.send(data)
+        try:
+            await websocket.send(data)
+        except websockets_exceptions.ConnectionClosed:
+            break
 
 
 class ProtocolHandler:
