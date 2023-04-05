@@ -41,7 +41,7 @@ EVENTS_TABLE = sqlalchemy.Table(
     sqlalchemy.Column("kind", sqlalchemy.Integer),
     sqlalchemy.Column("content", sqlalchemy.TEXT),
     sqlalchemy.Column("sig", sqlalchemy.String(128)),
-    sqlalchemy.Column("serialized", sqlalchemy.TEXT),
+    sqlalchemy.UniqueConstraint("event_id"),
 )
 
 TAGS_TABLE = sqlalchemy.Table(
@@ -50,18 +50,19 @@ TAGS_TABLE = sqlalchemy.Table(
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("identifier", sqlalchemy.String(255)),
     sqlalchemy.Column("value", sqlalchemy.String(255)),
-    sqlalchemy.UniqueConstraint("identifier", "value", name="uq_identifier_value"),
+    sqlalchemy.Column("additional_data", sqlalchemy.JSON),
+    sqlalchemy.Index("identifier", "value"),
 )
 
 # Create the bridge table
 EVENT_TAGS_TABLE = sqlalchemy.Table(
     "event_tags",
     METADATA,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column(
         "event_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("events.id")
     ),
     sqlalchemy.Column("tag_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("tags.id")),
-    sqlalchemy.PrimaryKeyConstraint("event_id", "tag_id"),
 )
 
 
@@ -91,67 +92,61 @@ class MySqlEventRepo(event_repo.EventRepo):
 
     async def add(self, ev: event.SignedEvent) -> event.EventID:
         async with self._engine.begin() as conn:
-            # if it is already in the db, do nothing
-            select_stmt = sqlalchemy.select(EVENTS_TABLE).where(
-                EVENTS_TABLE.c.event_id == ev.id
+            event_insert_stmt = (
+                sqlalchemy.insert(EVENTS_TABLE)
+                .values(
+                    event_id=ev.id,
+                    pubkey=ev.pubkey,
+                    created_at=ev.created_at,
+                    kind=ev.kind,
+                    content=ev.content,
+                    sig=ev.sig,
+                )
+                .prefix_with("IGNORE")
             )
 
-            if (await conn.execute(select_stmt)).fetchone():
+            insert_result = await conn.execute(event_insert_stmt)
+
+            # if it is already in the db, do nothing
+            if insert_result.lastrowid == 0:
                 return ev.id
 
-            event_insert_stmt = sqlalchemy.insert(EVENTS_TABLE).values(
-                event_id=ev.id,
-                pubkey=ev.pubkey,
-                created_at=ev.created_at,
-                kind=ev.kind,
-                content=ev.content,
-                sig=ev.sig,
-                serialized=serialize.serialize_as_str(ev),
-            )
-
-            event_id = (await conn.execute(event_insert_stmt)).inserted_primary_key[0]
+            ev_id = insert_result.lastrowid
 
             for tag in ev.tags:
                 if len(tag) == 0:
                     continue
 
-                # Check if the tag already exists
-                select_stmt = sqlalchemy.select(TAGS_TABLE).where(
-                    (TAGS_TABLE.c.identifier == tag[0]) & (TAGS_TABLE.c.value == tag[1])
+                # Check for existing tag_id
+                tag_select_stmt = sqlalchemy.select(TAGS_TABLE.c.id).where(
+                    sqlalchemy.and_(
+                        TAGS_TABLE.c.identifier == tag[0],
+                        TAGS_TABLE.c.value == tag[1],
+                        TAGS_TABLE.c.additional_data == tag[2:],
+                    )
                 )
 
-                existing_tag = (await conn.execute(select_stmt)).fetchone()
-
-                if existing_tag:
-                    # Use the existing tag if it already exists
-                    tag_id = existing_tag.id
-                else:
+                tag_select_result = (await conn.execute(tag_select_stmt)).fetchone()
+                if tag_select_result is None:
                     # Insert the tag if it doesn't exist
                     tag_insert_stmt = sqlalchemy.insert(TAGS_TABLE).values(
                         identifier=tag[0],
                         value=tag[1],
+                        additional_data=tag[2:],
                     )
 
-                    # Get the tag_id of the inserted tag
-                    tag_id = (await conn.execute(tag_insert_stmt)).inserted_primary_key[
-                        0
-                    ]
+                    tag_id = (await conn.execute(tag_insert_stmt)).lastrowid
 
-                # Insert the event_tag relationship, if it doesn't exist
-                event_tag_select_stmt = sqlalchemy.select(EVENT_TAGS_TABLE).where(
-                    (EVENT_TAGS_TABLE.c.tag_id == tag_id)
-                    & (EVENT_TAGS_TABLE.c.event_id == event_id)
+                else:
+                    tag_id = tag_select_result[0]
+
+                # Always insert tags even if they are a duplicate as we need to include
+                # the duplicate in the reconstruction
+                tag_event_insert_stmt = sqlalchemy.insert(EVENT_TAGS_TABLE).values(
+                    event_id=ev_id,
+                    tag_id=tag_id,
                 )
-
-                existing_tag_event = (
-                    await conn.execute(event_tag_select_stmt)
-                ).fetchone()
-                if not existing_tag_event:
-                    tag_event_insert_stmt = sqlalchemy.insert(EVENT_TAGS_TABLE).values(
-                        event_id=event_id,
-                        tag_id=tag_id,
-                    )
-                    await conn.execute(tag_event_insert_stmt)
+                await conn.execute(tag_event_insert_stmt)
 
             await conn.commit()
 
@@ -184,7 +179,34 @@ class MySqlEventRepo(event_repo.EventRepo):
     async def get(
         self, fltrs: list[event_filter.EventFilter]
     ) -> list[event.SignedEvent]:
-        query = sqlalchemy.select(EVENTS_TABLE)
+        query = (
+            sqlalchemy.select(
+                EVENTS_TABLE.c.event_id,
+                EVENTS_TABLE.c.pubkey,
+                EVENTS_TABLE.c.created_at,
+                EVENTS_TABLE.c.kind,
+                EVENTS_TABLE.c.content,
+                EVENTS_TABLE.c.sig,
+                sqlalchemy.func.group_concat(
+                    sqlalchemy.text(
+                        "CONCAT_WS('__', tags.identifier, tags.value, JSON_EXTRACT(tags.additional_data, \"$[*]\")) ORDER BY event_tags.id ASC"
+                    )
+                ).label("tags_combined"),
+            )
+            .select_from(
+                EVENTS_TABLE.outerjoin(EVENT_TAGS_TABLE).outerjoin(
+                    TAGS_TABLE, EVENT_TAGS_TABLE.c.tag_id == TAGS_TABLE.c.id
+                )
+            )
+            .group_by(
+                EVENTS_TABLE.c.event_id,
+                EVENTS_TABLE.c.pubkey,
+                EVENTS_TABLE.c.created_at,
+                EVENTS_TABLE.c.kind,
+                EVENTS_TABLE.c.content,
+                EVENTS_TABLE.c.sig,
+            )
+        )
 
         queries = []
         limit = float("-inf")
@@ -247,7 +269,29 @@ class MySqlEventRepo(event_repo.EventRepo):
             result = (await conn.execute(final)).fetchall()
 
             return [
-                event.SignedEvent.from_validated_dict(serialize.deserialize(row[7]))
+                event.SignedEvent.from_validated_dict(
+                    {
+                        "id": row[0],
+                        "pubkey": row[1],
+                        "created_at": row[2],
+                        "kind": row[3],
+                        "content": row[4],
+                        "sig": row[5],
+                        "tags": [
+                            [
+                                tag.split("__")[0],
+                                tag.split("__")[1],
+                                *(
+                                    serialize.deserialize(tag.split("__")[2])
+                                    if len(tag.split("__")) > 2
+                                    else []
+                                ),
+                            ]
+                            for tag in row[6].split(",")
+                            if row[6]
+                        ],
+                    }
+                )
                 for row in result
             ]
 

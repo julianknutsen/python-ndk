@@ -52,7 +52,7 @@ class EventKind(enum.IntEnum):
 class UnsignedEvent:
     created_at: int = dataclasses.field(default_factory=lambda: int(time.time()))
     kind: EventKind = EventKind.INVALID
-    tags: EventTags = dataclasses.field(default_factory=lambda: EventTags([[]]))
+    tags: EventTags = dataclasses.field(default_factory=lambda: EventTags([]))
     content: str = ""
     skip_validate: dataclasses.InitVar[bool] = False
 

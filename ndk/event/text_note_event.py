@@ -25,6 +25,6 @@ from ndk.event import event
 class TextNoteEvent(event.UnsignedEvent):
     @classmethod
     def from_content(
-        cls, content: str, tags: event.EventTags = event.EventTags([[]])
+        cls, content: str, tags: event.EventTags = event.EventTags([])
     ) -> "TextNoteEvent":
         return cls(kind=event.EventKind.TEXT_NOTE, content=content, tags=tags)

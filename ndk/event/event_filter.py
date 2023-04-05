@@ -113,28 +113,28 @@ class EventFilter:
         if self.kinds and ev.kind not in self.kinds:
             return False
 
-        if self.e_tags or self.p_tags and ev.tags:
-            ev_tags = collections.defaultdict(list)
-            for tag in ev.tags:
-                if not tag:
-                    continue
+        if self.e_tags or self.p_tags:
+            if not ev.tags:
+                return False
 
-                if tag[0] == "e":
-                    ev_tags["e"].append(tag[1])
-                elif tag[0] == "p":
-                    ev_tags["p"].append(tag[1])
+        ev_tags = collections.defaultdict(list)
+        for tag in ev.tags:
+            if tag[0] == "e":
+                ev_tags["e"].append(tag[1])
+            elif tag[0] == "p":
+                ev_tags["p"].append(tag[1])
 
-            if self.e_tags:
-                if "e" not in ev_tags:
-                    return False
-                elif not any(t in ev_tags["e"] for t in self.e_tags):
-                    return False
+        if self.e_tags:
+            if "e" not in ev_tags:
+                return False
+            elif not any(t in ev_tags["e"] for t in self.e_tags):
+                return False
 
-            if self.p_tags:
-                if "p" not in ev_tags:
-                    return False
-                elif not any(t in ev_tags["p"] for t in self.p_tags):
-                    return False
+        if self.p_tags:
+            if "p" not in ev_tags:
+                return False
+            elif not any(t in ev_tags["p"] for t in self.p_tags):
+                return False
 
         if self.until and ev.created_at >= self.until:
             return False
