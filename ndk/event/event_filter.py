@@ -88,8 +88,8 @@ class EventFilter:
                 raise ValueError("until must be greater than 0")
         if self.limit is not None:
             self.check_value("limit", int)
-            if self.limit <= 0:
-                raise ValueError("Limit must be greater than 0")
+            if self.limit < 0:
+                raise ValueError("Limit must be greater than or equal to 0")
 
     def for_req(self) -> dict:
         d = {}

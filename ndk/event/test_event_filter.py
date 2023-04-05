@@ -71,7 +71,7 @@ def test_init_bad_type_until(until):
         event_filter.EventFilter(until=until)  # type: ignore
 
 
-@pytest.mark.parametrize("limit", [0, -1, "1"])
+@pytest.mark.parametrize("limit", [-1, "1"])
 def test_init_bad_type_limit_zero(limit):
     with pytest.raises(ValueError):
         event_filter.EventFilter(limit=limit)
