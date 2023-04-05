@@ -36,8 +36,17 @@ EventTags = typing.NewType("EventTags", list[list[str]])
 EventID = typing.NewType("EventID", str)
 
 
-class ValidationError(ValueError):
-    pass
+def validate_event_id(event_id: typing.Union[str, EventID]):
+    if not isinstance(event_id, str):
+        raise exceptions.ValidationError(
+            f"EventID must be a string, not {type(event_id)}"
+        )
+    if len(event_id) != 64:
+        raise exceptions.ValidationError(
+            f"EventID must be 64 characters long, not {len(event_id)}"
+        )
+    if not all(c in "0123456789abcdef" for c in event_id):
+        raise exceptions.ValidationError(f"EventID must be hex, not {event_id}")
 
 
 class EventKind(enum.IntEnum):
@@ -46,6 +55,7 @@ class EventKind(enum.IntEnum):
     TEXT_NOTE = 1
     RECOMMEND_SERVER = 2
     CONTACT_LIST = 3
+    REPOST = 6
 
 
 @dataclasses.dataclass
@@ -55,6 +65,13 @@ class UnsignedEvent:
     tags: EventTags = dataclasses.field(default_factory=lambda: EventTags([]))
     content: str = ""
     skip_validate: dataclasses.InitVar[bool] = False
+
+    def __post_init__(self, skip_validate: bool):
+        if not skip_validate:
+            self.validate()
+
+    def validate(self):
+        pass
 
     @classmethod
     def from_signed_event(cls, ev: "SignedEvent"):
@@ -96,7 +113,7 @@ class SignedEvent(UnsignedEvent):
     def validate(self):
         valid_kinds = [kind.value for kind in EventKind if kind != EventKind.INVALID]
         if self.kind not in valid_kinds:
-            raise ValidationError(f"Invalid event kind {self.kind}")
+            raise exceptions.ValidationError(f"Invalid event kind {self.kind}")
 
         payload = serialize.serialize_as_bytes(
             [0, self.pubkey, self.created_at, self.kind, self.tags, self.content]
@@ -108,15 +125,19 @@ class SignedEvent(UnsignedEvent):
             if not crypto.verify_signature(
                 self.pubkey, self.sig, hashed_payload.digest()
             ):
-                raise ValidationError(
+                raise exceptions.ValidationError(
                     f"Signature in event did not match PublicKey: {self}"
                 )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            raise ValidationError(f"Signature validation failed: {self}") from exc
+            raise exceptions.ValidationError(
+                f"Signature validation failed: {self}"
+            ) from exc
 
         if not hashed_payload.hexdigest() == self.id:
-            raise ValidationError(f"ID does not match hash of payload: {self}")
+            raise exceptions.ValidationError(
+                f"ID does not match hash of payload: {self}"
+            )
 
     @classmethod
     def from_dict(cls, fields: dict):

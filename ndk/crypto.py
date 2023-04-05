@@ -38,8 +38,19 @@ import typing
 
 import coincurve
 
+from ndk import exceptions
+
 SchnorrSigStr = typing.NewType("SchnorrSigStr", str)
 PublicKeyStr = typing.NewType("PublicKeyStr", str)
+
+
+def validate_public_key(pubkey: typing.Union[PublicKeyStr, str]):
+    """Basic validation that doesn't involve the curve"""
+    if len(pubkey) != 64:
+        raise exceptions.ValidationError("Public key must be 64 bytes long")
+
+    if not all(c in "0123456789abcdef" for c in pubkey):
+        raise exceptions.ValidationError("Public key must be a hex string")
 
 
 def verify_signature(pubkey: PublicKeyStr, signature: SchnorrSigStr, message: bytes):

@@ -21,6 +21,7 @@
 
 import logging
 
+from ndk import exceptions
 from ndk.event import event, event_filter
 from ndk.messages import (
     close,
@@ -56,7 +57,7 @@ class MessageHandler:
             signed_ev = event.SignedEvent.from_dict(msg.event_dict)
             await self._event_handler.handle_event(signed_ev)
             return [command_result.CommandResult(signed_ev.id, True, "").serialize()]
-        except event.ValidationError:
+        except exceptions.ValidationError:
             text = f"Event validation failed: {msg}"
             logger.info(text, exc_info=True)
             ev_id = msg.event_dict["id"]  # guaranteed if passed Type check above

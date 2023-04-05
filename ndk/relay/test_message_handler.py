@@ -23,6 +23,7 @@
 import mock
 import pytest
 
+from ndk import exceptions
 from ndk.event import event, event_filter
 from ndk.messages import close, command_result, event_message, message_factory, request
 from ndk.relay import event_handler, message_handler, subscription_handler
@@ -54,7 +55,7 @@ def mh(repo, sh_mock, eh_mock):
 
 async def test_event_validation_failure_returns_command_result_false(mh):
     def raise_validation_error():
-        raise event.ValidationError("Failed validation")
+        raise exceptions.ValidationError("Failed validation")
 
     with mock.patch.object(
         event.SignedEvent, "from_dict", lambda self, **kwargs: raise_validation_error()
