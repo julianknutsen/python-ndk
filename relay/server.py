@@ -30,6 +30,7 @@ import signal
 
 from websockets.legacy.server import serve
 
+from ndk import serialize
 from ndk.relay import (
     event_handler,
     message_dispatcher,
@@ -151,7 +152,7 @@ def build_rid(config):
         name=config.get("General", "name"),
         description=config.get("General", "description"),
         software=config.get("General", "software"),
-        supported_nips=config.get("General", "supported_nips"),
+        supported_nips=serialize.deserialize(config.get("General", "supported_nips")),
         version=config.get("General", "version"),
         limitation_auth_required=config.getboolean("Limitation", "auth_required"),
         limitation_payment_required=config.getboolean("Limitation", "payment_required"),

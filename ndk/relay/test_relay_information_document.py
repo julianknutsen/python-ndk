@@ -79,3 +79,12 @@ def test_general_and_limitation():
             name="foo", limitation_auth_required=False
         ).serialize_as_bytes()
     )
+
+
+def test_general_nips():
+    assert (
+        b'{"supported_nips":[1]}'
+        == relay_information_document.RelayInformationDocument(
+            supported_nips=[1]
+        ).serialize_as_bytes()
+    )
