@@ -21,6 +21,7 @@
 
 import collections
 import dataclasses
+import logging
 import typing
 
 from ndk.event import event
@@ -33,6 +34,9 @@ from ndk.event import event
 # "since": <an integer unix timestamp, events must be newer than this to pass>,
 # "until": <an integer unix timestamp, events must be older than this to pass>,
 # "limit": <maximum number of events to be returned in the initial query>
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -90,6 +94,13 @@ class EventFilter:
             self.check_value("limit", int)
             if self.limit < 0:
                 raise ValueError("Limit must be greater than or equal to 0")
+
+        if self.kinds is not None:
+            for kind in self.kinds:
+                if kind not in event.EventKind.__members__.values():
+                    logger.warning(
+                        "Creating filter %s w/ unknown event type: %s", self, kind
+                    )
 
     def for_req(self) -> dict:
         d = {}

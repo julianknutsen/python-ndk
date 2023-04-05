@@ -19,6 +19,8 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import logging
+
 import mock
 import pytest
 
@@ -411,3 +413,10 @@ def test_to_req_tags():
 def test_to_req_empty_list_excluded(field, value):
     f = event_filter.EventFilter(**{field: value})
     assert not f.for_req()
+
+
+def test_filter_with_unknown_event_warns(caplog):
+    event_filter.EventFilter(kinds=[-2])
+    record = caplog.records[0]
+    assert record.levelno == logging.WARNING
+    assert "unknown event type: -2" in record.message
