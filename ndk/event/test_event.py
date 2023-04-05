@@ -46,7 +46,7 @@ def test_signed_event_from_dict_bad_sig(signed):
     base_dict = signed.__dict__
     base_dict["sig"] = "badsig"
 
-    with pytest.raises(event.ValidationError):
+    with pytest.raises(exceptions.ValidationError):
         event.SignedEvent.from_dict(base_dict)
 
 
@@ -58,7 +58,7 @@ def test_signed_event_from_dict_wrong_sig(signed):
     base_dict = signed.__dict__
     base_dict["sig"] = signed2.sig
 
-    with pytest.raises(event.ValidationError):
+    with pytest.raises(exceptions.ValidationError):
         event.SignedEvent.from_dict(base_dict)
 
 
@@ -70,7 +70,7 @@ def test_signed_event_from_dict_wrong_id(signed):
     base_dict = signed.__dict__
     base_dict["id"] = signed2.id
 
-    with pytest.raises(event.ValidationError):
+    with pytest.raises(exceptions.ValidationError):
         event.SignedEvent.from_dict(base_dict)
 
 
@@ -81,14 +81,14 @@ def test_signed_event_from_dict_ok(signed):
 def test_from_dict_bad_id_errors(signed):
     d = signed.__dict__
     d["id"] = "uh oh"
-    with pytest.raises(event.ValidationError):
+    with pytest.raises(exceptions.ValidationError):
         event.SignedEvent.from_dict(d)
 
 
 def test_from_dict_invalid_id_errors(signed):
     d = signed.__dict__
     d["kind"] = event.EventKind.INVALID
-    with pytest.raises(event.ValidationError):
+    with pytest.raises(exceptions.ValidationError):
         event.SignedEvent.from_dict(d)
 
 
