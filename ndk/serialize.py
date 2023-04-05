@@ -32,7 +32,6 @@ Example::
     assert nostr_obj == back_and_forth
 """
 
-import dataclasses
 import json
 import typing
 
@@ -47,15 +46,7 @@ def serialize_as_str(obj) -> str:
         str: encoded string representation of obj
     """
 
-    class DataclassAwareEncoder(json.JSONEncoder):
-        def default(self, o):
-            if dataclasses.is_dataclass(o):
-                return dataclasses.asdict(o)
-            return super().default(o)
-
-    return json.dumps(
-        obj, separators=(",", ":"), ensure_ascii=False, cls=DataclassAwareEncoder
-    )
+    return json.dumps(obj, separators=(",", ":"), ensure_ascii=False)
 
 
 def serialize_as_bytes(obj) -> bytes:
