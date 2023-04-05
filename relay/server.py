@@ -142,6 +142,8 @@ def build_rid(config):
         software=config.get("General", "software"),
         supported_nips=config.get("General", "supported_nips"),
         version=config.get("General", "version"),
+        limitation_auth_required=config.getboolean("Limitation", "auth_required"),
+        limitation_payment_required=config.getboolean("Limitation", "payment_required"),
     )
 
 

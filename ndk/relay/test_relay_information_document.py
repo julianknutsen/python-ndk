@@ -31,7 +31,7 @@ def test_init():
 
 def test_bad_json():
     with pytest.raises(ValueError):
-        relay_information_document.RelayInformationDocument.from_json("")
+        relay_information_document.RelayInformationDocument.from_json("[]")
 
 
 def test_good_json():
@@ -51,4 +51,31 @@ def test_empty_removed():
     assert (
         b"{}"
         == relay_information_document.RelayInformationDocument().serialize_as_bytes()
+    )
+
+
+def test_limitation():
+    assert (
+        b'{"limitation":{"auth_required":false}}'
+        == relay_information_document.RelayInformationDocument(
+            limitation_auth_required=False
+        ).serialize_as_bytes()
+    )
+
+
+def test_two_limitation():
+    assert (
+        b'{"limitation":{"auth_required":false,"payment_required":false}}'
+        == relay_information_document.RelayInformationDocument(
+            limitation_auth_required=False, limitation_payment_required=False
+        ).serialize_as_bytes()
+    )
+
+
+def test_general_and_limitation():
+    assert (
+        b'{"limitation":{"auth_required":false},"name":"foo"}'
+        == relay_information_document.RelayInformationDocument(
+            name="foo", limitation_auth_required=False
+        ).serialize_as_bytes()
     )

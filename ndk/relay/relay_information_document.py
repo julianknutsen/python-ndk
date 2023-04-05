@@ -45,11 +45,26 @@ class RelayInformationDocument:
     supported_nips: typing.Optional[list[int]] = None
     software: typing.Optional[str] = None
     version: typing.Optional[str] = None
+    limitation_auth_required: typing.Optional[bool] = None
+    limitation_payment_required: typing.Optional[bool] = None
 
     def serialize_as_bytes(self) -> bytes:
-        return serialize.serialize_as_bytes(
-            {k: v for k, v in self.__dict__.items() if v is not None}
-        )
+        ret: dict[str, typing.Any] = {}
+        stripped = {k: v for k, v in self.__dict__.items() if v is not None}
+
+        processed = []
+        for k, v in stripped.items():
+            if k.startswith("limitation_"):
+                if "limitation" not in ret:
+                    ret["limitation"] = {}
+                ret["limitation"][k[11:]] = v
+                processed.append(k)
+
+        for k, v in stripped.items():
+            if k not in processed:
+                ret[k] = v
+
+        return serialize.serialize_as_bytes(ret)
 
     @classmethod
     def from_json(cls, json: str):
