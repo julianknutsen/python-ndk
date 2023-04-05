@@ -174,7 +174,7 @@ async def main():
         )
     else:
         raise ValueError(f"Unknown event repo: {RELAY_EVENT_REPO}")
-    logger.debug("%s initialized", repo.__class__)
+    logger.info("%s initialized", repo.__class__)
 
     loop = asyncio.get_event_loop()
     stop = loop.create_future()
