@@ -56,6 +56,7 @@ if RELAY_EVENT_REPO == "mysql":
     DB_PASSWORD = os.environ.get("DB_PASSWORD")
 
 logging.basicConfig(level=DEBUG_LEVEL, format="%(asctime)s %(levelname)s %(message)s")
+logging.getLogger("websockets").setLevel(logging.WARNING)
 
 
 async def connection_handler(
