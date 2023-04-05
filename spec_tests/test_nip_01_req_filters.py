@@ -333,7 +333,7 @@ async def test_text_note_find_by_tag_no_tag_inserted(
 
 def build_with_tags(keys, tags=None):
     if not tags:
-        tags = [[]]
+        tags = []
 
     unsigned_event = text_note_event.TextNoteEvent.from_content(
         "Hello, world!", tags=event.EventTags(tags)

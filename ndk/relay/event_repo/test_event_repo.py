@@ -167,7 +167,7 @@ async def test_get_no_matches_by_etag(repo, signed, keys):
 
 def build_signed_text_note(keys, tags=None):
     if not tags:
-        tags = [[]]
+        tags = []
 
     unsigned = text_note_event.TextNoteEvent.from_content(
         "Hello, world!", tags=event.EventTags(tags)
@@ -185,6 +185,7 @@ async def test_matches_by_etag(repo, keys):
     )
 
     assert len(items) == 1
+    assert items[0] == signed
 
 
 async def test_matches_by_etag_duplicated(repo, keys):
@@ -197,6 +198,7 @@ async def test_matches_by_etag_duplicated(repo, keys):
     )
 
     assert len(items) == 1
+    assert items[0] == signed
 
 
 async def test_matches_by_etag_event_has_multiple_tags(repo, keys):
@@ -212,7 +214,9 @@ async def test_matches_by_etag_event_has_multiple_tags(repo, keys):
     )
 
     assert len(items1) == 1
+    assert items1[0] == signed
     assert len(items2) == 1
+    assert items2[0] == signed
 
 
 async def test_get_no_matches_by_ptag(repo, keys):
@@ -237,6 +241,20 @@ async def test_matches_by_ptag(repo, keys):
     )
 
     assert len(items) == 1
+    assert items[0] == signed
+
+
+async def test_matches_by_ptag_with_relay(repo, keys):
+    signed = build_signed_text_note(keys, [["p", keys.public, "ws://foo"]])
+
+    _ = await repo.add(signed)
+
+    items = await repo.get(
+        [event_filter.EventFilter(authors=[keys.public], p_tags=[keys.public])]
+    )
+
+    assert len(items) == 1
+    assert items[0] == signed
 
 
 async def test_matches_by_ptags(repo, keys):

@@ -33,7 +33,7 @@ class ContactListEvent(event.UnsignedEvent):
     def from_contact_list(
         cls, contact_list: typing.Optional[typing.Iterable[contacts.ContactInfo]] = None
     ) -> "ContactListEvent":
-        tags = event.EventTags([[]])
+        tags = event.EventTags([])
         if contact_list:
             tags = event.EventTags([ci.to_event_tag() for ci in contact_list])
         return cls(kind=event.EventKind.CONTACT_LIST, tags=tags)

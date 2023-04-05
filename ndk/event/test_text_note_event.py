@@ -24,7 +24,7 @@ from ndk.event import event, text_note_event
 def test_from_content_no_tags():
     ev = text_note_event.TextNoteEvent.from_content("Hello World!")
     assert ev.kind == event.EventKind.TEXT_NOTE
-    assert ev.tags == event.EventTags([[]])
+    assert ev.tags == event.EventTags([])
     assert ev.content == "Hello World!"
 
 

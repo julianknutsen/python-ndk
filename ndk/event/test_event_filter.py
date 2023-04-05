@@ -214,10 +214,20 @@ def test_matches_event_tags_empty_list_matches_all():
     assert f.matches_event(mock_ev)
 
 
+def test_matches_event_tags_exist_doesnt_match_empty():
+    f = event_filter.EventFilter(authors=["author"], p_tags=["author"])
+
+    mock_ev = mock.MagicMock()
+    mock_ev.pubkey = "author"
+    mock_ev.tags = []
+    assert not f.matches_event(mock_ev)
+
+
 def test_matches_event_tags():
     f = event_filter.EventFilter(e_tags=["eventid"])
 
     mock_ev = mock.MagicMock()
+
     mock_ev.tags = [["e", "eventid"]]
     assert f.matches_event(mock_ev)
 
