@@ -33,20 +33,24 @@ logger = logging.getLogger(__name__)
 
 
 EventTags = typing.NewType("EventTags", list[list[str]])
-EventID = typing.NewType("EventID", str)
 
 
-def validate_event_id(event_id: typing.Union[str, EventID]):
-    if not isinstance(event_id, str):
-        raise exceptions.ValidationError(
-            f"EventID must be a string, not {type(event_id)}"
-        )
-    if len(event_id) != 64:
-        raise exceptions.ValidationError(
-            f"EventID must be 64 characters long, not {len(event_id)}"
-        )
-    if not all(c in "0123456789abcdef" for c in event_id):
-        raise exceptions.ValidationError(f"EventID must be hex, not {event_id}")
+class EventID(str):
+    def __new__(cls, value):
+        cls.validate(value)
+
+        return super().__new__(cls, value)
+
+    @classmethod
+    def validate(cls, value):
+        if not isinstance(value, str):
+            raise ValueError(f"EventID must be a string, not {type(value)}")
+
+        if len(value) != 64:
+            raise ValueError(f"EventID must be 64 bytes long, not {value}")
+
+        if not all(c in "0123456789abcdef" for c in value):
+            raise ValueError(f"EventID must be a hex string, not {value}")
 
 
 class EventKind(enum.IntEnum):
@@ -111,6 +115,7 @@ class SignedEvent(UnsignedEvent):
             self.validate()
 
     def validate(self):
+        EventID.validate(self.id)
         crypto.PublicKeyStr.validate(self.pubkey)
         crypto.SchnorrSigStr.validate(self.sig)
 
@@ -137,7 +142,7 @@ class SignedEvent(UnsignedEvent):
                 f"Signature validation failed: {self}"
             ) from exc
 
-        if not hashed_payload.hexdigest() == self.id:
+        if hashed_payload.hexdigest() != self.id:
             raise exceptions.ValidationError(
                 f"ID does not match hash of payload: {self}"
             )

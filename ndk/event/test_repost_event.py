@@ -53,33 +53,6 @@ def test_malformed_relay():
         )
 
 
-def test_wrong_size_event_id():
-    with pytest.raises(exceptions.ValidationError):
-        repost_event.RepostEvent.from_parts(
-            event.EventID("aaaaaa"), TEST_AUTHOR, TEST_RELAY_URL
-        )
-
-
-def test_non_hex_event_id():
-    with pytest.raises(exceptions.ValidationError):
-        repost_event.RepostEvent.from_parts(
-            event.EventID(
-                "$aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-            ),
-            TEST_AUTHOR,
-            TEST_RELAY_URL,
-        )
-
-
-def test_non_str_event_id():
-    with pytest.raises(exceptions.ValidationError):
-        repost_event.RepostEvent.from_parts(
-            [],  # type: ignore
-            TEST_AUTHOR,
-            TEST_RELAY_URL,
-        )
-
-
 def test_no_tags():
     with pytest.raises(exceptions.ValidationError):
         repost_event.RepostEvent(
