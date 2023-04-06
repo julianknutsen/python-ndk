@@ -33,24 +33,39 @@ Example::
     human_readable_pubkey: PublicKeyStr = keys.public
     sig = keys.private.sign_schnorr(payload)
 """
-
-import typing
-
 import coincurve
 
-from ndk import exceptions
 
-SchnorrSigStr = typing.NewType("SchnorrSigStr", str)
-PublicKeyStr = typing.NewType("PublicKeyStr", str)
+class SchnorrSigStr(str):
+    def __new__(cls, value):
+        cls.validate(value)
+
+        return super().__new__(cls, value)
+
+    @classmethod
+    def validate(cls, value):
+        if len(value) != 128:
+            raise ValueError("Signature must be 128 bytes long")
+
+        if not all(c in "0123456789abcdef" for c in value):
+            raise ValueError("Signature must be a hex string")
+
+        return super().__new__(cls, value)
 
 
-def validate_public_key(pubkey: typing.Union[PublicKeyStr, str]):
-    """Basic validation that doesn't involve the curve"""
-    if len(pubkey) != 64:
-        raise exceptions.ValidationError("Public key must be 64 bytes long")
+class PublicKeyStr(str):
+    def __new__(cls, value):
+        cls.validate(value)
 
-    if not all(c in "0123456789abcdef" for c in pubkey):
-        raise exceptions.ValidationError("Public key must be a hex string")
+        return super().__new__(cls, value)
+
+    @classmethod
+    def validate(cls, value):
+        if len(value) != 64:
+            raise ValueError("Public key must be 64 bytes long")
+
+        if not all(c in "0123456789abcdef" for c in value):
+            raise ValueError("Public key must be a hex string")
 
 
 def verify_signature(pubkey: PublicKeyStr, signature: SchnorrSigStr, message: bytes):
