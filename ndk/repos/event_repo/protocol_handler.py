@@ -26,7 +26,7 @@ import uuid
 
 from websockets import exceptions as websockets_exceptions
 
-from ndk import exceptions
+from ndk import exceptions, types
 from ndk.event import event, event_filter, stored_events
 from ndk.messages import (
     close,
@@ -66,7 +66,7 @@ async def write_handler(websocket, write_queue: asyncio.Queue):
 
 
 class ProtocolHandler:
-    _write_waiters: dict[event.EventID, asyncio.Future]
+    _write_waiters: dict[types.EventID, asyncio.Future]
     _read_waiters: dict[str, asyncio.Queue[message.Message]]
     _read_queue: asyncio.Queue
     _write_queue: asyncio.Queue
@@ -94,7 +94,7 @@ class ProtocolHandler:
             logger.error("%s", msg)
 
         elif isinstance(msg, command_result.CommandResult):
-            self._write_waiters[event.EventID(msg.event_id)].set_result(msg)
+            self._write_waiters[types.EventID(msg.event_id)].set_result(msg)
 
         elif isinstance(msg, (relay_event.RelayEvent, eose.EndOfStoredEvents)):
             if msg.sub_id not in self._read_waiters:

@@ -30,7 +30,7 @@ Typical usage example::
 
 import typing
 
-from ndk import crypto
+from ndk import crypto, types
 from ndk.event import event, event_parser
 from ndk.repos.event_repo import event_repo
 
@@ -38,17 +38,17 @@ from ndk.repos.event_repo import event_repo
 class MemoryEventRepo(event_repo.EventRepo):
     """Concrete implementation of EventRepo that is backed by memory."""
 
-    _by_id: dict[event.EventID, event.SignedEvent]
+    _by_id: dict[types.EventID, event.SignedEvent]
 
     def __init__(self):
         self._by_id = {}
         super().__init__()
 
-    async def add(self, signed_ev: event.SignedEvent) -> event.EventID:
+    async def add(self, signed_ev: event.SignedEvent) -> types.EventID:
         self._by_id[signed_ev.id] = signed_ev
         return signed_ev.id
 
-    async def get(self, ev_id: event.EventID):
+    async def get(self, ev_id: types.EventID):
         if ev_id not in self._by_id:
             raise event_repo.GetItemError("Unknown ev_id")
 

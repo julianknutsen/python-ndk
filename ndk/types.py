@@ -40,3 +40,7 @@ class FixedLengthHexStr(str):
 
         if not all(c in "0123456789abcdef" for c in value):
             raise ValueError(f"{cls.__name__} must be a hex string, not {value}")
+
+
+class EventID(FixedLengthHexStr):
+    _length: int = 64

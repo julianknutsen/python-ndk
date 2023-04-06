@@ -24,7 +24,7 @@ import logging
 import sqlalchemy
 from sqlalchemy.ext import asyncio as sa_asyncio
 
-from ndk import serialize
+from ndk import serialize, types
 from ndk.event import event, event_filter
 from ndk.relay.event_repo import event_repo
 
@@ -90,7 +90,7 @@ class MySqlEventRepo(event_repo.EventRepo):
         logger.info("Database initialized")
         return MySqlEventRepo(engine)
 
-    async def add(self, ev: event.SignedEvent) -> event.EventID:
+    async def add(self, ev: event.SignedEvent) -> types.EventID:
         async with self._engine.begin() as conn:
             event_insert_stmt = (
                 sqlalchemy.insert(EVENTS_TABLE)
@@ -295,7 +295,7 @@ class MySqlEventRepo(event_repo.EventRepo):
                 for row in result
             ]
 
-    async def remove(self, event_id: event.EventID):
+    async def remove(self, event_id: types.EventID):
         async with self._engine.begin() as conn:
             select_stmt = sqlalchemy.select(EVENTS_TABLE).where(
                 EVENTS_TABLE.c.event_id == event_id

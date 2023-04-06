@@ -50,7 +50,7 @@ def test_sign_verify_bad():
 
 def test_schnorrsigstr_bad_type():
     with pytest.raises(ValueError):
-        crypto.SchnorrSigStr([])
+        crypto.SchnorrSigStr([])  # type: ignore
 
 
 def test_schnorrsigstr_bad_size():
@@ -65,7 +65,7 @@ def test_schnorrsigstr_non_hex():
 
 def test_publickeystr_bad_type():
     with pytest.raises(ValueError):
-        crypto.PublicKeyStr([])
+        crypto.PublicKeyStr([])  # type: ignore
 
 
 def test_publickeystr_bad_size():

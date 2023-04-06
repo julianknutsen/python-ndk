@@ -27,7 +27,7 @@ import mock
 import pytest
 
 from ndk import crypto
-from ndk.event import event, event_filter, metadata_event, text_note_event
+from ndk.event import event, event_filter, event_tags, metadata_event, text_note_event
 from ndk.relay.event_repo import memory_event_repo, mysql_event_repo
 
 
@@ -170,7 +170,7 @@ def build_signed_text_note(keys, tags=None):
         tags = []
 
     unsigned = text_note_event.TextNoteEvent.from_content(
-        "Hello, world!", tags=event.EventTags(tags)
+        "Hello, world!", tags=event_tags.EventTags(tags)
     )
     return event.build_signed_event(unsigned, keys)
 

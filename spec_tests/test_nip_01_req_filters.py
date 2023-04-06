@@ -27,7 +27,13 @@ import mock
 import pytest
 
 from ndk import crypto
-from ndk.event import contact_list_event, event, metadata_event, text_note_event
+from ndk.event import (
+    contact_list_event,
+    event,
+    event_tags,
+    metadata_event,
+    text_note_event,
+)
 from ndk.messages import command_result, event_message, message_factory, relay_event
 from spec_tests import utils
 
@@ -283,7 +289,7 @@ def build_with_tags(keys, tags=None):
         tags = []
 
     unsigned_event = text_note_event.TextNoteEvent.from_content(
-        "Hello, world!", tags=event.EventTags(tags)
+        "Hello, world!", tags=event_tags.EventTags(tags)
     )
     return event.build_signed_event(unsigned_event, keys)
 

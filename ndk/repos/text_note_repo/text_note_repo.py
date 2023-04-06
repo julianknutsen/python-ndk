@@ -22,10 +22,9 @@
 import abc
 import typing
 
-from ndk import crypto
-from ndk.event import event
+from ndk import crypto, types
 
-TextNoteID = typing.NewType("TextNoteID", event.EventID)
+TextNoteID = typing.NewType("TextNoteID", types.EventID)
 TextNoteContent = typing.NewType("TextNoteContent", str)
 
 
