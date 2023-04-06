@@ -23,8 +23,7 @@
 import secrets
 from collections import defaultdict
 
-from ndk import crypto
-from ndk.event import event
+from ndk import crypto, types
 from ndk.repos.text_note_repo import text_note_repo
 
 
@@ -45,7 +44,7 @@ class FakeTextNoteRepo(text_note_repo.TextNoteRepo):
             text_note_repo.TextNoteContent(content)
         )
 
-        return text_note_repo.TextNoteID(event.EventID(uid))
+        return text_note_repo.TextNoteID(types.EventID(uid))
 
     async def get_by_uid(
         self, uid: text_note_repo.TextNoteID

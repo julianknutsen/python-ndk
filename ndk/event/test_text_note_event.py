@@ -18,20 +18,23 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
-from ndk.event import event, text_note_event
+
+from ndk.event import event, event_tags, text_note_event
+
+VALID_PUBKEY_STR = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
 
 
 def test_from_content_no_tags():
     ev = text_note_event.TextNoteEvent.from_content("Hello World!")
     assert ev.kind == event.EventKind.TEXT_NOTE
-    assert ev.tags == event.EventTags([])
+    assert ev.tags == event_tags.EventTags([])
     assert ev.content == "Hello World!"
 
 
 def test_from_content_with_tags():
     ev = text_note_event.TextNoteEvent.from_content(
-        "Hello World!", tags=event.EventTags([["p", "pubkeygoeshere"]])
+        "Hello World!", tags=event_tags.EventTags([["p", VALID_PUBKEY_STR]])
     )
     assert ev.kind == event.EventKind.TEXT_NOTE
-    assert ev.tags == event.EventTags([["p", "pubkeygoeshere"]])
+    assert ev.tags == event_tags.EventTags([["p", VALID_PUBKEY_STR]])
     assert ev.content == "Hello World!"

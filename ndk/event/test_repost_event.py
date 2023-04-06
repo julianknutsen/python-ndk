@@ -22,13 +22,13 @@
 
 import pytest
 
-from ndk import crypto, exceptions
-from ndk.event import event, repost_event
+from ndk import crypto, exceptions, types
+from ndk.event import event, event_tags, repost_event
 
 TEST_AUTHOR = crypto.PublicKeyStr(
     "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
 )
-TEST_EVENT_ID = event.EventID(
+TEST_EVENT_ID = types.EventID(
     "1212121212121212121212121212121212121212121212121212121212121212"
 )
 TEST_RELAY_URL_SSL = "wss://nostr.com.se"
@@ -46,24 +46,10 @@ def test_ssl_relay():
     repost_event.RepostEvent.from_parts(TEST_EVENT_ID, TEST_AUTHOR, TEST_RELAY_URL_SSL)
 
 
-def test_malformed_relay():
-    with pytest.raises(exceptions.ValidationError):
-        repost_event.RepostEvent.from_parts(
-            TEST_EVENT_ID, TEST_AUTHOR, "http://foo.com"
-        )
-
-
 def test_no_tags():
     with pytest.raises(exceptions.ValidationError):
         repost_event.RepostEvent(
-            kind=event.EventKind.REPOST, tags=event.EventTags([]), content=""
-        )
-
-
-def test_too_many_tags():
-    with pytest.raises(exceptions.ValidationError):
-        repost_event.RepostEvent(
-            kind=event.EventKind.REPOST, tags=event.EventTags([[], [], []]), content=""
+            kind=event.EventKind.REPOST, tags=event_tags.EventTags([]), content=""
         )
 
 
@@ -71,7 +57,7 @@ def test_one_tag_wrong_type():
     with pytest.raises(exceptions.ValidationError):
         repost_event.RepostEvent(
             kind=event.EventKind.REPOST,
-            tags=event.EventTags([["a", "foo"]]),
+            tags=event_tags.EventTags([["a", "foo"]]),
             content="",
         )
 
@@ -80,16 +66,7 @@ def test_two_tag_wrong_second_type():
     with pytest.raises(exceptions.ValidationError):
         repost_event.RepostEvent(
             kind=event.EventKind.REPOST,
-            tags=event.EventTags([VALID_TAG_1, ["a", "foo"]]),
-            content="",
-        )
-
-
-def test_two_tag_empty_first_type():
-    with pytest.raises(exceptions.ValidationError):
-        repost_event.RepostEvent(
-            kind=event.EventKind.REPOST,
-            tags=event.EventTags([[], VALID_TAG_1]),
+            tags=event_tags.EventTags([VALID_TAG_1, ["a", "foo"]]),
             content="",
         )
 
@@ -97,7 +74,7 @@ def test_two_tag_empty_first_type():
 def test_two_tag_order_1():
     repost_event.RepostEvent(
         kind=event.EventKind.REPOST,
-        tags=event.EventTags([VALID_TAG_1, VALID_TAG_2]),
+        tags=event_tags.EventTags([VALID_TAG_1, VALID_TAG_2]),
         content="",
     )
 
@@ -105,6 +82,6 @@ def test_two_tag_order_1():
 def test_two_tag_order_2():
     repost_event.RepostEvent(
         kind=event.EventKind.REPOST,
-        tags=event.EventTags([VALID_TAG_2, VALID_TAG_1]),
+        tags=event_tags.EventTags([VALID_TAG_2, VALID_TAG_1]),
         content="",
     )

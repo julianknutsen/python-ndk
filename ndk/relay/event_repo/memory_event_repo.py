@@ -19,18 +19,19 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+from ndk import types
 from ndk.event import event, event_filter
 from ndk.relay.event_repo import event_repo
 
 
 class MemoryEventRepo(event_repo.EventRepo):
-    _stored_events: dict[event.EventID, event.SignedEvent]
+    _stored_events: dict[types.EventID, event.SignedEvent]
 
     def __init__(self):
         self._stored_events = {}
         super().__init__()
 
-    async def add(self, ev: event.SignedEvent) -> event.EventID:
+    async def add(self, ev: event.SignedEvent) -> types.EventID:
         self._stored_events[ev.id] = ev
         await self._insert_event_handler.handle_event(ev)
         return ev.id
@@ -54,7 +55,7 @@ class MemoryEventRepo(event_repo.EventRepo):
 
         return sorted(fetched, key=lambda ev: ev.created_at, reverse=True)
 
-    async def remove(self, event_id: event.EventID):
+    async def remove(self, event_id: types.EventID):
         if event_id not in self._stored_events:
             raise ValueError(f"Event {event_id} not found")
         del self._stored_events[event_id]

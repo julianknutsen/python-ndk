@@ -19,12 +19,12 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-from ndk.event import event
+from ndk.event import event, event_tags
 
 
 class TextNoteEvent(event.UnsignedEvent):
     @classmethod
     def from_content(
-        cls, content: str, tags: event.EventTags = event.EventTags([])
+        cls, content: str, tags: event_tags.EventTags = event_tags.EventTags([])
     ) -> "TextNoteEvent":
         return cls(kind=event.EventKind.TEXT_NOTE, content=content, tags=tags)

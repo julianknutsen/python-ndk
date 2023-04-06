@@ -19,65 +19,34 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-from ndk import crypto, exceptions
-from ndk.event import event
-
-
-def validate_relay_url(relay_url: str):
-    if not (relay_url.startswith("ws://") or relay_url.startswith("wss://")):
-        raise exceptions.ValidationError(
-            f"Relay URL must start with ws:// or ws:// {relay_url}"
-        )
+from ndk import crypto, exceptions, types
+from ndk.event import event, event_tags
 
 
 class RepostEvent(event.UnsignedEvent):
     @classmethod
     def from_parts(
         cls,
-        note_id: event.EventID,
+        note_id: types.EventID,
         author: crypto.PublicKeyStr,
         relay_url: str,
         content: str = "",
     ) -> "RepostEvent":
-        tags = event.EventTags([["e", note_id, relay_url], ["p", author]])
+        tags = event_tags.EventTags()
+        tags.add(event_tags.PublicKeyTag.from_pubkey(author, relay_url))
+        tags.add(event_tags.EventIdTag.from_event_id(note_id))
 
         return cls(kind=event.EventKind.REPOST, content=content, tags=tags)
 
-    def validate_e_tag(self, e_tag: list[str]):
-        if e_tag[0] != "e":
-            raise exceptions.ValidationError(
-                f"Repost event must have an 'e' tag: {self}"
-            )
-
-        event.EventID.validate(e_tag[1])
-        validate_relay_url(e_tag[2])
-
-    def validate_p_tag(self, p_tag: list[str]):
-        if p_tag[0] != "p":
-            raise exceptions.ValidationError(
-                f"Repost event w/ 2 tags must have a 'p' tag: {self}"
-            )
-
-        crypto.PublicKeyStr.validate(p_tag[1])
-
     def validate(self):
-        tag_len = len(self.tags)
-        if tag_len < 1 or tag_len > 2:
+        if len(self.tags) not in (1, 2):
             raise exceptions.ValidationError(
                 f"Repost event must have 1 or 2 tags: {self}"
             )
 
-        if tag_len == 1:
-            self.validate_e_tag(self.tags[0])
-        else:  # tag_len == 2
-            if len(self.tags[0]) == 0:
-                raise exceptions.ValidationError(f"Repost event has empty tag: {self}")
-
-            if self.tags[0][0] == "e":
-                self.validate_e_tag(self.tags[0])
-                self.validate_p_tag(self.tags[1])
-            else:
-                self.validate_p_tag(self.tags[0])
-                self.validate_e_tag(self.tags[1])
+        if len(self.tags.get("p")) != 1:
+            raise exceptions.ValidationError(
+                f"Repost event w/ 2 tags must have a 'p' tag: {self}"
+            )
 
         return super().validate()

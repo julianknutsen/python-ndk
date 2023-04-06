@@ -37,9 +37,7 @@ def repo():
 
 @pytest.fixture
 def sh_mock():
-    return mock.AsyncMock(
-        wraps=subscription_handler.SubscriptionHandler(mock.MagicMock())
-    )
+    return mock.Mock(wraps=subscription_handler.SubscriptionHandler(mock.MagicMock()))
 
 
 @pytest.fixture

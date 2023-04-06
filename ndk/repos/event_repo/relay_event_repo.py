@@ -31,7 +31,7 @@ Typical usage example::
 import logging
 import typing
 
-from ndk import crypto
+from ndk import crypto, types
 from ndk.event import event, event_filter
 from ndk.repos.event_repo import event_repo, protocol_handler
 
@@ -52,7 +52,7 @@ class RelayEventRepo(event_repo.EventRepo):
         self._protocol = protocol
         super().__init__()
 
-    async def add(self, signed_ev: event.SignedEvent) -> event.EventID:
+    async def add(self, signed_ev: event.SignedEvent) -> types.EventID:
         result = await self._protocol.write_event(signed_ev)
 
         if not result.accepted:
@@ -64,9 +64,9 @@ class RelayEventRepo(event_repo.EventRepo):
         if "duplicate" in result.message:
             logging.debug("Duplicate event sent to relay: %s", result.message)
 
-        return event.EventID(result.event_id)
+        return types.EventID(result.event_id)
 
-    async def get(self, ev_id: event.EventID) -> event.UnsignedEvent:
+    async def get(self, ev_id: types.EventID) -> event.UnsignedEvent:
         events = await self._protocol.query_events(
             [event_filter.EventFilter(ids=[ev_id])]
         )

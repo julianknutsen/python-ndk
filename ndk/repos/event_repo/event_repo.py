@@ -22,7 +22,7 @@
 import abc
 import typing
 
-from ndk import crypto
+from ndk import crypto, types
 from ndk.event import event
 
 
@@ -36,22 +36,22 @@ class GetItemError(Exception):
 
 class EventRepo(abc.ABC):
     @abc.abstractmethod
-    async def add(self, signed_ev: event.SignedEvent) -> event.EventID:
+    async def add(self, signed_ev: event.SignedEvent) -> types.EventID:
         """Adds the SignedEvent to the repo
 
         Args:
             signed_ev (event.SignedEvent): The event to add
 
         Returns:
-            event.EventID: An id that can be used to get the SignedEvent later
+            types.EventID: An id that can be used to get the SignedEvent later
         """
 
     @abc.abstractmethod
-    async def get(self, ev_id: event.EventID):
+    async def get(self, ev_id: types.EventID):
         """Retrieves a previously added SignedEvent by id
 
         Args:
-            ev_id (event.EventID): The id of the event to retrieve
+            ev_id (types.EventID): The id of the event to retrieve
         """
 
     @abc.abstractmethod

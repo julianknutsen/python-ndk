@@ -25,32 +25,11 @@ import hashlib
 import logging
 import time
 import traceback
-import typing
 
-from ndk import crypto, exceptions, serialize
+from ndk import crypto, exceptions, serialize, types
+from ndk.event import event_tags
 
 logger = logging.getLogger(__name__)
-
-
-EventTags = typing.NewType("EventTags", list[list[str]])
-
-
-class EventID(str):
-    def __new__(cls, value):
-        cls.validate(value)
-
-        return super().__new__(cls, value)
-
-    @classmethod
-    def validate(cls, value):
-        if not isinstance(value, str):
-            raise ValueError(f"EventID must be a string, not {type(value)}")
-
-        if len(value) != 64:
-            raise ValueError(f"EventID must be 64 bytes long, not {value}")
-
-        if not all(c in "0123456789abcdef" for c in value):
-            raise ValueError(f"EventID must be a hex string, not {value}")
 
 
 class EventKind(enum.IntEnum):
@@ -66,7 +45,9 @@ class EventKind(enum.IntEnum):
 class UnsignedEvent:
     created_at: int = dataclasses.field(default_factory=lambda: int(time.time()))
     kind: EventKind = EventKind.INVALID
-    tags: EventTags = dataclasses.field(default_factory=lambda: EventTags([]))
+    tags: event_tags.EventTags = dataclasses.field(
+        default_factory=lambda: event_tags.EventTags([])
+    )
     content: str = ""
     skip_validate: dataclasses.InitVar[bool] = False
 
@@ -84,17 +65,17 @@ class UnsignedEvent:
 
 @dataclasses.dataclass
 class SignedEvent(UnsignedEvent):
-    id: EventID = dataclasses.field(init=False)
+    id: types.EventID = dataclasses.field(init=False)
     pubkey: crypto.PublicKeyStr = dataclasses.field(init=False)
     sig: crypto.SchnorrSigStr = dataclasses.field(init=False)
 
     def __init__(
         self,
-        id: EventID,  # pylint: disable=redefined-builtin
+        id: types.EventID,  # pylint: disable=redefined-builtin
         pubkey: crypto.PublicKeyStr,
         created_at: int,
         kind: EventKind,
-        tags: EventTags,
+        tags: event_tags.EventTags,
         content: str,
         sig: crypto.SchnorrSigStr,
         skip_validate: bool = False,
@@ -111,14 +92,13 @@ class SignedEvent(UnsignedEvent):
             skip_validate=skip_validate,
         )
 
+    def __post_init__(self, skip_validate: bool):
         if not skip_validate:
             self.validate()
 
-    def validate(self):
-        EventID.validate(self.id)
-        crypto.PublicKeyStr.validate(self.pubkey)
-        crypto.SchnorrSigStr.validate(self.sig)
+        super().__post_init__(skip_validate)
 
+    def validate(self):
         valid_kinds = [kind.value for kind in EventKind if kind != EventKind.INVALID]
         if self.kind not in valid_kinds:
             raise exceptions.ValidationError(f"Invalid event kind {self.kind}")
@@ -130,9 +110,7 @@ class SignedEvent(UnsignedEvent):
         hashed_payload = hashlib.sha256(payload)
 
         try:
-            if not crypto.verify_signature(
-                self.pubkey, self.sig, hashed_payload.digest()
-            ):
+            if not self.sig.verify(self.pubkey, hashed_payload.digest()):
                 raise exceptions.ValidationError(
                     f"Signature in event did not match PublicKey: {self}"
                 )
@@ -159,7 +137,15 @@ class SignedEvent(UnsignedEvent):
                 f"Required attributes not provided: {required} != {actual}"
             )
 
-        return cls(**fields)
+        return cls(
+            id=types.EventID(fields["id"]),
+            pubkey=crypto.PublicKeyStr(fields["pubkey"]),
+            created_at=fields["created_at"],
+            kind=EventKind(fields["kind"]),
+            tags=event_tags.EventTags(fields["tags"]),
+            content=fields["content"],
+            sig=crypto.SchnorrSigStr(fields["sig"]),
+        )
 
     @classmethod
     def from_validated_dict(cls, fields: dict):
@@ -175,7 +161,7 @@ def build_signed_event(ev: UnsignedEvent, keys: crypto.KeyPair) -> SignedEvent:
     signed_hash = keys.private.sign_schnorr(hashed_payload.digest())
 
     return SignedEvent(
-        EventID(hashed_payload.hexdigest()),
+        types.EventID(hashed_payload.hexdigest()),
         keys.public,
         ev.created_at,
         ev.kind,

@@ -19,26 +19,28 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-import abc
-import typing
 
-from ndk import crypto, types
+class FixedLengthHexStr(str):
+    _length: int
 
-TextNoteID = typing.NewType("TextNoteID", types.EventID)
-TextNoteContent = typing.NewType("TextNoteContent", str)
+    def __new__(cls, value: str):
+        cls.validate(value)
+
+        return super().__new__(cls, value)
+
+    @classmethod
+    def validate(cls, value):
+        if not isinstance(value, str):
+            raise ValueError(f"{cls.__name__} must be a string, not {type(value)}")
+
+        if len(value) != cls._length:
+            raise ValueError(
+                f"{cls.__name__} must be {cls._length} bytes long, not {value}"
+            )
+
+        if not all(c in "0123456789abcdef" for c in value):
+            raise ValueError(f"{cls.__name__} must be a hex string, not {value}")
 
 
-class TextNoteRepo(abc.ABC):
-    @abc.abstractmethod
-    async def add(self, keys: crypto.KeyPair, content: str) -> TextNoteID:
-        pass
-
-    @abc.abstractmethod
-    async def get_by_uid(self, uid: TextNoteID) -> TextNoteContent:
-        pass
-
-    @abc.abstractmethod
-    async def get_by_author(
-        self, author: crypto.PublicKeyStr
-    ) -> typing.Sequence[TextNoteContent]:
-        pass
+class EventID(FixedLengthHexStr):
+    _length: int = 64

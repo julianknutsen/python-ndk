@@ -22,7 +22,7 @@
 
 import pytest
 
-from ndk import crypto, exceptions
+from ndk import crypto, exceptions, types
 from ndk.event import event, metadata_event
 
 
@@ -39,17 +39,17 @@ def signed(unsigned):
 
 def test_event_id_bad_size():
     with pytest.raises(ValueError):
-        event.EventID("a" * 63)
+        types.EventID("a" * 63)
 
 
 def test_event_id_non_hex():
     with pytest.raises(ValueError):
-        event.EventID("$" * 64)
+        types.EventID("$" * 64)
 
 
 def test_event_id_non_str():
     with pytest.raises(ValueError):
-        event.EventID([])
+        types.EventID([])
 
 
 def test_signed_event_from_dict_bad_input():
