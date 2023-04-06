@@ -20,7 +20,7 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 
 
-import uuid
+import secrets
 from collections import defaultdict
 
 from ndk import crypto
@@ -39,7 +39,7 @@ class FakeTextNoteRepo(text_note_repo.TextNoteRepo):
     async def add(
         self, keys: crypto.KeyPair, content: str
     ) -> text_note_repo.TextNoteID:
-        uid = str(uuid.uuid4())
+        uid = secrets.token_hex(32)
         self._content[uid] = text_note_repo.TextNoteContent(content)
         self._content_author[keys.public].append(
             text_note_repo.TextNoteContent(content)

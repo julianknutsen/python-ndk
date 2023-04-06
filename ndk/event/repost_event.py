@@ -49,7 +49,7 @@ class RepostEvent(event.UnsignedEvent):
                 f"Repost event must have an 'e' tag: {self}"
             )
 
-        event.validate_event_id(e_tag[1])
+        event.EventID.validate(e_tag[1])
         validate_relay_url(e_tag[2])
 
     def validate_p_tag(self, p_tag: list[str]):

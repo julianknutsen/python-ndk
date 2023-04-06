@@ -37,6 +37,21 @@ def signed(unsigned):
     return event.build_signed_event(unsigned, keys)
 
 
+def test_event_id_bad_size():
+    with pytest.raises(ValueError):
+        event.EventID("a" * 63)
+
+
+def test_event_id_non_hex():
+    with pytest.raises(ValueError):
+        event.EventID("$" * 64)
+
+
+def test_event_id_non_str():
+    with pytest.raises(ValueError):
+        event.EventID([])
+
+
 def test_signed_event_from_dict_bad_input():
     with pytest.raises(exceptions.ParseError):
         event.SignedEvent.from_dict({})
@@ -61,6 +76,14 @@ def test_signed_event_from_dict_malformed_sig(signed):
 def test_signed_event_from_dict_formed_bad_sig(signed):
     base_dict = signed.__dict__
     base_dict["sig"] = "a" * 128
+
+    with pytest.raises(ValueError):
+        event.SignedEvent.from_dict(base_dict)
+
+
+def test_signed_event_from_dict_malformed_id(signed):
+    base_dict = signed.__dict__
+    base_dict["id"] = "a" * 63
 
     with pytest.raises(ValueError):
         event.SignedEvent.from_dict(base_dict)
@@ -94,9 +117,9 @@ def test_signed_event_from_dict_ok(signed):
     event.SignedEvent.from_dict(signed.__dict__)
 
 
-def test_from_dict_bad_id_errors(signed):
+def test_from_dict_id_sig_mismatch(signed):
     d = signed.__dict__
-    d["id"] = "uh oh"
+    d["id"] = "a" * 64
     with pytest.raises(exceptions.ValidationError):
         event.SignedEvent.from_dict(d)
 

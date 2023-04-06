@@ -48,6 +48,11 @@ def test_sign_verify_bad():
     assert not crypto.verify_signature(keys2.public, sig, message)
 
 
+def test_schnorrsigstr_bad_type():
+    with pytest.raises(ValueError):
+        crypto.SchnorrSigStr([])
+
+
 def test_schnorrsigstr_bad_size():
     with pytest.raises(ValueError):
         crypto.SchnorrSigStr("a" * 127)
@@ -56,6 +61,11 @@ def test_schnorrsigstr_bad_size():
 def test_schnorrsigstr_non_hex():
     with pytest.raises(ValueError):
         crypto.SchnorrSigStr("$" * 128)
+
+
+def test_publickeystr_bad_type():
+    with pytest.raises(ValueError):
+        crypto.PublicKeyStr([])
 
 
 def test_publickeystr_bad_size():

@@ -44,11 +44,14 @@ class SchnorrSigStr(str):
 
     @classmethod
     def validate(cls, value):
+        if not isinstance(value, str):
+            raise ValueError(f"SchnorrSigStr must be a string, not {type(value)}")
+
         if len(value) != 128:
-            raise ValueError("Signature must be 128 bytes long")
+            raise ValueError(f"SchnorrSigStr must be 128 bytes long, not {value}")
 
         if not all(c in "0123456789abcdef" for c in value):
-            raise ValueError("Signature must be a hex string")
+            raise ValueError(f"SchnorrSigStr must be a hex string, not {value}")
 
         return super().__new__(cls, value)
 
@@ -61,11 +64,14 @@ class PublicKeyStr(str):
 
     @classmethod
     def validate(cls, value):
+        if not isinstance(value, str):
+            raise ValueError(f"PublicKeyStr must be a string, not {type(value)}")
+
         if len(value) != 64:
-            raise ValueError("Public key must be 64 bytes long")
+            raise ValueError(f"PublicKeyStr must be 64 bytes long, not {value}")
 
         if not all(c in "0123456789abcdef" for c in value):
-            raise ValueError("Public key must be a hex string")
+            raise ValueError(f"PublicKeyStr must be a hex string, not {value}")
 
 
 def verify_signature(pubkey: PublicKeyStr, signature: SchnorrSigStr, message: bytes):
