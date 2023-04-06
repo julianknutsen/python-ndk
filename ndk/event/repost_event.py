@@ -58,7 +58,7 @@ class RepostEvent(event.UnsignedEvent):
                 f"Repost event w/ 2 tags must have a 'p' tag: {self}"
             )
 
-        crypto.validate_public_key(p_tag[1])
+        crypto.PublicKeyStr.validate(p_tag[1])
 
     def validate(self):
         tag_len = len(self.tags)

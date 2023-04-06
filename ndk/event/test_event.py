@@ -42,11 +42,27 @@ def test_signed_event_from_dict_bad_input():
         event.SignedEvent.from_dict({})
 
 
-def test_signed_event_from_dict_bad_sig(signed):
+def test_signed_event_from_dict_bad_pubkey(signed):
+    base_dict = signed.__dict__
+    base_dict["pubkey"] = "badpubkey"
+
+    with pytest.raises(ValueError):
+        event.SignedEvent.from_dict(base_dict)
+
+
+def test_signed_event_from_dict_malformed_sig(signed):
     base_dict = signed.__dict__
     base_dict["sig"] = "badsig"
 
-    with pytest.raises(exceptions.ValidationError):
+    with pytest.raises(ValueError):
+        event.SignedEvent.from_dict(base_dict)
+
+
+def test_signed_event_from_dict_formed_bad_sig(signed):
+    base_dict = signed.__dict__
+    base_dict["sig"] = "a" * 128
+
+    with pytest.raises(ValueError):
         event.SignedEvent.from_dict(base_dict)
 
 

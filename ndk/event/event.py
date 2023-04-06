@@ -111,6 +111,9 @@ class SignedEvent(UnsignedEvent):
             self.validate()
 
     def validate(self):
+        crypto.PublicKeyStr.validate(self.pubkey)
+        crypto.SchnorrSigStr.validate(self.sig)
+
         valid_kinds = [kind.value for kind in EventKind if kind != EventKind.INVALID]
         if self.kind not in valid_kinds:
             raise exceptions.ValidationError(f"Invalid event kind {self.kind}")

@@ -80,24 +80,6 @@ def test_non_str_event_id():
         )
 
 
-def test_wrong_size_author():
-    with pytest.raises(exceptions.ValidationError):
-        repost_event.RepostEvent.from_parts(
-            TEST_EVENT_ID, crypto.PublicKeyStr("aaaaaa"), TEST_RELAY_URL
-        )
-
-
-def test_non_hex_author():
-    with pytest.raises(exceptions.ValidationError):
-        repost_event.RepostEvent.from_parts(
-            TEST_EVENT_ID,
-            crypto.PublicKeyStr(
-                "$aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-            ),
-            TEST_RELAY_URL,
-        )
-
-
 def test_no_tags():
     with pytest.raises(exceptions.ValidationError):
         repost_event.RepostEvent(

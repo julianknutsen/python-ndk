@@ -19,6 +19,8 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import pytest
+
 from ndk import crypto
 
 
@@ -44,3 +46,23 @@ def test_sign_verify_bad():
     sig = keys1.private.sign_schnorr(message)
 
     assert not crypto.verify_signature(keys2.public, sig, message)
+
+
+def test_schnorrsigstr_bad_size():
+    with pytest.raises(ValueError):
+        crypto.SchnorrSigStr("a" * 127)
+
+
+def test_schnorrsigstr_non_hex():
+    with pytest.raises(ValueError):
+        crypto.SchnorrSigStr("$" * 128)
+
+
+def test_publickeystr_bad_size():
+    with pytest.raises(ValueError):
+        crypto.PublicKeyStr("a" * 63)
+
+
+def test_publickeystr_non_hex():
+    with pytest.raises(ValueError):
+        crypto.PublicKeyStr("$" * 64)
