@@ -35,50 +35,21 @@ Example::
 """
 import coincurve
 
-
-class SchnorrSigStr(str):
-    def __new__(cls, value):
-        cls.validate(value)
-
-        return super().__new__(cls, value)
-
-    @classmethod
-    def validate(cls, value):
-        if not isinstance(value, str):
-            raise ValueError(f"SchnorrSigStr must be a string, not {type(value)}")
-
-        if len(value) != 128:
-            raise ValueError(f"SchnorrSigStr must be 128 bytes long, not {value}")
-
-        if not all(c in "0123456789abcdef" for c in value):
-            raise ValueError(f"SchnorrSigStr must be a hex string, not {value}")
-
-        return super().__new__(cls, value)
+from ndk import types
 
 
-class PublicKeyStr(str):
-    def __new__(cls, value):
-        cls.validate(value)
-
-        return super().__new__(cls, value)
-
-    @classmethod
-    def validate(cls, value):
-        if not isinstance(value, str):
-            raise ValueError(f"PublicKeyStr must be a string, not {type(value)}")
-
-        if len(value) != 64:
-            raise ValueError(f"PublicKeyStr must be 64 bytes long, not {value}")
-
-        if not all(c in "0123456789abcdef" for c in value):
-            raise ValueError(f"PublicKeyStr must be a hex string, not {value}")
+class PublicKeyStr(types.FixedLengthHexStr):
+    _length: int = 64
 
 
-def verify_signature(pubkey: PublicKeyStr, signature: SchnorrSigStr, message: bytes):
-    pubkey_bytes = bytes.fromhex(pubkey)
-    return coincurve.PublicKeyXOnly(pubkey_bytes).verify(
-        bytes.fromhex(signature), message
-    )
+class SchnorrSigStr(types.FixedLengthHexStr):
+    _length: int = 128
+
+    def verify(self, pubkey: PublicKeyStr, message: bytes):
+        pubkey_bytes = bytes.fromhex(pubkey)
+        return coincurve.PublicKeyXOnly(pubkey_bytes).verify(
+            bytes.fromhex(self), message
+        )
 
 
 class PrivateKey:

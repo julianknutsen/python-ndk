@@ -27,7 +27,7 @@ import time
 import traceback
 import typing
 
-from ndk import crypto, exceptions, serialize
+from ndk import crypto, exceptions, serialize, types
 
 logger = logging.getLogger(__name__)
 
@@ -35,22 +35,8 @@ logger = logging.getLogger(__name__)
 EventTags = typing.NewType("EventTags", list[list[str]])
 
 
-class EventID(str):
-    def __new__(cls, value):
-        cls.validate(value)
-
-        return super().__new__(cls, value)
-
-    @classmethod
-    def validate(cls, value):
-        if not isinstance(value, str):
-            raise ValueError(f"EventID must be a string, not {type(value)}")
-
-        if len(value) != 64:
-            raise ValueError(f"EventID must be 64 bytes long, not {value}")
-
-        if not all(c in "0123456789abcdef" for c in value):
-            raise ValueError(f"EventID must be a hex string, not {value}")
+class EventID(types.FixedLengthHexStr):
+    _length: int = 64
 
 
 class EventKind(enum.IntEnum):
@@ -111,14 +97,20 @@ class SignedEvent(UnsignedEvent):
             skip_validate=skip_validate,
         )
 
+    def __post_init__(self, skip_validate: bool):
         if not skip_validate:
+            if isinstance(self.id, str):
+                self.id = EventID(self.id)
+
+            if isinstance(self.pubkey, str):
+                self.pubkey = crypto.PublicKeyStr(self.pubkey)
+
+            if isinstance(self.sig, str):
+                self.sig = crypto.SchnorrSigStr(self.sig)
+
             self.validate()
 
     def validate(self):
-        EventID.validate(self.id)
-        crypto.PublicKeyStr.validate(self.pubkey)
-        crypto.SchnorrSigStr.validate(self.sig)
-
         valid_kinds = [kind.value for kind in EventKind if kind != EventKind.INVALID]
         if self.kind not in valid_kinds:
             raise exceptions.ValidationError(f"Invalid event kind {self.kind}")
@@ -130,9 +122,7 @@ class SignedEvent(UnsignedEvent):
         hashed_payload = hashlib.sha256(payload)
 
         try:
-            if not crypto.verify_signature(
-                self.pubkey, self.sig, hashed_payload.digest()
-            ):
+            if not self.sig.verify(self.pubkey, hashed_payload.digest()):
                 raise exceptions.ValidationError(
                     f"Signature in event did not match PublicKey: {self}"
                 )
