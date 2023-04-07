@@ -23,29 +23,36 @@ from ndk import exceptions
 from ndk.event import event, event_tags
 
 
-class RepostEvent(event.UnsignedEvent):
+class ReactionEvent(event.UnsignedEvent):
     @classmethod
     def from_text_note_event(
         cls,
         text_note: event.SignedEvent,
-        relay_url: str,
-        content: str = "",
-    ) -> "RepostEvent":
+        content: str = "+",
+    ) -> "ReactionEvent":
         tags = event_tags.EventTags()
-        tags.add(event_tags.PublicKeyTag.from_pubkey(text_note.pubkey))
-        tags.add(event_tags.EventIdTag.from_event_id(text_note.id, relay_url))
+        tags.extend(text_note.tags.get("e"))
+        tags.extend(text_note.tags.get("p"))
 
-        return cls(kind=event.EventKind.REPOST, content=content, tags=tags)
+        tags.add(event_tags.PublicKeyTag.from_pubkey(text_note.pubkey))
+        tags.add(event_tags.EventIdTag.from_event_id(text_note.id))
+
+        return cls(kind=event.EventKind.REACTION, content=content, tags=tags)
 
     def validate(self):
-        if len(self.tags) not in (1, 2):
+        if len(self.tags) < 2:
             raise exceptions.ValidationError(
-                f"Repost event must have 1 or 2 tags: {self}"
+                f"{self.__class__.__name__} must have 2 or more tags: {self}"
             )
 
-        if len(self.tags.get("p")) != 1:
+        if len(self.tags.get("p")) < 1:
             raise exceptions.ValidationError(
-                f"Repost event w/ 2 tags must have a 'p' tag: {self}"
+                f"{self.__class__.__name__}  must have one or more 'p' tags: {self}"
+            )
+
+        if len(self.tags.get("e")) < 1:
+            raise exceptions.ValidationError(
+                f"{self.__class__.__name__}  must have one or more 'e' tags: {self}"
             )
 
         return super().validate()

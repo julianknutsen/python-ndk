@@ -25,6 +25,7 @@ from ndk.event import (
     contact_list_event,
     event,
     metadata_event,
+    reaction_event,
     recommend_server_event,
     repost_event,
     text_note_event,
@@ -36,6 +37,7 @@ LOOKUP: dict[event.EventKind, typing.Type[event.UnsignedEvent]] = {
     event.EventKind.TEXT_NOTE: text_note_event.TextNoteEvent,
     event.EventKind.CONTACT_LIST: contact_list_event.ContactListEvent,
     event.EventKind.REPOST: repost_event.RepostEvent,
+    event.EventKind.REACTION: reaction_event.ReactionEvent,
 }
 
 

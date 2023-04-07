@@ -23,7 +23,7 @@
 
 import typing
 
-from ndk.event import event, event_parser, repost_event, text_note_event
+from ndk.event import event, event_parser, reaction_event, repost_event, text_note_event
 from ndk.messages import (
     close,
     command_result,
@@ -85,6 +85,12 @@ async def expect_text_note_event(response_queue) -> event.SignedEvent:
 
 async def expect_repost_event(response_queue) -> event.SignedEvent:
     return await expect_relay_event_of_type(repost_event.RepostEvent, response_queue)
+
+
+async def expect_reaction_event(response_queue) -> event.SignedEvent:
+    return await expect_relay_event_of_type(
+        reaction_event.ReactionEvent, response_queue
+    )
 
 
 async def expect_eose(response_queue):
