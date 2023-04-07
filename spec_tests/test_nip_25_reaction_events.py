@@ -26,7 +26,7 @@ import asyncio
 import pytest
 
 from ndk import crypto
-from ndk.event import event, repost_event, text_note_event
+from ndk.event import event, reaction_event, text_note_event
 from spec_tests import utils
 
 
@@ -65,61 +65,22 @@ def text_note(request_queue, response_queue):
 
 
 @pytest.fixture
-def signed_repost_event(keys, text_note):
-    unsigned_event = repost_event.RepostEvent.from_text_note_event(
-        text_note, relay_url="ws://nostr.com.se"
-    )
+def signed_reaction_event(keys, text_note):
+    unsigned_event = reaction_event.ReactionEvent.from_text_note_event(text_note)
     signed_event = event.build_signed_event(unsigned_event, keys)
     return signed_event
 
 
 @pytest.mark.usefixtures("ctx")
-async def test_repost_basic(signed_repost_event, request_queue, response_queue):
-    await utils.send_and_expect_command_result(
-        signed_repost_event, request_queue, response_queue
-    )
-
-
-@pytest.mark.usefixtures("ctx")
-async def test_query_repost_by_repost_author(
-    signed_repost_event, keys, request_queue, response_queue
+async def test_reaction_basic(
+    text_note, signed_reaction_event, request_queue, response_queue
 ):
     await utils.send_and_expect_command_result(
-        signed_repost_event, request_queue, response_queue
-    )
-
-    fltr = {"authors": [keys.public]}
-
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_repost_event(response_queue)
-    await utils.expect_eose(response_queue)
-
-
-@pytest.mark.usefixtures("ctx")
-async def test_query_repost_by_base_event(
-    signed_repost_event, text_note, request_queue, response_queue
-):
-    await utils.send_and_expect_command_result(
-        signed_repost_event, request_queue, response_queue
-    )
-
-    fltr = {"#e": [text_note.id]}
-
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_repost_event(response_queue)
-    await utils.expect_eose(response_queue)
-
-
-@pytest.mark.usefixtures("ctx")
-async def test_query_repost_by_base_event_author(
-    signed_repost_event, text_note, request_queue, response_queue
-):
-    await utils.send_and_expect_command_result(
-        signed_repost_event, request_queue, response_queue
+        signed_reaction_event, request_queue, response_queue
     )
 
     fltr = {"#p": [text_note.pubkey]}
 
     await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_repost_event(response_queue)
+    await utils.expect_reaction_event(response_queue)
     await utils.expect_eose(response_queue)

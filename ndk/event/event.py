@@ -39,6 +39,7 @@ class EventKind(enum.IntEnum):
     RECOMMEND_SERVER = 2
     CONTACT_LIST = 3
     REPOST = 6
+    REACTION = 7
 
 
 @dataclasses.dataclass
