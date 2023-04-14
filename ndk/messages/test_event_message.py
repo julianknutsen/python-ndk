@@ -48,7 +48,7 @@ def test_from_event(keys):
 
     assert len(body["id"]) == 64
     assert body["pubkey"] == keys.public
-    assert body["kind"] == types.EventKind.SET_METADATA.value
+    assert body["kind"] == types.EventKind.SET_METADATA
     assert body["tags"] == []
     assert serialize.deserialize(body["content"]) == {
         "name": "bob",

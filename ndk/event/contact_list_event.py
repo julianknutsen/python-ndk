@@ -28,7 +28,7 @@ from ndk.repos import contacts
 
 
 @dataclasses.dataclass
-class ContactListEvent(event.Event):
+class ContactListEvent(event.ReplaceableEvent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

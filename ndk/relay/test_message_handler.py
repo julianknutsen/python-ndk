@@ -24,9 +24,14 @@ import mock
 import pytest
 
 from ndk import exceptions
-from ndk.event import event_builder, event_filter
+from ndk.event import event, event_builder, event_filter
 from ndk.messages import close, command_result, event_message, message_factory, request
-from ndk.relay import event_handler, message_handler, subscription_handler
+from ndk.relay import (
+    event_handler,
+    event_notifier,
+    message_handler,
+    subscription_handler,
+)
 from ndk.relay.event_repo import memory_event_repo
 
 
@@ -42,12 +47,13 @@ def sh_mock():
 
 @pytest.fixture
 def eh_mock(repo):
-    return mock.AsyncMock(wraps=event_handler.EventHandler(repo))
+    return mock.AsyncMock(
+        wraps=event_handler.EventHandler(repo, notifier=event_notifier.EventNotifier())
+    )
 
 
 @pytest.fixture
 def mh(repo, sh_mock, eh_mock):
-    repo.register_insert_cb(sh_mock.handle_event)
     yield message_handler.MessageHandler(repo, sh_mock, eh_mock)
 
 
@@ -116,11 +122,9 @@ async def test_new_req_overwrites_filter(mh, sh_mock):
     )
 
 
-async def test_accepted_calls_subscription_handler(mh, sh_mock, repo):
-    repo.register_insert_cb(sh_mock.handle_event)
-
-    mocked = mock.AsyncMock()
-    mocked.id = "1"
+async def test_accepted_calls_subscription_handler(mh, eh_mock, sh_mock):
+    await eh_mock.register_received_cb(sh_mock.handle_event)
+    mocked = mock.AsyncMock(spec=event.EphemeralEvent, id="1")
     with mock.patch.object(event_builder, "from_dict", lambda self, **kwargs: mocked):
         response = await mh.handle_event_message(event_message.Event({"id": "1"}))
 

@@ -28,6 +28,7 @@ from ndk import serialize
 from ndk.messages import close, eose, event_message, message_factory, notice, request
 from ndk.relay import (
     event_handler,
+    event_notifier,
     message_dispatcher,
     message_handler,
     subscription_handler,
@@ -39,7 +40,7 @@ from ndk.relay.event_repo import memory_event_repo
 def md():
     sh = subscription_handler.SubscriptionHandler(asyncio.Queue())
     repo = memory_event_repo.MemoryEventRepo()
-    eh = event_handler.EventHandler(repo)
+    eh = event_handler.EventHandler(repo, event_notifier.EventNotifier())
     ev_handler = message_handler.MessageHandler(repo, sh, eh)
     return message_dispatcher.MessageDispatcher(ev_handler)
 

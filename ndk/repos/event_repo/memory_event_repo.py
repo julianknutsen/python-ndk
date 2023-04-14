@@ -56,7 +56,7 @@ class MemoryEventRepo(event_repo.EventRepo):
 
     async def get_by_author(
         self,
-        kind: types.EventKind,
+        kind: int,
         author: crypto.PublicKeyStr,
         limit: int = 0,
     ) -> typing.Sequence[event.Event]:

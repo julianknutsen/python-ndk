@@ -25,6 +25,7 @@ from ndk import crypto
 from ndk.event import metadata_event
 from ndk.relay import (
     event_handler,
+    event_notifier,
     message_dispatcher,
     message_handler,
     subscription_handler,
@@ -39,7 +40,8 @@ async def test_init():
     wq = asyncio.Queue()
     sh = subscription_handler.SubscriptionHandler(wq)
     repo = memory_event_repo.MemoryEventRepo()
-    eh = event_handler.EventHandler(repo)
+    ev_notifier = event_notifier.EventNotifier()
+    eh = event_handler.EventHandler(repo, ev_notifier)
     mh = message_handler.MessageHandler(repo, sh, eh)
     mb = message_dispatcher.MessageDispatcher(mh)
     handler_task = asyncio.create_task(server.connection_handler(rq, wq, mb))

@@ -33,7 +33,6 @@ class MemoryEventRepo(event_repo.EventRepo):
 
     async def add(self, ev: event.Event) -> types.EventID:
         self._stored_events[ev.id] = ev
-        await self._insert_event_handler.handle_event(ev)
         return ev.id
 
     async def get(self, fltrs: list[event_filter.EventFilter]) -> list[event.Event]:

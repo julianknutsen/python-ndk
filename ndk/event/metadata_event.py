@@ -27,7 +27,7 @@ from ndk.event import event
 
 
 @dataclasses.dataclass
-class MetadataEvent(event.Event):
+class MetadataEvent(event.ReplaceableEvent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
