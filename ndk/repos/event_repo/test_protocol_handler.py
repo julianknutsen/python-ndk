@@ -51,7 +51,7 @@ async def protocol(read_queue: asyncio.Queue, write_queue: asyncio.Queue):
 
 
 @pytest.fixture()
-async def signed(keys):
+async def event(keys):
     return metadata_event.MetadataEvent.from_metadata_parts(keys)
 
 
@@ -76,20 +76,18 @@ async def assert_sent(write_queue, expected: str):
     assert expected == data
 
 
-async def test_write_event(read_queue, write_queue, protocol, signed):
-    future_cmd_result = asyncio.create_task(protocol.write_event(signed))
+async def test_write_event(read_queue, write_queue, protocol, event):
+    future_cmd_result = asyncio.create_task(protocol.write_event(event))
 
-    await assert_sent(
-        write_queue, event_message.Event.from_signed_event(signed).serialize()
-    )
+    await assert_sent(write_queue, event_message.Event.from_event(event).serialize())
 
-    await simulate_server_reponse(read_queue, ["OK", signed.id, True, ""])
+    await simulate_server_reponse(read_queue, ["OK", event.id, True, ""])
 
-    assert await future_cmd_result == command_result.CommandResult(signed.id, True, "")
+    assert await future_cmd_result == command_result.CommandResult(event.id, True, "")
 
 
-async def test_write_event_receive_bad_data_logs(read_queue, protocol, caplog, signed):
-    future_cmd_result = asyncio.create_task(protocol.write_event(signed))
+async def test_write_event_receive_bad_data_logs(read_queue, protocol, caplog, event):
+    future_cmd_result = asyncio.create_task(protocol.write_event(event))
 
     await simulate_server_reponse(read_queue, [])
 
@@ -138,7 +136,7 @@ async def test_query_success_empty(read_queue, write_queue, protocol):
     assert len(events) == 0
 
 
-async def test_query_success(read_queue, write_queue, protocol, signed):
+async def test_query_success(read_queue, write_queue, protocol, event):
     future_events = asyncio.create_task(
         protocol.query_events([event_filter.EventFilter(kinds=[0])])
     )
@@ -148,7 +146,7 @@ async def test_query_success(read_queue, write_queue, protocol, signed):
     request = serialize.deserialize(data)
 
     await read_queue.put(
-        serialize.serialize_as_str(["EVENT", request[1], signed.__dict__])
+        serialize.serialize_as_str(["EVENT", request[1], event.__dict__])
     )
 
     await read_queue.put(serialize.serialize_as_str(["EOSE", request[1]]))
@@ -156,4 +154,4 @@ async def test_query_success(read_queue, write_queue, protocol, signed):
     events = await future_events
 
     assert len(events) == 1
-    assert events[0] == signed
+    assert events[0] == event

@@ -60,14 +60,14 @@ def relay(request):
 
 
 @pytest.fixture
-def signed_event(keys):
+def event(keys):
     return metadata_event.MetadataEvent.from_metadata_parts(
         keys, "bob", "#nostr", "http://pics.com"
     )
 
 
 @pytest.fixture
-def signed_event2():
+def event2():
     keys = crypto.KeyPair()
     return metadata_event.MetadataEvent.from_metadata_parts(
         keys, "bob", "#nostr", "http://pics.com"
@@ -81,49 +81,41 @@ fields = ["id", "pubkey", "created_at", "kind", "tags", "content", "sig"]
 @pytest.mark.parametrize("field", fields)
 async def test_publish_event_missing_field_returns_notice(
     field,
-    signed_event,
+    event,
     response_queue,
     request_queue,
 ):
-    serializable = signed_event.__dict__
+    serializable = event.__dict__
     del serializable[field]
 
-    await request_queue.put(
-        event_message.Event.from_signed_event(signed_event).serialize()
-    )
+    await request_queue.put(event_message.Event.from_event(event).serialize())
 
     n = message_factory.from_str(await response_queue.get())
     assert isinstance(n, notice.Notice)
     assert "Unable to parse message" in n.message
 
 
-async def test_set_metadata_invalid_sig_is_not_accepted(
-    repo, signed_event, signed_event2
-):
-    object.__setattr__(signed_event, "sig", signed_event2.sig)
+async def test_set_metadata_invalid_sig_is_not_accepted(repo, event, event2):
+    object.__setattr__(event, "sig", event2.sig)
 
     with pytest.raises(event_repo.AddItemError):
-        await repo.add(signed_event)
+        await repo.add(event)
 
 
-async def test_set_metadata_invalid_id_is_not_accepted(
-    repo, signed_event, signed_event2
-):
-    assert signed_event.id != signed_event2.id
-    object.__setattr__(signed_event, "id", signed_event2.id)
+async def test_set_metadata_invalid_id_is_not_accepted(repo, event, event2):
+    assert event.id != event2.id
+    object.__setattr__(event, "id", event2.id)
 
     with pytest.raises(event_repo.AddItemError):
-        await repo.add(signed_event)
+        await repo.add(event)
 
 
 async def build_sign_publish_metadata_event(repo, *args, **kwargs):
     keys = crypto.KeyPair()
 
-    signed_event = metadata_event.MetadataEvent.from_metadata_parts(
-        keys, *args, **kwargs
-    )
+    event = metadata_event.MetadataEvent.from_metadata_parts(keys, *args, **kwargs)
 
-    assert await repo.add(signed_event)
+    assert await repo.add(event)
 
 
 async def test_set_metadata_only_name_present_is_accepted(repo):

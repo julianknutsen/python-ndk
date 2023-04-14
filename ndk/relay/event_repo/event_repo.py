@@ -34,13 +34,11 @@ class EventRepo(abc.ABC):
         super().__init__()
 
     @abc.abstractmethod
-    async def add(self, ev: event.SignedEvent) -> types.EventID:
+    async def add(self, ev: event.Event) -> types.EventID:
         pass
 
     @abc.abstractmethod
-    async def get(
-        self, fltrs: list[event_filter.EventFilter]
-    ) -> list[event.SignedEvent]:
+    async def get(self, fltrs: list[event_filter.EventFilter]) -> list[event.Event]:
         pass
 
     @abc.abstractmethod

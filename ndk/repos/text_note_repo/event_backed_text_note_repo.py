@@ -44,18 +44,18 @@ class EventBackedTextNoteRepo(text_note_repo.TextNoteRepo):
     async def get_by_uid(
         self, uid: text_note_repo.TextNoteID
     ) -> text_note_repo.TextNoteContent:
-        signed_event = await self._event_repo.get(uid)
+        event = await self._event_repo.get(uid)
 
-        if not signed_event:
+        if not event:
             raise ValueError(f"TextNote with uid: {uid} not found.")
 
-        return text_note_repo.TextNoteContent(signed_event.content)
+        return text_note_repo.TextNoteContent(event.content)
 
     async def get_by_author(
         self, author: crypto.PublicKeyStr
     ) -> typing.Sequence[text_note_repo.TextNoteContent]:
-        unsigned_events = await self._event_repo.get_by_author(
+        unevents = await self._event_repo.get_by_author(
             types.EventKind.TEXT_NOTE, author
         )
 
-        return [text_note_repo.TextNoteContent(ev.content) for ev in unsigned_events]
+        return [text_note_repo.TextNoteContent(ev.content) for ev in unevents]

@@ -45,14 +45,14 @@ async def test_init():
     handler_task = asyncio.create_task(server.connection_handler(rq, wq, mb))
 
     keys = crypto.KeyPair()
-    signed = metadata_event.MetadataEvent.from_metadata_parts(keys)
+    event = metadata_event.MetadataEvent.from_metadata_parts(keys)
 
     ph = protocol_handler.ProtocolHandler(wq, rq)
     read_loop_task = asyncio.create_task(ph.start_read_loop())
     ev_repo = relay_event_repo.RelayEventRepo(ph)
 
-    ev_id = await ev_repo.add(signed)
-    assert ev_id == signed.id
+    ev_id = await ev_repo.add(event)
+    assert ev_id == event.id
 
     await rq.join()
     await wq.join()

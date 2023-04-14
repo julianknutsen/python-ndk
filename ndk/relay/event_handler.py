@@ -30,7 +30,7 @@ class EventHandler:
     def __init__(self, repo: event_repo.EventRepo):
         self._repo = repo
 
-    async def handle_event(self, ev: event.SignedEvent):
+    async def handle_event(self, ev: event.Event):
         await self._repo.add(ev)
 
         if ev.kind in [types.EventKind.SET_METADATA, types.EventKind.CONTACT_LIST]:

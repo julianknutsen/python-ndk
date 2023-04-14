@@ -40,13 +40,11 @@ def test_serialize():
     assert deserialized == ["EVENT", {}]
 
 
-def test_from_signed_event(keys):
-    signed_event = metadata_event.MetadataEvent.from_metadata_parts(
+def test_from_event(keys):
+    event = metadata_event.MetadataEvent.from_metadata_parts(
         keys, "bob", "#nostr", "http://picture.com"
     )
-    _, body = serialize.deserialize(
-        event_message.Event.from_signed_event(signed_event).serialize()
-    )
+    _, body = serialize.deserialize(event_message.Event.from_event(event).serialize())
 
     assert len(body["id"]) == 64
     assert body["pubkey"] == keys.public
@@ -66,8 +64,8 @@ def test_deserialize_list_bad_length():
 
 
 def test_deserialize_list(keys):
-    signed_event = metadata_event.MetadataEvent.from_metadata_parts(keys)
-    event_msg = event_message.Event.from_signed_event(signed_event)
+    event = metadata_event.MetadataEvent.from_metadata_parts(keys)
+    event_msg = event_message.Event.from_event(event)
     lst = serialize.deserialize(event_msg.serialize())
     ev = event_message.Event.deserialize_list(lst)
 

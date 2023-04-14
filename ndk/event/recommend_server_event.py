@@ -23,7 +23,7 @@ from ndk import crypto, types
 from ndk.event import event
 
 
-class RecommendServerEvent(event.SignedEvent):
+class RecommendServerEvent(event.Event):
     @classmethod
     def from_url(cls, keys: crypto.KeyPair, url: str) -> "RecommendServerEvent":
         return cls.build(keys=keys, kind=types.EventKind.RECOMMEND_SERVER, content=url)

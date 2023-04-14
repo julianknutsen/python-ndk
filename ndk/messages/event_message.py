@@ -31,8 +31,8 @@ class Event(message.WriteableMessage, message.ReadableMessage):
     event_dict: dict
 
     @classmethod
-    def from_signed_event(cls, signed_event: event.SignedEvent):
-        return cls(signed_event.__dict__)
+    def from_event(cls, ev: event.Event):
+        return cls(ev.__dict__)
 
     def serialize(self) -> str:
         return serialize.serialize_as_str(["EVENT", self.event_dict])

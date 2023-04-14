@@ -42,11 +42,9 @@ from ndk.messages import (
 
 
 async def send_and_expect_command_result(
-    signed_event: event.SignedEvent, request_queue, response_queue
+    event: event.Event, request_queue, response_queue
 ) -> command_result.CommandResult:
-    await request_queue.put(
-        event_message.Event.from_signed_event(signed_event).serialize()
-    )
+    await request_queue.put(event_message.Event.from_event(event).serialize())
     return await expect_successful_command_result(response_queue)
 
 
@@ -74,25 +72,25 @@ async def expect_successful_command_result(response_queue):
 
 
 async def expect_relay_event_of_type(
-    event_type: typing.Type[event.SignedEvent], response_queue
+    event_type: typing.Type[event.Event], response_queue
 ):
     msg = await expect_relay_event(response_queue)
-    signed = event_builder.from_dict(msg.event_dict)
-    assert isinstance(signed, event_type)
-    return signed
+    event = event_builder.from_dict(msg.event_dict)
+    assert isinstance(event, event_type)
+    return event
 
 
-async def expect_text_note_event(response_queue) -> event.SignedEvent:
+async def expect_text_note_event(response_queue) -> event.Event:
     return await expect_relay_event_of_type(
         text_note_event.TextNoteEvent, response_queue
     )
 
 
-async def expect_repost_event(response_queue) -> event.SignedEvent:
+async def expect_repost_event(response_queue) -> event.Event:
     return await expect_relay_event_of_type(repost_event.RepostEvent, response_queue)
 
 
-async def expect_reaction_event(response_queue) -> event.SignedEvent:
+async def expect_reaction_event(response_queue) -> event.Event:
     return await expect_relay_event_of_type(
         reaction_event.ReactionEvent, response_queue
     )

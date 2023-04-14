@@ -23,12 +23,12 @@ from ndk import crypto, exceptions, types
 from ndk.event import event, event_tags
 
 
-class ReactionEvent(event.SignedEvent):
+class ReactionEvent(event.Event):
     @classmethod
     def from_text_note_event(
         cls,
         keys: crypto.KeyPair,
-        text_note: event.SignedEvent,
+        text_note: event.Event,
         content: str = "+",
     ) -> "ReactionEvent":
         tags = event_tags.EventTags()

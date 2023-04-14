@@ -59,14 +59,14 @@ def keys():
 
 
 @pytest.fixture
-def signed_event(keys):
+def event(keys):
     return text_note_event.TextNoteEvent.from_content(keys, "Hello, world!")
 
 
 @pytest.mark.usefixtures("ctx")
-async def test_text_note_find_by_id(signed_event, request_queue, response_queue):
+async def test_text_note_find_by_id(event, request_queue, response_queue):
     cmd_result = await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
+        event, request_queue, response_queue
     )
 
     fltr = {"ids": [cmd_result.event_id]}
@@ -77,14 +77,12 @@ async def test_text_note_find_by_id(signed_event, request_queue, response_queue)
 
 
 @pytest.mark.usefixtures("ctx")
-async def test_text_note_two_inserts_one_result(
-    signed_event, request_queue, response_queue
-):
+async def test_text_note_two_inserts_one_result(event, request_queue, response_queue):
     cmd_result1 = await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
+        event, request_queue, response_queue
     )
     cmd_result2 = await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
+        event, request_queue, response_queue
     )
     assert cmd_result1.event_id == cmd_result2.event_id
 
@@ -96,12 +94,10 @@ async def test_text_note_two_inserts_one_result(
 
 
 @pytest.mark.usefixtures("ctx")
-async def test_text_note_find_by_author(request_queue, response_queue, signed_event):
-    await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
-    )
+async def test_text_note_find_by_author(request_queue, response_queue, event):
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
-    fltr = {"authors": [signed_event.pubkey]}
+    fltr = {"authors": [event.pubkey]}
 
     await utils.send_req_with_filter("1", [fltr], request_queue)
     await utils.expect_text_note_event(response_queue)
@@ -109,14 +105,12 @@ async def test_text_note_find_by_author(request_queue, response_queue, signed_ev
 
 
 @pytest.mark.usefixtures("ctx")
-async def test_text_note_find_by_id_and_author(
-    request_queue, response_queue, signed_event
-):
+async def test_text_note_find_by_id_and_author(request_queue, response_queue, event):
     cmd_result = await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
+        event, request_queue, response_queue
     )
 
-    fltr = {"ids": [cmd_result.event_id], "authors": [signed_event.pubkey]}
+    fltr = {"ids": [cmd_result.event_id], "authors": [event.pubkey]}
 
     await utils.send_req_with_filter("1", [fltr], request_queue)
     await utils.expect_text_note_event(response_queue)
@@ -125,25 +119,21 @@ async def test_text_note_find_by_id_and_author(
 
 @pytest.mark.usefixtures("ctx")
 async def test_text_note_find_by_wrong_id_and_author_returns_empty(
-    request_queue, response_queue, signed_event
+    request_queue, response_queue, event
 ):
-    await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
-    )
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
-    fltr = {"ids": [signed_event.pubkey], "authors": [signed_event.pubkey]}  # wrong id
+    fltr = {"ids": [event.pubkey], "authors": [event.pubkey]}  # wrong id
 
     await utils.send_req_with_filter("1", [fltr], request_queue)
     await utils.expect_eose(response_queue)
 
 
 @pytest.mark.usefixtures("ctx")
-async def test_text_note_find_by_kind(request_queue, response_queue, signed_event):
-    await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
-    )
+async def test_text_note_find_by_kind(request_queue, response_queue, event):
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
-    fltr = {"authors": [signed_event.pubkey], "kinds": [1]}
+    fltr = {"authors": [event.pubkey], "kinds": [1]}
 
     await utils.send_req_with_filter("1", [fltr], request_queue)
     await utils.expect_text_note_event(response_queue)
@@ -156,28 +146,22 @@ async def test_text_note_find_author_limit_respected_returns_newest(
 ):
     cur = int(time.time())
     with mock.patch("time.time", return_value=cur):
-        signed_event1 = text_note_event.TextNoteEvent.from_content(
-            keys, "Hello, world!"
-        )
+        event1 = text_note_event.TextNoteEvent.from_content(keys, "Hello, world!")
 
     with mock.patch("time.time", return_value=cur + 1):
-        signed_event2 = text_note_event.TextNoteEvent.from_content(
+        event2 = text_note_event.TextNoteEvent.from_content(
             keys, "Hello, world, later!"
         )
 
-    await utils.send_and_expect_command_result(
-        signed_event1, request_queue, response_queue
-    )
-    await utils.send_and_expect_command_result(
-        signed_event2, request_queue, response_queue
-    )
+    await utils.send_and_expect_command_result(event1, request_queue, response_queue)
+    await utils.send_and_expect_command_result(event2, request_queue, response_queue)
 
-    fltr = {"authors": [signed_event1.pubkey], "limit": 1}
+    fltr = {"authors": [event1.pubkey], "limit": 1}
 
     await utils.send_req_with_filter("1", [fltr], request_queue)
 
-    relay_signed = await utils.expect_text_note_event(response_queue)
-    assert relay_signed == signed_event2  # second insert is returned
+    relay_event = await utils.expect_text_note_event(response_queue)
+    assert relay_event == event2  # second insert is returned
 
     await utils.expect_eose(response_queue)
 
@@ -188,13 +172,11 @@ async def test_text_note_find_author_since_equal_cur_no_result(
 ):
     cur = int(time.time())
     with mock.patch("time.time", return_value=cur):
-        signed_event = text_note_event.TextNoteEvent.from_content(keys, "Hello, world!")
+        event = text_note_event.TextNoteEvent.from_content(keys, "Hello, world!")
 
-    await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
-    )
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
-    fltr = {"authors": [signed_event.pubkey], "since": cur}  # (since,]
+    fltr = {"authors": [event.pubkey], "since": cur}  # (since,]
 
     await utils.send_req_with_filter("1", [fltr], request_queue)
     await utils.expect_eose(response_queue)
@@ -206,18 +188,16 @@ async def test_text_note_find_author_since_less_cur_has_result(
 ):
     cur = int(time.time())
     with mock.patch("time.time", return_value=cur):
-        signed_event = text_note_event.TextNoteEvent.from_content(keys, "Hello, world!")
+        event = text_note_event.TextNoteEvent.from_content(keys, "Hello, world!")
 
-    await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
-    )
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
     fltr = {"authors": [keys.public], "since": cur - 1}  # (since,]
 
     await utils.send_req_with_filter("1", [fltr], request_queue)
 
-    relay_signed = await utils.expect_text_note_event(response_queue)
-    assert relay_signed == signed_event
+    relay_event = await utils.expect_text_note_event(response_queue)
+    assert relay_event == event
 
     await utils.expect_eose(response_queue)
 
@@ -228,11 +208,9 @@ async def test_text_note_find_author_until_equal_cur_no_result(
 ):
     cur = int(time.time())
     with mock.patch("time.time", return_value=cur):
-        signed_event = text_note_event.TextNoteEvent.from_content(keys, "Hello, world!")
+        event = text_note_event.TextNoteEvent.from_content(keys, "Hello, world!")
 
-    await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
-    )
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
     fltr = {"authors": [keys.public], "since": cur}  # (, until)
 
@@ -248,31 +226,27 @@ async def test_text_note_find_author_until_less_cur_has_result(
 
     cur = int(time.time())
     with mock.patch("time.time", return_value=cur):
-        signed_event = text_note_event.TextNoteEvent.from_content(keys, "Hello, world!")
+        event = text_note_event.TextNoteEvent.from_content(keys, "Hello, world!")
 
-    await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
-    )
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
     fltr = {"authors": [keys.public], "since": cur - 1}  # (, until)
 
     await utils.send_req_with_filter("1", [fltr], request_queue)
 
-    relay_signed = await utils.expect_text_note_event(response_queue)
-    assert relay_signed == signed_event
+    relay_event = await utils.expect_text_note_event(response_queue)
+    assert relay_event == event
 
     await utils.expect_eose(response_queue)
 
 
 @pytest.mark.usefixtures("ctx")
 async def test_text_note_find_by_tag_no_tag_inserted(
-    request_queue, response_queue, signed_event
+    request_queue, response_queue, event
 ):
-    await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
-    )
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
-    fltr = {"authors": [signed_event.pubkey], "#p": [signed_event.pubkey]}
+    fltr = {"authors": [event.pubkey], "#p": [event.pubkey]}
 
     await utils.send_req_with_filter("1", [fltr], request_queue)
     await utils.expect_eose(response_queue)
@@ -289,13 +263,11 @@ def build_with_tags(keys, tags=None):
 
 @pytest.mark.usefixtures("ctx")
 async def test_text_note_find_by_tag_ptag(request_queue, response_queue, keys):
-    signed_event = build_with_tags(keys, tags=[["p", keys.public]])
+    event = build_with_tags(keys, tags=[["p", keys.public]])
 
-    await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
-    )
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
-    fltr = {"authors": [signed_event.pubkey], "#p": [signed_event.pubkey]}
+    fltr = {"authors": [event.pubkey], "#p": [event.pubkey]}
 
     await utils.send_req_with_filter("1", [fltr], request_queue)
     await utils.expect_text_note_event(response_queue)
@@ -306,15 +278,11 @@ async def test_text_note_find_by_tag_ptag(request_queue, response_queue, keys):
 async def test_text_note_find_by_tag_ptag_with_relay(
     request_queue, response_queue, keys
 ):
-    signed_event = build_with_tags(
-        keys, tags=[["p", keys.public, "ws://relay.example.com"]]
-    )
+    event = build_with_tags(keys, tags=[["p", keys.public, "ws://relay.example.com"]])
 
-    await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
-    )
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
-    fltr = {"authors": [signed_event.pubkey], "#p": [signed_event.pubkey]}
+    fltr = {"authors": [event.pubkey], "#p": [event.pubkey]}
 
     await utils.send_req_with_filter("1", [fltr], request_queue)
     await utils.expect_text_note_event(response_queue)
@@ -326,10 +294,8 @@ async def test_text_note_find_by_tag_multiple_ptag_in_event(
     request_queue, response_queue, keys
 ):
     keys2 = crypto.KeyPair()
-    signed_event = build_with_tags(keys, tags=[["p", keys.public], ["p", keys2.public]])
-    await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
-    )
+    event = build_with_tags(keys, tags=[["p", keys.public], ["p", keys2.public]])
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
     fltr = {"authors": [keys.public], "#p": [keys.public]}
 
@@ -348,18 +314,12 @@ async def test_text_note_find_by_tag_multiple_ptag_in_event(
 async def test_text_note_find_by_tag_multiple_ptag_in_filter(
     request_queue, response_queue, keys
 ):
-    signed_event = build_with_tags(
-        keys, tags=[["p", keys.public, "ws://relay.example.com"]]
-    )
-    await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
-    )
+    event = build_with_tags(keys, tags=[["p", keys.public, "ws://relay.example.com"]])
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
     keys2 = crypto.KeyPair()
-    signed_event2 = build_with_tags(keys, tags=[["p", keys2.public]])
-    await utils.send_and_expect_command_result(
-        signed_event2, request_queue, response_queue
-    )
+    event2 = build_with_tags(keys, tags=[["p", keys2.public]])
+    await utils.send_and_expect_command_result(event2, request_queue, response_queue)
 
     fltr = {"authors": [keys.public], "#p": [keys.public, keys2.public]}
 
@@ -370,67 +330,57 @@ async def test_text_note_find_by_tag_multiple_ptag_in_filter(
 
 
 @pytest.mark.usefixtures("ctx")
-async def test_text_note_find_by_tag_etag(
-    request_queue, response_queue, keys, signed_event
-):
+async def test_text_note_find_by_tag_etag(request_queue, response_queue, keys, event):
     cmd_result = await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
+        event, request_queue, response_queue
     )
 
-    signed_event2 = build_with_tags(keys, tags=[["e", cmd_result.event_id]])
+    event2 = build_with_tags(keys, tags=[["e", cmd_result.event_id]])
 
-    await utils.send_and_expect_command_result(
-        signed_event2, request_queue, response_queue
-    )
+    await utils.send_and_expect_command_result(event2, request_queue, response_queue)
 
-    fltr = {"authors": [signed_event.pubkey], "#e": [signed_event.id]}
+    fltr = {"authors": [event.pubkey], "#e": [event.id]}
 
     await utils.send_req_with_filter("1", [fltr], request_queue)
     relay_event = await utils.expect_text_note_event(response_queue)
-    assert relay_event == signed_event2
+    assert relay_event == event2
     await utils.expect_eose(response_queue)
 
 
 @pytest.mark.usefixtures("ctx")
 async def test_text_note_find_by_tag_etag_and_ptag(
-    request_queue, response_queue, keys, signed_event
+    request_queue, response_queue, keys, event
 ):
     cmd_result = await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
+        event, request_queue, response_queue
     )
 
-    signed_event2 = build_with_tags(
+    event2 = build_with_tags(
         keys, tags=[["e", cmd_result.event_id], ["p", keys.public]]
     )
 
-    await utils.send_and_expect_command_result(
-        signed_event2, request_queue, response_queue
-    )
+    await utils.send_and_expect_command_result(event2, request_queue, response_queue)
 
     fltr = {
-        "authors": [signed_event.pubkey],
-        "#e": [signed_event.id],
-        "#p": [signed_event2.pubkey],
+        "authors": [event.pubkey],
+        "#e": [event.id],
+        "#p": [event2.pubkey],
     }
 
     await utils.send_req_with_filter("1", [fltr], request_queue)
     relay_event = await utils.expect_text_note_event(response_queue)
-    assert relay_event == signed_event2
+    assert relay_event == event2
     await utils.expect_eose(response_queue)
 
 
 @pytest.mark.usefixtures("ctx")
 async def test_text_note_multiple_filters_or(
-    request_queue, response_queue, keys, signed_event
+    request_queue, response_queue, keys, event
 ):
-    await utils.send_and_expect_command_result(
-        signed_event, request_queue, response_queue
-    )
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
     keys2 = crypto.KeyPair()
-    signed_event2 = build_with_tags(keys2)
-    await utils.send_and_expect_command_result(
-        signed_event2, request_queue, response_queue
-    )
+    event2 = build_with_tags(keys2)
+    await utils.send_and_expect_command_result(event2, request_queue, response_queue)
 
     fltr1 = {
         "authors": [keys.public],
@@ -447,7 +397,7 @@ async def test_text_note_multiple_filters_or(
 
 @pytest.mark.usefixtures("ctx")
 async def test_text_note_receive_event_from_sub(
-    request_queue, response_queue, keys, signed_event
+    request_queue, response_queue, keys, event
 ):
     fltr = {
         "authors": [keys.public],
@@ -455,9 +405,7 @@ async def test_text_note_receive_event_from_sub(
     await utils.send_req_with_filter("1", [fltr], request_queue)
     await utils.expect_eose(response_queue)
 
-    await request_queue.put(
-        event_message.Event.from_signed_event(signed_event).serialize()
-    )
+    await request_queue.put(event_message.Event.from_event(event).serialize())
 
     # due to the ordering of the db commit cb, the sub response may arrive
     # before the command result
@@ -471,7 +419,7 @@ async def test_text_note_receive_event_from_sub(
 
 @pytest.mark.usefixtures("ctx")
 async def test_text_note_receive_two_events_from_two_subs(
-    request_queue, response_queue, keys, signed_event
+    request_queue, response_queue, keys, event
 ):
     fltr = {
         "authors": [keys.public],
@@ -482,9 +430,7 @@ async def test_text_note_receive_two_events_from_two_subs(
     await utils.send_req_with_filter("2", [fltr], request_queue)
     await utils.expect_eose(response_queue)
 
-    await request_queue.put(
-        event_message.Event.from_signed_event(signed_event).serialize()
-    )
+    await request_queue.put(event_message.Event.from_event(event).serialize())
 
     # due to the ordering of the db commit cb, the sub response may
     # arrive before the command result
@@ -505,7 +451,7 @@ async def test_text_note_receive_two_events_from_two_subs(
 
 
 @pytest.mark.parametrize(
-    "signed_builder",
+    "builder",
     [
         contact_list_event.ContactListEvent.from_contact_list,
         metadata_event.MetadataEvent.from_metadata_parts,
@@ -513,26 +459,26 @@ async def test_text_note_receive_two_events_from_two_subs(
 )
 @pytest.mark.usefixtures("ctx")
 async def test_second_event_delete_previous(
-    signed_builder, request_queue, response_queue, keys
+    builder, request_queue, response_queue, keys
 ):
     cur = int(time.time())
     with mock.patch("time.time", return_value=cur):
-        signed = signed_builder(keys)
+        event = builder(keys)
 
     cur = int(time.time())
     with mock.patch("time.time", return_value=cur + 1):
-        signed2 = signed_builder(keys)
+        event2 = builder(keys)
 
-    await utils.send_and_expect_command_result(signed, request_queue, response_queue)
-    await utils.send_and_expect_command_result(signed2, request_queue, response_queue)
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
+    await utils.send_and_expect_command_result(event2, request_queue, response_queue)
 
     fltr = {"authors": [keys.public]}
 
     await utils.send_req_with_filter("1", [fltr], request_queue)
     await utils.send_close("1", request_queue)
 
-    relay_signed = event_builder.from_dict(
+    relay_event = event_builder.from_dict(
         (await utils.expect_relay_event(response_queue)).event_dict
     )
-    assert relay_signed == signed2
+    assert relay_event == event2
     await utils.expect_eose(response_queue)

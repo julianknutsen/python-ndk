@@ -115,7 +115,7 @@ class EventFilter:
                     d[k] = v
         return d
 
-    def matches_event(self, ev: event.SignedEvent) -> bool:
+    def matches_event(self, ev: event.Event) -> bool:
         if self.ids and not any(ev.id.startswith(x) for x in self.ids):
             return False
 

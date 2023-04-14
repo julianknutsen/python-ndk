@@ -25,21 +25,19 @@ from ndk.relay.event_repo import event_repo
 
 
 class MemoryEventRepo(event_repo.EventRepo):
-    _stored_events: dict[types.EventID, event.SignedEvent]
+    _stored_events: dict[types.EventID, event.Event]
 
     def __init__(self):
         self._stored_events = {}
         super().__init__()
 
-    async def add(self, ev: event.SignedEvent) -> types.EventID:
+    async def add(self, ev: event.Event) -> types.EventID:
         self._stored_events[ev.id] = ev
         await self._insert_event_handler.handle_event(ev)
         return ev.id
 
-    async def get(
-        self, fltrs: list[event_filter.EventFilter]
-    ) -> list[event.SignedEvent]:
-        fetched: list[event.SignedEvent] = []
+    async def get(self, fltrs: list[event_filter.EventFilter]) -> list[event.Event]:
+        fetched: list[event.Event] = []
 
         for fltr in fltrs:
             tmp = [

@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
-class SignedEvent:
+class Event:
     id: types.EventID
     pubkey: crypto.PublicKeyStr
     created_at: int

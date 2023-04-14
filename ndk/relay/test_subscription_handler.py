@@ -69,8 +69,8 @@ async def test_output_with_matching_filter(keys):
     fltr.matches_event.return_value = True
     sh.set_filters("subid", [fltr])
 
-    signed = metadata_event.MetadataEvent.from_metadata_parts(keys=keys)
-    await sh.handle_event(signed)
+    event = metadata_event.MetadataEvent.from_metadata_parts(keys=keys)
+    await sh.handle_event(event)
     assert not q.empty()
 
 
@@ -83,8 +83,8 @@ async def test_two_output_with_two_matching_filter(keys):
     sh.set_filters("subid", [fltr])
     sh.set_filters("subid2", [fltr])
 
-    signed = metadata_event.MetadataEvent.from_metadata_parts(keys=keys)
-    await sh.handle_event(signed)
+    event = metadata_event.MetadataEvent.from_metadata_parts(keys=keys)
+    await sh.handle_event(event)
     assert q.qsize() == 2
 
 

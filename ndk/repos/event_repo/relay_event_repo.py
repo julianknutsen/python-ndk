@@ -24,7 +24,7 @@
 Typical usage example::
     keys = crypto.KeyPair()
     repo = RelayEventRepo(XXX)
-    event_id = repo.add(keys, <UnsignedEvent>)
+    event_id = repo.add(keys, <Event>)
     event = repo.get(event_id)
 """
 
@@ -52,21 +52,19 @@ class RelayEventRepo(event_repo.EventRepo):
         self._protocol = protocol
         super().__init__()
 
-    async def add(self, signed_ev: event.SignedEvent) -> types.EventID:
-        result = await self._protocol.write_event(signed_ev)
+    async def add(self, ev: event.Event) -> types.EventID:
+        result = await self._protocol.write_event(ev)
 
         if not result.accepted:
             logging.debug("Failed adding event to relay: %s", result.message)
-            raise event_repo.AddItemError(
-                f"Failed to add {signed_ev}: {result.message}"
-            )
+            raise event_repo.AddItemError(f"Failed to add {ev}: {result.message}")
 
         if "duplicate" in result.message:
             logging.debug("Duplicate event sent to relay: %s", result.message)
 
         return types.EventID(result.event_id)
 
-    async def get(self, ev_id: types.EventID) -> event.SignedEvent:
+    async def get(self, ev_id: types.EventID) -> event.Event:
         events = await self._protocol.query_events(
             [event_filter.EventFilter(ids=[ev_id])]
         )
@@ -86,7 +84,7 @@ class RelayEventRepo(event_repo.EventRepo):
         kind: types.EventKind,
         author: crypto.PublicKeyStr,
         limit: int = 0,
-    ) -> typing.Sequence[event.SignedEvent]:
+    ) -> typing.Sequence[event.Event]:
         fltr = event_filter.EventFilter(kinds=[kind], authors=[author])
 
         if limit:

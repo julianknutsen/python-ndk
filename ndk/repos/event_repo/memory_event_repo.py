@@ -24,7 +24,7 @@
 Typical usage example::
     keys = crypto.KeyPair()
     repo = MemoryEventRepo()
-    event_id = repo.add(keys, <UnsignedEvent>)
+    event_id = repo.add(keys, <Event>)
     event = repo.get(event_id)
 """
 
@@ -38,15 +38,15 @@ from ndk.repos.event_repo import event_repo
 class MemoryEventRepo(event_repo.EventRepo):
     """Concrete implementation of EventRepo that is backed by memory."""
 
-    _by_id: dict[types.EventID, event.SignedEvent]
+    _by_id: dict[types.EventID, event.Event]
 
     def __init__(self):
         self._by_id = {}
         super().__init__()
 
-    async def add(self, signed_ev: event.SignedEvent) -> types.EventID:
-        self._by_id[signed_ev.id] = signed_ev
-        return signed_ev.id
+    async def add(self, ev: event.Event) -> types.EventID:
+        self._by_id[ev.id] = ev
+        return ev.id
 
     async def get(self, ev_id: types.EventID):
         if ev_id not in self._by_id:
@@ -59,7 +59,7 @@ class MemoryEventRepo(event_repo.EventRepo):
         kind: types.EventKind,
         author: crypto.PublicKeyStr,
         limit: int = 0,
-    ) -> typing.Sequence[event.SignedEvent]:
+    ) -> typing.Sequence[event.Event]:
         if limit <= 0:
             limit = len(self._by_id)
 
