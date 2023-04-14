@@ -37,7 +37,7 @@ class Event:
     id: types.EventID
     pubkey: crypto.PublicKeyStr
     created_at: int
-    kind: types.EventKind
+    kind: int
     tags: event_tags.EventTags
     content: str
     sig: crypto.SchnorrSigStr
@@ -77,7 +77,7 @@ class Event:
     def build(
         cls,
         keys: crypto.KeyPair,
-        kind: types.EventKind,
+        kind: int,
         tags: typing.Optional[event_tags.EventTags] = None,
         content: typing.Optional[str] = None,
     ):
@@ -103,3 +103,33 @@ class Event:
             sig=signed_hash,
             skip_validate=False,
         )
+
+
+class PersistentEvent:
+    """Event should be persisted for later query"""
+
+    pass
+
+
+class BroadcastEvent:
+    """Event shouuld be sent to all subscribers that match filter"""
+
+    pass
+
+
+class SingletonEvent:
+    """Only the latest event of this type and author should exist"""
+
+    pass
+
+
+class RegularEvent(Event, PersistentEvent, BroadcastEvent):
+    pass
+
+
+class ReplaceableEvent(Event, PersistentEvent, SingletonEvent, BroadcastEvent):
+    pass
+
+
+class EphemeralEvent(Event, BroadcastEvent):
+    pass

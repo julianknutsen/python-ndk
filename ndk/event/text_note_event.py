@@ -23,7 +23,7 @@ from ndk import crypto, types
 from ndk.event import event, event_tags
 
 
-class TextNoteEvent(event.Event):
+class TextNoteEvent(event.RegularEvent):
     @classmethod
     def from_content(
         cls,

@@ -33,6 +33,7 @@ from websockets.legacy.server import serve
 from ndk import serialize
 from ndk.relay import (
     event_handler,
+    event_notifier,
     message_dispatcher,
     message_handler,
     relay_information_document,
@@ -82,10 +83,11 @@ async def handler_wrapper(repo: event_repo.EventRepo, websocket):
     response_queue: asyncio.Queue[str] = asyncio.Queue()
 
     sh = subscription_handler.SubscriptionHandler(response_queue)
-    eh = event_handler.EventHandler(repo)
+    ev_notifier = event_notifier.EventNotifier()
+    eh = event_handler.EventHandler(repo, ev_notifier)
     mh = message_handler.MessageHandler(repo, sh, eh)
     md = message_dispatcher.MessageDispatcher(mh)
-    repo.register_insert_cb(sh.handle_event)
+    eh.register_received_cb(sh.handle_event)
 
     consumer_task = asyncio.create_task(
         protocol_handler.read_handler(websocket, request_queue)

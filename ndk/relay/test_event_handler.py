@@ -18,63 +18,102 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
+# pylint: disable=redefined-outer-name, unused-argument
 
 import mock
 import pytest
 
-from ndk import types
-from ndk.event import metadata_event
-from ndk.relay import event_handler
+from ndk.event import event
+from ndk.relay import event_handler, event_notifier
 from ndk.relay.event_repo import memory_event_repo
 
 
-def test_init():
-    repo = mock.AsyncMock()
-    event_handler.EventHandler(repo)
+@pytest.fixture
+def repo():
+    return mock.AsyncMock(wraps=memory_event_repo.MemoryEventRepo())
 
 
-async def test_handle_event_metadata_saves():
-    repo = mock.AsyncMock()
-    eh = event_handler.EventHandler(repo)
+@pytest.fixture
+def notifier():
+    return mock.AsyncMock(wraps=event_notifier.EventNotifier())
 
-    ev = mock.MagicMock(type=metadata_event.MetadataEvent)
+
+@pytest.fixture
+def eh(repo, notifier):
+    return event_handler.EventHandler(repo, notifier)
+
+
+@pytest.fixture
+def real_eh():
+    repo = memory_event_repo.MemoryEventRepo()
+    notifier = event_notifier.EventNotifier()
+    return event_handler.EventHandler(repo, notifier)
+
+
+def test_init(repo, notifier, eh):
+    pass  # fixtures do the work
+
+
+async def test_handle_regular_event_behavior(repo, notifier, eh):
+    ev = mock.MagicMock(spec=event.RegularEvent, id="1")
     await eh.handle_event(ev)
 
     repo.add.assert_called_once_with(ev)
+    repo.remove.assert_not_called()
+    notifier.handle_event.assert_called_once_with(ev)
 
 
-async def test_handle_event_text_note_saves():
-    repo = mock.AsyncMock()
-    eh = event_handler.EventHandler(repo)
+async def test_handle_replaceable_event_behavior(repo, notifier, eh):
+    existing_ev = mock.MagicMock(
+        event.ReplaceableEvent, id="1", kind=0, pubkey="1", created_at=1, tags=[]
+    )
+    await repo.add(existing_ev)
+    repo.reset_mock()
 
-    ev = mock.MagicMock()
+    newer_ev = mock.MagicMock(
+        event.ReplaceableEvent, id="2", kind=0, pubkey="1", created_at=2, tags=[]
+    )
+    await eh.handle_event(newer_ev)
+
+    repo.add.assert_called_once_with(newer_ev)
+    repo.remove.assert_called_once_with("1")
+    notifier.handle_event.assert_called_once_with(newer_ev)
+
+
+async def test_handle_ephemeral_event_behavior(repo, notifier, eh):
+    ev = mock.MagicMock(event.EphemeralEvent)
     await eh.handle_event(ev)
 
-    repo.add.assert_called_once_with(ev)
+    repo.add.assert_not_called()
+    repo.remove.assert_not_called()
+    notifier.handle_event.assert_called_once_with(ev)
 
 
-async def test_handle_contact_list_saves():
-    repo = mock.AsyncMock()
-    eh = event_handler.EventHandler(repo)
+async def test_no_register_not_called(real_eh):
+    ev = mock.MagicMock(event.EphemeralEvent)
+    cb = mock.AsyncMock()
 
-    ev = mock.MagicMock()
-    await eh.handle_event(ev)
+    await real_eh.handle_event(ev)
 
-    repo.add.assert_called_once_with(ev)
+    cb.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    "kind", [types.EventKind.CONTACT_LIST, types.EventKind.SET_METADATA]
-)
-async def test_handle_contact_list_deletes_old(kind):
-    repo = mock.AsyncMock(wraps=memory_event_repo.MemoryEventRepo())
-    eh = event_handler.EventHandler(repo)
+async def test_register_cb_called(real_eh):
+    ev = mock.MagicMock(event.EphemeralEvent)
+    cb = mock.AsyncMock()
+    real_eh.register_received_cb(cb)
 
-    ev_old = mock.MagicMock(kind=kind, pubkey="pubkey", created_at=1)
-    await eh.handle_event(ev_old)
+    await real_eh.handle_event(ev)
 
-    ev_new = mock.MagicMock(kind=kind, pubkey="pubkey", created_at=2)
-    await eh.handle_event(ev_new)
+    cb.assert_called_once_with(ev)
 
-    repo.add.assert_has_calls([mock.call(ev_old), mock.call(ev_new)])
-    repo.remove.assert_called_once_with(ev_old.id)
+
+async def test_insert_callback_after_unregister(real_eh):
+    ev = mock.MagicMock(event.EphemeralEvent)
+    cb = mock.AsyncMock()
+    cb_id = real_eh.register_received_cb(cb)
+    real_eh.unregister_received_cb(cb_id)
+
+    await real_eh.handle_event(ev)
+
+    cb.assert_not_called()

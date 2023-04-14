@@ -57,7 +57,7 @@ class EventRepo(abc.ABC):
     @abc.abstractmethod
     async def get_by_author(
         self,
-        kind: types.EventKind,
+        kind: int,
         author: crypto.PublicKeyStr,
         limit: int = 0,
     ) -> typing.Sequence[event.Event]:
@@ -73,7 +73,7 @@ class EventRepo(abc.ABC):
         """
 
     async def get_latest_by_author(
-        self, kind: types.EventKind, author: crypto.PublicKeyStr
+        self, kind: int, author: crypto.PublicKeyStr
     ) -> typing.Optional[event.Event]:
         """Convenience function to return the latest single event of a given kind from a specific author
 

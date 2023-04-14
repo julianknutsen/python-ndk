@@ -23,7 +23,7 @@ from ndk import crypto, exceptions, types
 from ndk.event import event, event_tags
 
 
-class ReactionEvent(event.Event):
+class ReactionEvent(event.RegularEvent):
     @classmethod
     def from_text_note_event(
         cls,

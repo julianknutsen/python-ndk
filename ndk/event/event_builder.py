@@ -19,6 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import logging
 import typing
 
 from ndk import crypto, types
@@ -33,7 +34,9 @@ from ndk.event import (
     text_note_event,
 )
 
-LOOKUP: dict[types.EventKind, typing.Type[event.Event]] = {
+logger = logging.getLogger(__name__)
+
+LOOKUP: dict[int, typing.Type[event.Event]] = {
     types.EventKind.SET_METADATA: metadata_event.MetadataEvent,
     types.EventKind.RECOMMEND_SERVER: recommend_server_event.RecommendServerEvent,
     types.EventKind.TEXT_NOTE: text_note_event.TextNoteEvent,
@@ -52,14 +55,26 @@ def from_dict(fields: dict, skip_validate=False):
             f"Required attributes not provided: {REQUIRED_FIELDS} != {actual}"
         )
 
-    if fields["kind"] not in LOOKUP:
-        raise ValueError(f"Unknown event kind: {fields['kind']}")
+    kind = fields["kind"]
+    if kind in LOOKUP:
+        builder = LOOKUP[kind]
+    elif 1000 <= kind < 10000:
+        builder = event.RegularEvent
+        logger.warning("Handling unspecified RegularEvent: %s", fields)
+    elif 10000 <= kind < 20000:
+        builder = event.ReplaceableEvent
+        logger.warning("Handling unspecified RepalceableEvent: %s", fields)
+    elif 20000 <= kind < 30000:
+        builder = event.EphemeralEvent
+        logger.warning("Handling unspecified EphemeralEvent: %s", fields)
+    else:
+        raise ValueError(f"Invalid event kind {kind}")
 
-    return LOOKUP[fields["kind"]](
+    return builder(
         id=types.EventID(fields["id"]),
         pubkey=crypto.PublicKeyStr(fields["pubkey"]),
         created_at=fields["created_at"],
-        kind=types.EventKind(fields["kind"]),
+        kind=kind,
         tags=event_tags.EventTags(fields["tags"]),
         content=fields["content"],
         sig=crypto.SchnorrSigStr(fields["sig"]),
@@ -68,4 +83,4 @@ def from_dict(fields: dict, skip_validate=False):
 
 
 def from_validated_dict(fields: dict):
-    return LOOKUP[fields["kind"]](**fields, skip_validate=True)
+    return from_dict(fields, skip_validate=True)

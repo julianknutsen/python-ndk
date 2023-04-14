@@ -98,7 +98,7 @@ class EventFilter:
 
         if self.kinds is not None:
             for kind in self.kinds:
-                if kind not in types.EventKind.__members__.values():
+                if kind not in types.EventKind.__dict__.values():
                     logger.warning(
                         "Creating filter %s w/ unknown event type: %s", self, kind
                     )

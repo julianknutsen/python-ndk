@@ -150,9 +150,6 @@ class MySqlEventRepo(event_repo.EventRepo):
 
             await conn.commit()
 
-            # notify listeners that new insert happened
-            await self._insert_event_handler.handle_event(ev)
-
             return ev.id
 
     def tag_query_from(self, identifier: str, tag_list: list[str]):

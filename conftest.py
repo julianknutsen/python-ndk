@@ -29,6 +29,7 @@ import websockets
 from ndk import crypto
 from ndk.relay import (
     event_handler,
+    event_notifier,
     message_dispatcher,
     message_handler,
     subscription_handler,
@@ -133,10 +134,11 @@ async def remote_relay(ws_handlers):
 async def local_relay(response_queue, request_queue):
     sh = subscription_handler.SubscriptionHandler(response_queue)
     repo = memory_event_repo.MemoryEventRepo()
-    eh = event_handler.EventHandler(repo)
+    ev_notifier = event_notifier.EventNotifier()
+    eh = event_handler.EventHandler(repo, ev_notifier)
     msg_handler = message_handler.MessageHandler(repo, sh, eh)
     md = message_dispatcher.MessageDispatcher(msg_handler)
-    repo.register_insert_cb(sh.handle_event)
+    eh.register_received_cb(sh.handle_event)
 
     handler_task = asyncio.create_task(
         server.connection_handler(request_queue, response_queue, md)

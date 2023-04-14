@@ -23,16 +23,9 @@ import abc
 
 from ndk import types
 from ndk.event import event, event_filter
-from ndk.relay.event_repo import event_notifier
 
 
 class EventRepo(abc.ABC):
-    _insert_event_handler: event_notifier.EventNotifier
-
-    def __init__(self) -> None:
-        self._insert_event_handler = event_notifier.EventNotifier()
-        super().__init__()
-
     @abc.abstractmethod
     async def add(self, ev: event.Event) -> types.EventID:
         pass
@@ -44,11 +37,3 @@ class EventRepo(abc.ABC):
     @abc.abstractmethod
     async def remove(self, event_id: types.EventID):
         pass
-
-    def register_insert_cb(
-        self, cb: event_notifier.EventNotifierCb
-    ) -> event_notifier.EventNotifierCbId:
-        return self._insert_event_handler.register(cb)
-
-    def unregister_insert_cb(self, cb_id: event_notifier.EventNotifierCbId):
-        self._insert_event_handler.unregister(cb_id)
