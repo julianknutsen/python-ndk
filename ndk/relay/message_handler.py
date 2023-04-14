@@ -22,7 +22,7 @@
 import logging
 
 from ndk import exceptions
-from ndk.event import event, event_filter
+from ndk.event import event_builder, event_filter
 from ndk.messages import (
     close,
     command_result,
@@ -54,7 +54,7 @@ class MessageHandler:
 
     async def handle_event_message(self, msg: event_message.Event) -> list[str]:
         try:
-            signed_ev = event.SignedEvent.from_dict(msg.event_dict)
+            signed_ev = event_builder.from_dict(msg.event_dict)
             await self._event_handler.handle_event(signed_ev)
             return [command_result.CommandResult(signed_ev.id, True, "").serialize()]
         except exceptions.ValidationError:

@@ -19,30 +19,21 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-import typing
+import pytest
 
-from ndk.event import (
-    contact_list_event,
-    event,
-    metadata_event,
-    reaction_event,
-    recommend_server_event,
-    repost_event,
-    text_note_event,
-)
-
-LOOKUP: dict[event.EventKind, typing.Type[event.UnsignedEvent]] = {
-    event.EventKind.SET_METADATA: metadata_event.MetadataEvent,
-    event.EventKind.RECOMMEND_SERVER: recommend_server_event.RecommendServerEvent,
-    event.EventKind.TEXT_NOTE: text_note_event.TextNoteEvent,
-    event.EventKind.CONTACT_LIST: contact_list_event.ContactListEvent,
-    event.EventKind.REPOST: repost_event.RepostEvent,
-    event.EventKind.REACTION: reaction_event.ReactionEvent,
-}
+from ndk import types
 
 
-def signed_to_unsigned(signed_event: event.SignedEvent) -> event.UnsignedEvent:
-    if signed_event.kind not in LOOKUP:
-        raise ValueError(f"Attempting to parse an unknown event {signed_event}")
+def test_event_id_bad_size():
+    with pytest.raises(ValueError):
+        types.EventID("a" * 63)
 
-    return LOOKUP[signed_event.kind].from_signed_event(signed_event)
+
+def test_event_id_non_hex():
+    with pytest.raises(ValueError):
+        types.EventID("$" * 64)
+
+
+def test_event_id_non_str():
+    with pytest.raises(ValueError):
+        types.EventID([])  # type: ignore

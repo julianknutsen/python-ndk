@@ -57,14 +57,14 @@ class EventRepo(abc.ABC):
     @abc.abstractmethod
     async def get_by_author(
         self,
-        kind: event.EventKind,
+        kind: types.EventKind,
         author: crypto.PublicKeyStr,
         limit: int = 0,
-    ) -> typing.Sequence[event.UnsignedEvent]:
+    ) -> typing.Sequence[event.SignedEvent]:
         """Retrieve Events of a given kind.
 
         Args:
-            kind (event.EventKind): The kind to match
+            kind (types.EventKind): The kind to match
             author (crypto.PublicKeyStr): The pubkey of the author of the event to match
             limit (int, optional): The maximum number of events to return. May return fewer. Defaults to 0.
 
@@ -73,12 +73,12 @@ class EventRepo(abc.ABC):
         """
 
     async def get_latest_by_author(
-        self, kind: event.EventKind, author: crypto.PublicKeyStr
-    ) -> typing.Optional[event.UnsignedEvent]:
+        self, kind: types.EventKind, author: crypto.PublicKeyStr
+    ) -> typing.Optional[event.SignedEvent]:
         """Convenience function to return the latest single event of a given kind from a specific author
 
         Args:
-            kind (event.EventKind): The kind to match
+            kind (types.EventKind): The kind to match
             author (crypto.PublicKeyStr): The pubkey of the author of the event to match
 
         Raises:

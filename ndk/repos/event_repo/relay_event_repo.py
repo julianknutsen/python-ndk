@@ -66,7 +66,7 @@ class RelayEventRepo(event_repo.EventRepo):
 
         return types.EventID(result.event_id)
 
-    async def get(self, ev_id: types.EventID) -> event.UnsignedEvent:
+    async def get(self, ev_id: types.EventID) -> event.SignedEvent:
         events = await self._protocol.query_events(
             [event_filter.EventFilter(ids=[ev_id])]
         )
@@ -83,10 +83,10 @@ class RelayEventRepo(event_repo.EventRepo):
 
     async def get_by_author(
         self,
-        kind: event.EventKind,
+        kind: types.EventKind,
         author: crypto.PublicKeyStr,
         limit: int = 0,
-    ) -> typing.Sequence[event.UnsignedEvent]:
+    ) -> typing.Sequence[event.SignedEvent]:
         fltr = event_filter.EventFilter(kinds=[kind], authors=[author])
 
         if limit:

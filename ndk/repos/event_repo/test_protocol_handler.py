@@ -24,8 +24,8 @@ import asyncio
 
 import pytest
 
-from ndk import crypto, serialize
-from ndk.event import event, event_filter, metadata_event
+from ndk import serialize
+from ndk.event import event_filter, metadata_event
 from ndk.messages import command_result, event_message
 from ndk.repos.event_repo import protocol_handler
 
@@ -51,14 +51,8 @@ async def protocol(read_queue: asyncio.Queue, write_queue: asyncio.Queue):
 
 
 @pytest.fixture()
-async def unsigned():
-    return metadata_event.MetadataEvent.from_metadata_parts()
-
-
-@pytest.fixture()
-async def signed(unsigned):
-    keys = crypto.KeyPair()
-    return event.build_signed_event(unsigned, keys)
+async def signed(keys):
+    return metadata_event.MetadataEvent.from_metadata_parts(keys)
 
 
 async def test_init_reader():
@@ -144,7 +138,7 @@ async def test_query_success_empty(read_queue, write_queue, protocol):
     assert len(events) == 0
 
 
-async def test_query_success(read_queue, write_queue, protocol, unsigned, signed):
+async def test_query_success(read_queue, write_queue, protocol, signed):
     future_events = asyncio.create_task(
         protocol.query_events([event_filter.EventFilter(kinds=[0])])
     )
@@ -162,4 +156,4 @@ async def test_query_success(read_queue, write_queue, protocol, unsigned, signed
     events = await future_events
 
     assert len(events) == 1
-    assert events[0] == unsigned
+    assert events[0] == signed

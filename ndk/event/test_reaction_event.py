@@ -18,12 +18,13 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
+# pylint: disable=redefined-outer-name
 # https://github.com/nostr-protocol/nips/blob/master/18.md
 
 import pytest
 
 from ndk import crypto, exceptions, types
-from ndk.event import event, event_tags, reaction_event, text_note_event
+from ndk.event import event_tags, reaction_event, text_note_event
 
 TEST_AUTHOR = crypto.PublicKeyStr(
     "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
@@ -36,56 +37,63 @@ VALID_TAG_1 = ["e", TEST_EVENT_ID, TEST_RELAY_URL]
 VALID_TAG_2 = ["p", TEST_AUTHOR]
 
 
-def test_no_tags():
+def test_no_tags(keys):
     with pytest.raises(exceptions.ValidationError):
-        reaction_event.ReactionEvent(
-            kind=event.EventKind.REACTION,
+        reaction_event.ReactionEvent.build(
+            keys=keys,
+            kind=types.EventKind.REACTION,
         )
 
 
-def test_two_tags_no_p():
+def test_two_tags_no_p(keys):
     with pytest.raises(exceptions.ValidationError):
-        reaction_event.ReactionEvent(
-            kind=event.EventKind.REACTION,
+        reaction_event.ReactionEvent.build(
+            keys=keys,
+            kind=types.EventKind.REACTION,
             tags=event_tags.EventTags([VALID_TAG_1, VALID_TAG_1]),
         )
 
 
-def test_two_tags_no_e():
+def test_two_tags_no_e(keys):
     with pytest.raises(exceptions.ValidationError):
-        reaction_event.ReactionEvent(
-            kind=event.EventKind.REACTION,
+        reaction_event.ReactionEvent.build(
+            keys=keys,
+            kind=types.EventKind.REACTION,
             tags=event_tags.EventTags([VALID_TAG_2, VALID_TAG_2]),
         )
 
 
-def test_minimum_valid():
-    reaction_event.ReactionEvent(
-        kind=event.EventKind.REACTION,
+def test_minimum_valid(keys):
+    reaction_event.ReactionEvent.build(
+        keys=keys,
+        kind=types.EventKind.REACTION,
         tags=event_tags.EventTags([VALID_TAG_1, VALID_TAG_2]),
     )
 
 
-def test_no_tag_text_note():
-    keys = crypto.KeyPair()
-    unsigned_event = text_note_event.TextNoteEvent.from_content("Hello, world!")
-    signed = event.build_signed_event(unsigned_event, keys)
-
-    reaction = reaction_event.ReactionEvent.from_text_note_event(signed, content="+")
+def test_no_tag_text_note(keys):
+    signed = text_note_event.TextNoteEvent.from_content(
+        keys=keys, content="Hello, world!"
+    )
+    reaction = reaction_event.ReactionEvent.from_text_note_event(
+        keys=keys, text_note=signed, content="+"
+    )
 
     assert ["e", signed.id] in reaction.tags.get("e")
     assert ["p", signed.pubkey] in reaction.tags.get("p")
     assert reaction.content == "+"
 
 
-def test_text_note_with_e_p_tags():
-    keys = crypto.KeyPair()
-    unsigned_event = text_note_event.TextNoteEvent.from_content(
-        "Hello, world!", tags=event_tags.EventTags([VALID_TAG_1, VALID_TAG_2])
+def test_text_note_with_e_p_tags(keys):
+    signed = text_note_event.TextNoteEvent.from_content(
+        keys=keys,
+        content="Hello, world!",
+        tags=event_tags.EventTags([VALID_TAG_1, VALID_TAG_2]),
     )
-    signed = event.build_signed_event(unsigned_event, keys)
 
-    reaction = reaction_event.ReactionEvent.from_text_note_event(signed, content="+")
+    reaction = reaction_event.ReactionEvent.from_text_note_event(
+        keys=keys, text_note=signed, content="+"
+    )
 
     assert ["e", signed.id] in reaction.tags
     assert VALID_TAG_1 in reaction.tags

@@ -31,7 +31,7 @@ Typical usage example::
 import typing
 
 from ndk import crypto, types
-from ndk.event import event, event_parser
+from ndk.event import event
 from ndk.repos.event_repo import event_repo
 
 
@@ -56,16 +56,16 @@ class MemoryEventRepo(event_repo.EventRepo):
 
     async def get_by_author(
         self,
-        kind: event.EventKind,
+        kind: types.EventKind,
         author: crypto.PublicKeyStr,
         limit: int = 0,
-    ) -> typing.Sequence[event.UnsignedEvent]:
+    ) -> typing.Sequence[event.SignedEvent]:
         if limit <= 0:
             limit = len(self._by_id)
 
         return sorted(
             [
-                event_parser.signed_to_unsigned(ev)
+                ev
                 for ev in self._by_id.values()
                 if ev.kind == kind and ev.pubkey == author
             ],

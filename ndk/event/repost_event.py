@@ -19,14 +19,15 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-from ndk import exceptions
+from ndk import crypto, exceptions, types
 from ndk.event import event, event_tags
 
 
-class RepostEvent(event.UnsignedEvent):
+class RepostEvent(event.SignedEvent):
     @classmethod
     def from_text_note_event(
         cls,
+        keys: crypto.KeyPair,
         text_note: event.SignedEvent,
         relay_url: str,
         content: str = "",
@@ -35,7 +36,9 @@ class RepostEvent(event.UnsignedEvent):
         tags.add(event_tags.PublicKeyTag.from_pubkey(text_note.pubkey))
         tags.add(event_tags.EventIdTag.from_event_id(text_note.id, relay_url))
 
-        return cls(kind=event.EventKind.REPOST, content=content, tags=tags)
+        return cls.build(
+            keys=keys, kind=types.EventKind.REPOST, content=content, tags=tags
+        )
 
     def validate(self):
         if len(self.tags) not in (1, 2):

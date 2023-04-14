@@ -27,7 +27,7 @@ import mock
 import pytest
 
 from ndk import crypto
-from ndk.event import event, event_filter, event_tags, metadata_event, text_note_event
+from ndk.event import event_filter, event_tags, metadata_event, text_note_event
 from ndk.relay.event_repo import memory_event_repo, mysql_event_repo
 
 
@@ -49,18 +49,8 @@ def repo(request):
 
 
 @pytest.fixture
-def keys():
-    return crypto.KeyPair()
-
-
-@pytest.fixture
-def unsigned():
-    return metadata_event.MetadataEvent.from_metadata_parts()
-
-
-@pytest.fixture
-def signed(keys, unsigned):
-    return event.build_signed_event(unsigned, keys)
+def signed(keys):
+    return metadata_event.MetadataEvent.from_metadata_parts(keys)
 
 
 async def test_get_empty(repo):
@@ -130,12 +120,10 @@ async def test_get_matches_by_author_and_id(repo, keys, signed):
 async def test_get_matches_by_id_only_last(repo, keys):
     cur = int(time.time())
     with mock.patch("time.time", return_value=cur):
-        unsigned1 = metadata_event.MetadataEvent.from_metadata_parts()
-        signed1 = event.build_signed_event(unsigned1, keys)
+        signed1 = metadata_event.MetadataEvent.from_metadata_parts(keys)
 
     with mock.patch("time.time", return_value=cur + 1):
-        unsigned2 = metadata_event.MetadataEvent.from_metadata_parts()
-        signed2 = event.build_signed_event(unsigned2, keys)
+        signed2 = metadata_event.MetadataEvent.from_metadata_parts(keys)
 
     _ = await repo.add(signed1)
     _ = await repo.add(signed2)
@@ -169,10 +157,9 @@ def build_signed_text_note(keys, tags=None):
     if not tags:
         tags = []
 
-    unsigned = text_note_event.TextNoteEvent.from_content(
-        "Hello, world!", tags=event_tags.EventTags(tags)
+    return text_note_event.TextNoteEvent.from_content(
+        keys, "Hello, world!", tags=event_tags.EventTags(tags)
     )
-    return event.build_signed_event(unsigned, keys)
 
 
 async def test_matches_by_etag(repo, keys):

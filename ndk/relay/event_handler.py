@@ -19,6 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+from ndk import types
 from ndk.event import event, event_filter
 from ndk.relay.event_repo import event_repo
 
@@ -32,7 +33,7 @@ class EventHandler:
     async def handle_event(self, ev: event.SignedEvent):
         await self._repo.add(ev)
 
-        if ev.kind in [event.EventKind.SET_METADATA, event.EventKind.CONTACT_LIST]:
+        if ev.kind in [types.EventKind.SET_METADATA, types.EventKind.CONTACT_LIST]:
             existing_evs = await self._repo.get(
                 [event_filter.EventFilter(authors=[ev.pubkey], kinds=[ev.kind])]
             )

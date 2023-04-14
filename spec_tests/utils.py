@@ -23,7 +23,13 @@
 
 import typing
 
-from ndk.event import event, event_parser, reaction_event, repost_event, text_note_event
+from ndk.event import (
+    event,
+    event_builder,
+    reaction_event,
+    repost_event,
+    text_note_event,
+)
 from ndk.messages import (
     close,
     command_result,
@@ -68,12 +74,11 @@ async def expect_successful_command_result(response_queue):
 
 
 async def expect_relay_event_of_type(
-    event_type: typing.Type[event.UnsignedEvent], response_queue
+    event_type: typing.Type[event.SignedEvent], response_queue
 ):
     msg = await expect_relay_event(response_queue)
-    signed = event.SignedEvent.from_dict(msg.event_dict)
-    unsigned = event_parser.signed_to_unsigned(signed)
-    assert isinstance(unsigned, event_type)
+    signed = event_builder.from_dict(msg.event_dict)
+    assert isinstance(signed, event_type)
     return signed
 
 

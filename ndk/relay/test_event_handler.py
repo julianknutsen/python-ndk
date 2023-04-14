@@ -22,7 +22,8 @@
 import mock
 import pytest
 
-from ndk.event import event, metadata_event
+from ndk import types
+from ndk.event import metadata_event
 from ndk.relay import event_handler
 from ndk.relay.event_repo import memory_event_repo
 
@@ -63,7 +64,7 @@ async def test_handle_contact_list_saves():
 
 
 @pytest.mark.parametrize(
-    "kind", [event.EventKind.CONTACT_LIST, event.EventKind.SET_METADATA]
+    "kind", [types.EventKind.CONTACT_LIST, types.EventKind.SET_METADATA]
 )
 async def test_handle_contact_list_deletes_old(kind):
     repo = mock.AsyncMock(wraps=memory_event_repo.MemoryEventRepo())

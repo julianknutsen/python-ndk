@@ -25,8 +25,7 @@ import asyncio
 
 import pytest
 
-from ndk import crypto
-from ndk.event import event, reaction_event, text_note_event
+from ndk.event import reaction_event, text_note_event
 from spec_tests import utils
 
 
@@ -45,16 +44,9 @@ def ctx(request):
     return request.getfixturevalue(request.param)
 
 
-@pytest.fixture
-def keys():
-    return crypto.KeyPair()
-
-
 @pytest.fixture()
-def text_note(request_queue, response_queue):
-    keys1 = crypto.KeyPair()
-    unsigned_event = text_note_event.TextNoteEvent.from_content("Hello World!")
-    signed_event = event.build_signed_event(unsigned_event, keys1)
+def text_note(keys, request_queue, response_queue):
+    signed_event = text_note_event.TextNoteEvent.from_content(keys, "Hello World!")
 
     asyncio.get_event_loop().run_until_complete(
         utils.send_and_expect_command_result(
@@ -66,9 +58,7 @@ def text_note(request_queue, response_queue):
 
 @pytest.fixture
 def signed_reaction_event(keys, text_note):
-    unsigned_event = reaction_event.ReactionEvent.from_text_note_event(text_note)
-    signed_event = event.build_signed_event(unsigned_event, keys)
-    return signed_event
+    return reaction_event.ReactionEvent.from_text_note_event(keys, text_note)
 
 
 @pytest.mark.usefixtures("ctx")

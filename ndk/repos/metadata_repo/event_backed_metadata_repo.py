@@ -23,8 +23,8 @@ import asyncio
 import logging
 import typing
 
-from ndk import crypto, serialize
-from ndk.event import contact_list_event, event, metadata_event, recommend_server_event
+from ndk import crypto, serialize, types
+from ndk.event import contact_list_event, metadata_event, recommend_server_event
 from ndk.repos import contacts
 from ndk.repos.event_repo import event_repo
 from ndk.repos.metadata_repo import metadata_repo
@@ -47,17 +47,17 @@ class EventBackedMetadataRepo(metadata_repo.MetadataRepo):
         recommend_server: str = "",
         contact_list: typing.Optional[contacts.ContactList] = None,
     ) -> bool:
-        mev = metadata_event.MetadataEvent.from_metadata_parts(name, about, picture)
-        rsev = recommend_server_event.RecommendServerEvent.from_url(recommend_server)
-        clev = contact_list_event.ContactListEvent.from_contact_list(contact_list)
+        mev = metadata_event.MetadataEvent.from_metadata_parts(
+            keys, name, about, picture
+        )
+        rsev = recommend_server_event.RecommendServerEvent.from_url(
+            keys, recommend_server
+        )
+        clev = contact_list_event.ContactListEvent.from_contact_list(keys, contact_list)
 
         tasks = []
         for ev in [mev, rsev, clev]:
-            tasks.append(
-                asyncio.create_task(
-                    self._event_repo.add(event.build_signed_event(ev, keys))
-                )
-            )
+            tasks.append(asyncio.create_task(self._event_repo.add(ev)))
 
         await asyncio.gather(*tasks)
 
@@ -66,7 +66,7 @@ class EventBackedMetadataRepo(metadata_repo.MetadataRepo):
     async def get(self, pubkey: crypto.PublicKeyStr) -> dict[str, object]:
         metadata = {}
         mev = await self._event_repo.get_latest_by_author(
-            event.EventKind.SET_METADATA, pubkey
+            types.EventKind.SET_METADATA, pubkey
         )
         if mev:
             metadata = serialize.deserialize(mev.content)
@@ -74,7 +74,7 @@ class EventBackedMetadataRepo(metadata_repo.MetadataRepo):
             logger.debug("No MetadataEvent returned")
 
         rsev = await self._event_repo.get_latest_by_author(
-            event.EventKind.RECOMMEND_SERVER, pubkey
+            types.EventKind.RECOMMEND_SERVER, pubkey
         )
         if rsev:
             metadata["recommend_server"] = rsev.content
@@ -83,7 +83,7 @@ class EventBackedMetadataRepo(metadata_repo.MetadataRepo):
             logger.debug("No RecommendServerEvent returned")
 
         clev = await self._event_repo.get_latest_by_author(
-            event.EventKind.CONTACT_LIST, pubkey
+            types.EventKind.CONTACT_LIST, pubkey
         )
         if clev:
             metadata["contacts"] = clev.get_contact_list()  # type: ignore

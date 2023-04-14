@@ -24,6 +24,7 @@ import dataclasses
 import logging
 import typing
 
+from ndk import types
 from ndk.event import event
 
 # "ids": <a list of event ids or prefixes>,
@@ -97,7 +98,7 @@ class EventFilter:
 
         if self.kinds is not None:
             for kind in self.kinds:
-                if kind not in event.EventKind.__members__.values():
+                if kind not in types.EventKind.__members__.values():
                     logger.warning(
                         "Creating filter %s w/ unknown event type: %s", self, kind
                     )

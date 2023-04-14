@@ -29,7 +29,7 @@ import pytest
 from ndk import crypto
 from ndk.event import (
     contact_list_event,
-    event,
+    event_builder,
     event_tags,
     metadata_event,
     text_note_event,
@@ -60,9 +60,7 @@ def keys():
 
 @pytest.fixture
 def signed_event(keys):
-    unsigned_event = text_note_event.TextNoteEvent.from_content("Hello, world!")
-    signed_event = event.build_signed_event(unsigned_event, keys)
-    return signed_event
+    return text_note_event.TextNoteEvent.from_content(keys, "Hello, world!")
 
 
 @pytest.mark.usefixtures("ctx")
@@ -158,14 +156,14 @@ async def test_text_note_find_author_limit_respected_returns_newest(
 ):
     cur = int(time.time())
     with mock.patch("time.time", return_value=cur):
-        unsigned_event1 = text_note_event.TextNoteEvent.from_content("Hello, world!")
-        signed_event1 = event.build_signed_event(unsigned_event1, keys)
+        signed_event1 = text_note_event.TextNoteEvent.from_content(
+            keys, "Hello, world!"
+        )
 
     with mock.patch("time.time", return_value=cur + 1):
-        unsigned_event2 = text_note_event.TextNoteEvent.from_content(
-            "Hello, world, later!"
+        signed_event2 = text_note_event.TextNoteEvent.from_content(
+            keys, "Hello, world, later!"
         )
-        signed_event2 = event.build_signed_event(unsigned_event2, keys)
 
     await utils.send_and_expect_command_result(
         signed_event1, request_queue, response_queue
@@ -190,8 +188,7 @@ async def test_text_note_find_author_since_equal_cur_no_result(
 ):
     cur = int(time.time())
     with mock.patch("time.time", return_value=cur):
-        unsigned_event = text_note_event.TextNoteEvent.from_content("Hello, world!")
-        signed_event = event.build_signed_event(unsigned_event, keys)
+        signed_event = text_note_event.TextNoteEvent.from_content(keys, "Hello, world!")
 
     await utils.send_and_expect_command_result(
         signed_event, request_queue, response_queue
@@ -209,8 +206,7 @@ async def test_text_note_find_author_since_less_cur_has_result(
 ):
     cur = int(time.time())
     with mock.patch("time.time", return_value=cur):
-        unsigned_event = text_note_event.TextNoteEvent.from_content("Hello, world!")
-        signed_event = event.build_signed_event(unsigned_event, keys)
+        signed_event = text_note_event.TextNoteEvent.from_content(keys, "Hello, world!")
 
     await utils.send_and_expect_command_result(
         signed_event, request_queue, response_queue
@@ -232,8 +228,7 @@ async def test_text_note_find_author_until_equal_cur_no_result(
 ):
     cur = int(time.time())
     with mock.patch("time.time", return_value=cur):
-        unsigned_event = text_note_event.TextNoteEvent.from_content("Hello, world!")
-        signed_event = event.build_signed_event(unsigned_event, keys)
+        signed_event = text_note_event.TextNoteEvent.from_content(keys, "Hello, world!")
 
     await utils.send_and_expect_command_result(
         signed_event, request_queue, response_queue
@@ -253,8 +248,7 @@ async def test_text_note_find_author_until_less_cur_has_result(
 
     cur = int(time.time())
     with mock.patch("time.time", return_value=cur):
-        unsigned_event = text_note_event.TextNoteEvent.from_content("Hello, world!")
-        signed_event = event.build_signed_event(unsigned_event, keys)
+        signed_event = text_note_event.TextNoteEvent.from_content(keys, "Hello, world!")
 
     await utils.send_and_expect_command_result(
         signed_event, request_queue, response_queue
@@ -288,10 +282,9 @@ def build_with_tags(keys, tags=None):
     if not tags:
         tags = []
 
-    unsigned_event = text_note_event.TextNoteEvent.from_content(
-        "Hello, world!", tags=event_tags.EventTags(tags)
+    return text_note_event.TextNoteEvent.from_content(
+        keys, "Hello, world!", tags=event_tags.EventTags(tags)
     )
-    return event.build_signed_event(unsigned_event, keys)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -512,7 +505,7 @@ async def test_text_note_receive_two_events_from_two_subs(
 
 
 @pytest.mark.parametrize(
-    "unsigned_builder",
+    "signed_builder",
     [
         contact_list_event.ContactListEvent.from_contact_list,
         metadata_event.MetadataEvent.from_metadata_parts,
@@ -520,18 +513,16 @@ async def test_text_note_receive_two_events_from_two_subs(
 )
 @pytest.mark.usefixtures("ctx")
 async def test_second_event_delete_previous(
-    unsigned_builder, request_queue, response_queue, keys
+    signed_builder, request_queue, response_queue, keys
 ):
     cur = int(time.time())
     with mock.patch("time.time", return_value=cur):
-        unsigned1 = unsigned_builder()
+        signed = signed_builder(keys)
 
     cur = int(time.time())
     with mock.patch("time.time", return_value=cur + 1):
-        unsigned2 = unsigned_builder()
+        signed2 = signed_builder(keys)
 
-    signed = event.build_signed_event(unsigned1, keys)
-    signed2 = event.build_signed_event(unsigned2, keys)
     await utils.send_and_expect_command_result(signed, request_queue, response_queue)
     await utils.send_and_expect_command_result(signed2, request_queue, response_queue)
 
@@ -540,7 +531,7 @@ async def test_second_event_delete_previous(
     await utils.send_req_with_filter("1", [fltr], request_queue)
     await utils.send_close("1", request_queue)
 
-    relay_signed = event.SignedEvent.from_dict(
+    relay_signed = event_builder.from_dict(
         (await utils.expect_relay_event(response_queue)).event_dict
     )
     assert relay_signed == signed2

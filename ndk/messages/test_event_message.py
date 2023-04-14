@@ -21,8 +21,8 @@
 
 import pytest
 
-from ndk import crypto, exceptions, serialize
-from ndk.event import event, metadata_event
+from ndk import exceptions, serialize, types
+from ndk.event import metadata_event
 from ndk.messages import event_message
 
 
@@ -40,19 +40,17 @@ def test_serialize():
     assert deserialized == ["EVENT", {}]
 
 
-def test_from_signed_event():
-    keys = crypto.KeyPair()
-    unsigned_event = metadata_event.MetadataEvent.from_metadata_parts(
-        "bob", "#nostr", "http://picture.com"
+def test_from_signed_event(keys):
+    signed_event = metadata_event.MetadataEvent.from_metadata_parts(
+        keys, "bob", "#nostr", "http://picture.com"
     )
-    signed_event = event.build_signed_event(unsigned_event, keys)
     _, body = serialize.deserialize(
         event_message.Event.from_signed_event(signed_event).serialize()
     )
 
     assert len(body["id"]) == 64
     assert body["pubkey"] == keys.public
-    assert body["kind"] == event.EventKind.SET_METADATA.value
+    assert body["kind"] == types.EventKind.SET_METADATA.value
     assert body["tags"] == []
     assert serialize.deserialize(body["content"]) == {
         "name": "bob",
@@ -67,10 +65,8 @@ def test_deserialize_list_bad_length():
         event_message.Event.deserialize_list(["EVENT"])
 
 
-def test_deserialize_list():
-    keys = crypto.KeyPair()
-    unsigned_event = metadata_event.MetadataEvent.from_metadata_parts()
-    signed_event = event.build_signed_event(unsigned_event, keys)
+def test_deserialize_list(keys):
+    signed_event = metadata_event.MetadataEvent.from_metadata_parts(keys)
     event_msg = event_message.Event.from_signed_event(signed_event)
     lst = serialize.deserialize(event_msg.serialize())
     ev = event_message.Event.deserialize_list(lst)
