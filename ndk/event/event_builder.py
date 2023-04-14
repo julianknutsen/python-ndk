@@ -33,7 +33,7 @@ from ndk.event import (
     text_note_event,
 )
 
-LOOKUP: dict[types.EventKind, typing.Type[event.SignedEvent]] = {
+LOOKUP: dict[types.EventKind, typing.Type[event.Event]] = {
     types.EventKind.SET_METADATA: metadata_event.MetadataEvent,
     types.EventKind.RECOMMEND_SERVER: recommend_server_event.RecommendServerEvent,
     types.EventKind.TEXT_NOTE: text_note_event.TextNoteEvent,

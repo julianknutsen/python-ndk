@@ -49,7 +49,7 @@ def repo(request):
 
 
 @pytest.fixture
-def signed(keys):
+def event(keys):
     return metadata_event.MetadataEvent.from_metadata_parts(keys)
 
 
@@ -59,92 +59,92 @@ async def test_get_empty(repo):
     assert len(items) == 0
 
 
-async def test_get_matches_by_id(repo, signed):
-    ev_id = await repo.add(signed)
+async def test_get_matches_by_id(repo, event):
+    ev_id = await repo.add(event)
 
     items = await repo.get([event_filter.EventFilter(ids=[ev_id])])
 
     assert len(items) == 1
-    assert items[0] == signed
+    assert items[0] == event
 
 
-async def test_duplicate_insert_one_result(repo, signed):
-    ev_id1 = await repo.add(signed)
-    ev_id2 = await repo.add(signed)
+async def test_duplicate_insert_one_result(repo, event):
+    ev_id1 = await repo.add(event)
+    ev_id2 = await repo.add(event)
     assert ev_id1 == ev_id2
 
     items = await repo.get([event_filter.EventFilter(ids=[ev_id1])])
 
     assert len(items) == 1
-    assert items[0] == signed
+    assert items[0] == event
 
 
-async def test_get_matches_by_id_prefix(repo, signed):
-    ev_id = await repo.add(signed)
+async def test_get_matches_by_id_prefix(repo, event):
+    ev_id = await repo.add(event)
 
     items = await repo.get([event_filter.EventFilter(ids=[ev_id[0]])])
 
     assert len(items) == 1
-    assert items[0] == signed
+    assert items[0] == event
 
 
-async def test_get_matches_by_author(repo, keys, signed):
-    _ = await repo.add(signed)
+async def test_get_matches_by_author(repo, keys, event):
+    _ = await repo.add(event)
 
     items = await repo.get([event_filter.EventFilter(authors=[keys.public])])
 
     assert len(items) == 1
-    assert items[0] == signed
+    assert items[0] == event
 
 
-async def test_get_matches_by_author_prefix(repo, keys, signed):
-    _ = await repo.add(signed)
+async def test_get_matches_by_author_prefix(repo, keys, event):
+    _ = await repo.add(event)
 
     items = await repo.get([event_filter.EventFilter(authors=[keys.public[:3]])])
 
     assert len(items) == 1
-    assert items[0] == signed
+    assert items[0] == event
 
 
-async def test_get_matches_by_author_and_id(repo, keys, signed):
-    ev_id = await repo.add(signed)
+async def test_get_matches_by_author_and_id(repo, keys, event):
+    ev_id = await repo.add(event)
 
     items = await repo.get(
         [event_filter.EventFilter(ids=[ev_id], authors=[keys.public])]
     )
 
     assert len(items) == 1
-    assert items[0] == signed
+    assert items[0] == event
 
 
 async def test_get_matches_by_id_only_last(repo, keys):
     cur = int(time.time())
     with mock.patch("time.time", return_value=cur):
-        signed1 = metadata_event.MetadataEvent.from_metadata_parts(keys)
+        event1 = metadata_event.MetadataEvent.from_metadata_parts(keys)
 
     with mock.patch("time.time", return_value=cur + 1):
-        signed2 = metadata_event.MetadataEvent.from_metadata_parts(keys)
+        event2 = metadata_event.MetadataEvent.from_metadata_parts(keys)
 
-    _ = await repo.add(signed1)
-    _ = await repo.add(signed2)
+    _ = await repo.add(event1)
+    _ = await repo.add(event2)
 
     items = await repo.get([event_filter.EventFilter(authors=[keys.public], limit=1)])
 
     assert len(items) == 1
-    assert items[0] == signed2
+    assert items[0] == event2
 
 
-async def test_get_matches_by_id_limit_greater(repo, signed, keys):
-    _ = await repo.add(signed)
+async def test_get_matches_by_id_limit_greater(repo, event, keys):
+    _ = await repo.add(event)
 
     items = await repo.get([event_filter.EventFilter(authors=[keys.public], limit=2)])
 
     assert len(items) == 1
-    assert items[0] == signed
+    assert items[0] == event
 
 
-async def test_get_no_matches_by_etag(repo, signed, keys):
-    _ = await repo.add(signed)
+async def test_get_no_matches_by_etag(repo, event, keys):
+    _ = await repo.add(event)
 
     items = await repo.get(
         [event_filter.EventFilter(authors=[keys.public], e_tags=[keys.public])]
@@ -153,7 +153,7 @@ async def test_get_no_matches_by_etag(repo, signed, keys):
     assert len(items) == 0
 
 
-def build_signed_text_note(keys, tags=None):
+def build_text_note(keys, tags=None):
     if not tags:
         tags = []
 
@@ -163,35 +163,35 @@ def build_signed_text_note(keys, tags=None):
 
 
 async def test_matches_by_etag(repo, keys):
-    signed = build_signed_text_note(keys, [["e", keys.public]])
+    event = build_text_note(keys, [["e", keys.public]])
 
-    _ = await repo.add(signed)
+    _ = await repo.add(event)
 
     items = await repo.get(
         [event_filter.EventFilter(authors=[keys.public], e_tags=[keys.public])]
     )
 
     assert len(items) == 1
-    assert items[0] == signed
+    assert items[0] == event
 
 
 async def test_matches_by_etag_duplicated(repo, keys):
-    signed = build_signed_text_note(keys, [["e", keys.public], ["e", keys.public]])
+    event = build_text_note(keys, [["e", keys.public], ["e", keys.public]])
 
-    _ = await repo.add(signed)
+    _ = await repo.add(event)
 
     items = await repo.get(
         [event_filter.EventFilter(authors=[keys.public], e_tags=[keys.public])]
     )
 
     assert len(items) == 1
-    assert items[0] == signed
+    assert items[0] == event
 
 
 async def test_matches_by_etag_event_has_multiple_tags(repo, keys):
-    signed = build_signed_text_note(keys, [["e", keys.public], ["p", keys.public]])
+    event = build_text_note(keys, [["e", keys.public], ["p", keys.public]])
 
-    _ = await repo.add(signed)
+    _ = await repo.add(event)
 
     items1 = await repo.get(
         [event_filter.EventFilter(authors=[keys.public], e_tags=[keys.public])]
@@ -201,15 +201,15 @@ async def test_matches_by_etag_event_has_multiple_tags(repo, keys):
     )
 
     assert len(items1) == 1
-    assert items1[0] == signed
+    assert items1[0] == event
     assert len(items2) == 1
-    assert items2[0] == signed
+    assert items2[0] == event
 
 
 async def test_get_no_matches_by_ptag(repo, keys):
-    signed = build_signed_text_note(keys)
+    event = build_text_note(keys)
 
-    _ = await repo.add(signed)
+    _ = await repo.add(event)
 
     items = await repo.get(
         [event_filter.EventFilter(authors=[keys.public], p_tags=[keys.public])]
@@ -219,38 +219,38 @@ async def test_get_no_matches_by_ptag(repo, keys):
 
 
 async def test_matches_by_ptag(repo, keys):
-    signed = build_signed_text_note(keys, [["p", keys.public]])
+    event = build_text_note(keys, [["p", keys.public]])
 
-    _ = await repo.add(signed)
+    _ = await repo.add(event)
 
     items = await repo.get(
         [event_filter.EventFilter(authors=[keys.public], p_tags=[keys.public])]
     )
 
     assert len(items) == 1
-    assert items[0] == signed
+    assert items[0] == event
 
 
 async def test_matches_by_ptag_with_relay(repo, keys):
-    signed = build_signed_text_note(keys, [["p", keys.public, "ws://foo"]])
+    event = build_text_note(keys, [["p", keys.public, "ws://foo"]])
 
-    _ = await repo.add(signed)
+    _ = await repo.add(event)
 
     items = await repo.get(
         [event_filter.EventFilter(authors=[keys.public], p_tags=[keys.public])]
     )
 
     assert len(items) == 1
-    assert items[0] == signed
+    assert items[0] == event
 
 
 async def test_matches_by_ptags(repo, keys):
-    signed = build_signed_text_note(keys, [["p", keys.public, "ws://foo"]])
+    event = build_text_note(keys, [["p", keys.public, "ws://foo"]])
     keys2 = crypto.KeyPair()
-    signed2 = build_signed_text_note(keys, [["p", keys2.public]])
+    event2 = build_text_note(keys, [["p", keys2.public]])
 
-    _ = await repo.add(signed)
-    _ = await repo.add(signed2)
+    _ = await repo.add(event)
+    _ = await repo.add(event2)
 
     items = await repo.get(
         [
@@ -264,12 +264,12 @@ async def test_matches_by_ptags(repo, keys):
 
 
 async def test_matches_multiple_filters_or(repo, keys):
-    signed = build_signed_text_note(keys)
+    event = build_text_note(keys)
     keys2 = crypto.KeyPair()
-    signed2 = build_signed_text_note(keys2)
+    event2 = build_text_note(keys2)
 
-    _ = await repo.add(signed)
-    _ = await repo.add(signed2)
+    _ = await repo.add(event)
+    _ = await repo.add(event2)
 
     items = await repo.get(
         [
@@ -285,7 +285,7 @@ async def test_insert_callback(repo, keys):
     cb = mock.AsyncMock()
     repo.register_insert_cb(cb)
 
-    await repo.add(build_signed_text_note(keys))
+    await repo.add(build_text_note(keys))
 
     cb.assert_called_once()
 
@@ -295,7 +295,7 @@ async def test_insert_callback_after_unregister(repo, keys):
     cb_id = repo.register_insert_cb(cb)
     repo.unregister_insert_cb(cb_id)
 
-    await repo.add(build_signed_text_note(keys))
+    await repo.add(build_text_note(keys))
 
     cb.assert_not_called()
 
@@ -305,8 +305,8 @@ async def test_delete_with_no_entry_raises(repo):
         await repo.remove("foo")
 
 
-async def test_delete_deletes(repo, signed):
-    ev_id = await repo.add(signed)
+async def test_delete_deletes(repo, event):
+    ev_id = await repo.add(event)
     await repo.remove(ev_id)
     events = await repo.get([event_filter.EventFilter(ids=[ev_id])])
     assert len(events) == 0

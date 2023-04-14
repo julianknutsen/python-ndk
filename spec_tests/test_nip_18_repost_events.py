@@ -18,7 +18,6 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
-
 # pylint: disable=redefined-outer-name, unused-argument
 
 import asyncio
@@ -46,37 +45,31 @@ def ctx(request):
 
 @pytest.fixture()
 def text_note(keys, request_queue, response_queue):
-    signed_event = text_note_event.TextNoteEvent.from_content(keys, "Hello World!")
+    event = text_note_event.TextNoteEvent.from_content(keys, "Hello World!")
 
     asyncio.get_event_loop().run_until_complete(
-        utils.send_and_expect_command_result(
-            signed_event, request_queue, response_queue
-        )
+        utils.send_and_expect_command_result(event, request_queue, response_queue)
     )
-    return signed_event
+    return event
 
 
 @pytest.fixture
-def signed_repost_event(keys, text_note):
+def event(keys, text_note):
     return repost_event.RepostEvent.from_text_note_event(
         keys, text_note, relay_url="ws://nostr.com.se"
     )
 
 
 @pytest.mark.usefixtures("ctx")
-async def test_repost_basic(signed_repost_event, request_queue, response_queue):
-    await utils.send_and_expect_command_result(
-        signed_repost_event, request_queue, response_queue
-    )
+async def test_repost_basic(event, request_queue, response_queue):
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
 
 @pytest.mark.usefixtures("ctx")
 async def test_query_repost_by_repost_author(
-    signed_repost_event, keys, request_queue, response_queue
+    event, keys, request_queue, response_queue
 ):
-    await utils.send_and_expect_command_result(
-        signed_repost_event, request_queue, response_queue
-    )
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
     fltr = {"authors": [keys.public], "kinds": [6]}
 
@@ -87,11 +80,9 @@ async def test_query_repost_by_repost_author(
 
 @pytest.mark.usefixtures("ctx")
 async def test_query_repost_by_base_event(
-    signed_repost_event, text_note, request_queue, response_queue
+    event, text_note, request_queue, response_queue
 ):
-    await utils.send_and_expect_command_result(
-        signed_repost_event, request_queue, response_queue
-    )
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
     fltr = {"#e": [text_note.id]}
 
@@ -102,11 +93,9 @@ async def test_query_repost_by_base_event(
 
 @pytest.mark.usefixtures("ctx")
 async def test_query_repost_by_base_event_author(
-    signed_repost_event, text_note, request_queue, response_queue
+    event, text_note, request_queue, response_queue
 ):
-    await utils.send_and_expect_command_result(
-        signed_repost_event, request_queue, response_queue
-    )
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
     fltr = {"#p": [text_note.pubkey]}
 

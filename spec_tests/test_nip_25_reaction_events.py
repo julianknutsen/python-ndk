@@ -46,28 +46,22 @@ def ctx(request):
 
 @pytest.fixture()
 def text_note(keys, request_queue, response_queue):
-    signed_event = text_note_event.TextNoteEvent.from_content(keys, "Hello World!")
+    event = text_note_event.TextNoteEvent.from_content(keys, "Hello World!")
 
     asyncio.get_event_loop().run_until_complete(
-        utils.send_and_expect_command_result(
-            signed_event, request_queue, response_queue
-        )
+        utils.send_and_expect_command_result(event, request_queue, response_queue)
     )
-    return signed_event
+    return event
 
 
 @pytest.fixture
-def signed_reaction_event(keys, text_note):
+def event(keys, text_note):
     return reaction_event.ReactionEvent.from_text_note_event(keys, text_note)
 
 
 @pytest.mark.usefixtures("ctx")
-async def test_reaction_basic(
-    text_note, signed_reaction_event, request_queue, response_queue
-):
-    await utils.send_and_expect_command_result(
-        signed_reaction_event, request_queue, response_queue
-    )
+async def test_reaction_basic(text_note, event, request_queue, response_queue):
+    await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
     fltr = {"#p": [text_note.pubkey]}
 

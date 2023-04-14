@@ -25,7 +25,7 @@ import uuid
 from ndk.event import event
 
 EventNotifierCbId = typing.NewType("EventNotifierCbId", str)
-EventNotifierCb = typing.Callable[[event.SignedEvent], typing.Awaitable]
+EventNotifierCb = typing.Callable[[event.Event], typing.Awaitable]
 
 
 class EventNotifier:
@@ -44,6 +44,6 @@ class EventNotifier:
             raise ValueError(f"Unknown callback id {cb_id}")
         del self._cbs[cb_id]
 
-    async def handle_event(self, ev: event.SignedEvent):
+    async def handle_event(self, ev: event.Event):
         for cb in self._cbs.values():
             await cb(ev)

@@ -54,9 +54,9 @@ class MessageHandler:
 
     async def handle_event_message(self, msg: event_message.Event) -> list[str]:
         try:
-            signed_ev = event_builder.from_dict(msg.event_dict)
-            await self._event_handler.handle_event(signed_ev)
-            return [command_result.CommandResult(signed_ev.id, True, "").serialize()]
+            ev = event_builder.from_dict(msg.event_dict)
+            await self._event_handler.handle_event(ev)
+            return [command_result.CommandResult(ev.id, True, "").serialize()]
         except exceptions.ValidationError:
             text = f"Event validation failed: {msg}"
             logger.info(text, exc_info=True)

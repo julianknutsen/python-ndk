@@ -72,31 +72,31 @@ def test_minimum_valid(keys):
 
 
 def test_no_tag_text_note(keys):
-    signed = text_note_event.TextNoteEvent.from_content(
+    event = text_note_event.TextNoteEvent.from_content(
         keys=keys, content="Hello, world!"
     )
     reaction = reaction_event.ReactionEvent.from_text_note_event(
-        keys=keys, text_note=signed, content="+"
+        keys=keys, text_note=event, content="+"
     )
 
-    assert ["e", signed.id] in reaction.tags.get("e")
-    assert ["p", signed.pubkey] in reaction.tags.get("p")
+    assert ["e", event.id] in reaction.tags.get("e")
+    assert ["p", event.pubkey] in reaction.tags.get("p")
     assert reaction.content == "+"
 
 
 def test_text_note_with_e_p_tags(keys):
-    signed = text_note_event.TextNoteEvent.from_content(
+    event = text_note_event.TextNoteEvent.from_content(
         keys=keys,
         content="Hello, world!",
         tags=event_tags.EventTags([VALID_TAG_1, VALID_TAG_2]),
     )
 
     reaction = reaction_event.ReactionEvent.from_text_note_event(
-        keys=keys, text_note=signed, content="+"
+        keys=keys, text_note=event, content="+"
     )
 
-    assert ["e", signed.id] in reaction.tags
+    assert ["e", event.id] in reaction.tags
     assert VALID_TAG_1 in reaction.tags
-    assert ["p", signed.pubkey] in reaction.tags
+    assert ["p", event.pubkey] in reaction.tags
     assert VALID_TAG_2 in reaction.tags
     assert reaction.content == "+"

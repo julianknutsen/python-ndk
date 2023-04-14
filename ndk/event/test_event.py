@@ -27,15 +27,15 @@ from ndk.event import metadata_event
 
 
 @pytest.fixture
-def signed():
+def event():
     return metadata_event.MetadataEvent.from_metadata_parts(crypto.KeyPair())
 
 
-def test_event_validate_invalid(signed):
-    signed.kind = types.EventKind.INVALID
+def test_event_validate_invalid(event):
+    event.kind = types.EventKind.INVALID
     with pytest.raises(ValueError):
-        signed.validate()
+        event.validate()
 
 
-def test_event_eq_bad_other(signed):
-    assert not signed == 1
+def test_event_eq_bad_other(event):
+    assert not event == 1

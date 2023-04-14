@@ -90,7 +90,7 @@ class MySqlEventRepo(event_repo.EventRepo):
         logger.info("Database initialized")
         return MySqlEventRepo(engine)
 
-    async def add(self, ev: event.SignedEvent) -> types.EventID:
+    async def add(self, ev: event.Event) -> types.EventID:
         async with self._engine.begin() as conn:
             event_insert_stmt = (
                 sqlalchemy.insert(EVENTS_TABLE)
@@ -176,9 +176,7 @@ class MySqlEventRepo(event_repo.EventRepo):
 
         return EVENTS_TABLE.c.id.in_(subquery)
 
-    async def get(
-        self, fltrs: list[event_filter.EventFilter]
-    ) -> list[event.SignedEvent]:
+    async def get(self, fltrs: list[event_filter.EventFilter]) -> list[event.Event]:
         query = (
             sqlalchemy.select(
                 EVENTS_TABLE.c.event_id,

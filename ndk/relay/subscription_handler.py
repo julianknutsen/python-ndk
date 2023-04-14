@@ -33,7 +33,7 @@ class SubscriptionHandler:
         self._sub_id_to_fltrs = {}
         self._response_queue = response_queue
 
-    async def handle_event(self, ev: event.SignedEvent):
+    async def handle_event(self, ev: event.Event):
         for sub_id, fltrs in self._sub_id_to_fltrs.items():
             if fltrs and any(fltr.matches_event(ev) for fltr in fltrs):
                 await self._response_queue.put(

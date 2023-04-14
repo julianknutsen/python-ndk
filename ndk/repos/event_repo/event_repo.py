@@ -36,19 +36,19 @@ class GetItemError(Exception):
 
 class EventRepo(abc.ABC):
     @abc.abstractmethod
-    async def add(self, signed_ev: event.SignedEvent) -> types.EventID:
-        """Adds the SignedEvent to the repo
+    async def add(self, ev: event.Event) -> types.EventID:
+        """Adds the Event to the repo
 
         Args:
-            signed_ev (event.SignedEvent): The event to add
+            ev (event.Event): The event to add
 
         Returns:
-            types.EventID: An id that can be used to get the SignedEvent later
+            types.EventID: An id that can be used to get the Event later
         """
 
     @abc.abstractmethod
     async def get(self, ev_id: types.EventID):
-        """Retrieves a previously added SignedEvent by id
+        """Retrieves a previously added Event by id
 
         Args:
             ev_id (types.EventID): The id of the event to retrieve
@@ -60,7 +60,7 @@ class EventRepo(abc.ABC):
         kind: types.EventKind,
         author: crypto.PublicKeyStr,
         limit: int = 0,
-    ) -> typing.Sequence[event.SignedEvent]:
+    ) -> typing.Sequence[event.Event]:
         """Retrieve Events of a given kind.
 
         Args:
@@ -69,12 +69,12 @@ class EventRepo(abc.ABC):
             limit (int, optional): The maximum number of events to return. May return fewer. Defaults to 0.
 
         Returns:
-            typing.Sequence[event.UnsignedEvent]: Specific subclass of UnsignedEvent are returned. e.g. MetadataEvent for kind == 0
+            typing.Sequence[event.Event]: Specific subclass of Event are returned. e.g. MetadataEvent for kind == 0
         """
 
     async def get_latest_by_author(
         self, kind: types.EventKind, author: crypto.PublicKeyStr
-    ) -> typing.Optional[event.SignedEvent]:
+    ) -> typing.Optional[event.Event]:
         """Convenience function to return the latest single event of a given kind from a specific author
 
         Args:
@@ -85,7 +85,7 @@ class EventRepo(abc.ABC):
             GetItemError: Raises if any error was encountered during the retrieval
 
         Returns:
-            typing.Optional[event.UnsignedEvent]: Returns a subclass of UnsignedEvent based on kind. Return None if no event was found.
+            typing.Optional[event.Event]: Returns a subclass of Event based on kind. Return None if no event was found.
         """
         events = list(
             await self.get_by_author(

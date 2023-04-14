@@ -38,27 +38,27 @@ VALID_TAG_2 = ["p", TEST_AUTHOR]
 
 
 def test_basic(keys):
-    signed = text_note_event.TextNoteEvent.from_content(
+    event = text_note_event.TextNoteEvent.from_content(
         keys=keys, content="Hello, world!"
     )
     ev = repost_event.RepostEvent.from_text_note_event(
-        keys=keys, text_note=signed, relay_url=TEST_RELAY_URL
+        keys=keys, text_note=event, relay_url=TEST_RELAY_URL
     )
     assert ev.content == ""
-    assert ["p", signed.pubkey] in ev.tags
-    assert ["e", signed.id, TEST_RELAY_URL] in ev.tags
+    assert ["p", event.pubkey] in ev.tags
+    assert ["e", event.id, TEST_RELAY_URL] in ev.tags
 
 
 def test_ssl_relay(keys):
-    signed = text_note_event.TextNoteEvent.from_content(
+    event = text_note_event.TextNoteEvent.from_content(
         keys=keys, content="Hello, world!"
     )
     ev = repost_event.RepostEvent.from_text_note_event(
-        keys=keys, text_note=signed, relay_url=TEST_RELAY_URL_SSL
+        keys=keys, text_note=event, relay_url=TEST_RELAY_URL_SSL
     )
     assert ev.content == ""
-    assert ["p", signed.pubkey] in ev.tags
-    assert ["e", signed.id, TEST_RELAY_URL_SSL] in ev.tags
+    assert ["p", event.pubkey] in ev.tags
+    assert ["e", event.id, TEST_RELAY_URL_SSL] in ev.tags
 
 
 def test_no_tags(keys):

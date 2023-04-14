@@ -26,13 +26,13 @@ from ndk.messages import eose, message, notice, relay_event
 
 
 class StoredEvents:
-    _events: list[event.SignedEvent]
+    _events: list[event.Event]
     _complete: bool = False
 
     def __init__(self):
         self._events = []
 
-    def get(self) -> typing.Sequence[event.SignedEvent]:
+    def get(self) -> typing.Sequence[event.Event]:
         assert self._complete, "cant access results before processing complete"
         return self._events
 

@@ -121,18 +121,16 @@ class ProtocolHandler:
 
         logger.debug("Read loop ending")
 
-    async def write_event(self, ev: event.SignedEvent) -> command_result.CommandResult:
+    async def write_event(self, ev: event.Event) -> command_result.CommandResult:
         awaitable: asyncio.Future[command_result.CommandResult] = asyncio.Future()
-        await self._write_queue.put(
-            event_message.Event.from_signed_event(ev).serialize()
-        )
+        await self._write_queue.put(event_message.Event.from_event(ev).serialize())
         self._write_waiters[ev.id] = awaitable
 
         return await asyncio.wait_for(awaitable, timeout=10.0)
 
     async def query_events(
         self, fltrs: list[event_filter.EventFilter]
-    ) -> typing.Sequence[event.SignedEvent]:
+    ) -> typing.Sequence[event.Event]:
         # logger.debug("query_events(%s)", fltrs)
         sub_id = str(uuid.uuid4())
         req = request.Request(sub_id, [fltr.for_req() for fltr in fltrs])
