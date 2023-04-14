@@ -22,21 +22,26 @@
 import dataclasses
 import typing
 
-from ndk import crypto
+from ndk import crypto, types
 from ndk.event import event, event_tags
 from ndk.repos import contacts
 
 
 @dataclasses.dataclass
-class ContactListEvent(event.UnsignedEvent):
+class ContactListEvent(event.SignedEvent):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     @classmethod
     def from_contact_list(
-        cls, contact_list: typing.Optional[typing.Iterable[contacts.ContactInfo]] = None
+        cls,
+        keys: crypto.KeyPair,
+        contact_list: typing.Optional[typing.Iterable[contacts.ContactInfo]] = None,
     ) -> "ContactListEvent":
         tags = event_tags.EventTags([])
         if contact_list:
             tags = event_tags.EventTags([ci.to_event_tag() for ci in contact_list])
-        return cls(kind=event.EventKind.CONTACT_LIST, tags=tags)
+        return cls.build(keys=keys, kind=types.EventKind.CONTACT_LIST, tags=tags)
 
     def get_contact_list(self) -> contacts.ContactList:
         return contacts.ContactList(

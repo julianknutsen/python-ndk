@@ -24,7 +24,7 @@
 import pytest
 
 from ndk import crypto
-from ndk.event import event, metadata_event
+from ndk.event import metadata_event
 from ndk.messages import event_message, message_factory, notice
 from ndk.repos.event_repo import event_repo
 
@@ -60,22 +60,18 @@ def relay(request):
 
 
 @pytest.fixture
-def unsigned_event():
+def signed_event(keys):
     return metadata_event.MetadataEvent.from_metadata_parts(
-        "bob", "#nostr", "http://pics.com"
+        keys, "bob", "#nostr", "http://pics.com"
     )
 
 
 @pytest.fixture
-def signed_event(unsigned_event):
+def signed_event2():
     keys = crypto.KeyPair()
-    return event.build_signed_event(unsigned_event, keys)
-
-
-@pytest.fixture
-def signed_event2(unsigned_event):
-    keys = crypto.KeyPair()
-    return event.build_signed_event(unsigned_event, keys)
+    return metadata_event.MetadataEvent.from_metadata_parts(
+        keys, "bob", "#nostr", "http://pics.com"
+    )
 
 
 fields = ["id", "pubkey", "created_at", "kind", "tags", "content", "sig"]
@@ -85,18 +81,15 @@ fields = ["id", "pubkey", "created_at", "kind", "tags", "content", "sig"]
 @pytest.mark.parametrize("field", fields)
 async def test_publish_event_missing_field_returns_notice(
     field,
-    unsigned_event,
+    signed_event,
     response_queue,
     request_queue,
 ):
-    keys = crypto.KeyPair()
-
-    signed_ev = event.build_signed_event(unsigned_event, keys)
-    serializable = signed_ev.__dict__
+    serializable = signed_event.__dict__
     del serializable[field]
 
     await request_queue.put(
-        event_message.Event.from_signed_event(signed_ev).serialize()
+        event_message.Event.from_signed_event(signed_event).serialize()
     )
 
     n = message_factory.from_str(await response_queue.get())
@@ -126,8 +119,9 @@ async def test_set_metadata_invalid_id_is_not_accepted(
 async def build_sign_publish_metadata_event(repo, *args, **kwargs):
     keys = crypto.KeyPair()
 
-    unsigned_event = metadata_event.MetadataEvent.from_metadata_parts(*args, **kwargs)
-    signed_event = event.build_signed_event(unsigned_event, keys)
+    signed_event = metadata_event.MetadataEvent.from_metadata_parts(
+        keys, *args, **kwargs
+    )
 
     assert await repo.add(signed_event)
 

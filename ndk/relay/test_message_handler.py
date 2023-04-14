@@ -24,7 +24,7 @@ import mock
 import pytest
 
 from ndk import exceptions
-from ndk.event import event, event_filter
+from ndk.event import event_builder, event_filter
 from ndk.messages import close, command_result, event_message, message_factory, request
 from ndk.relay import event_handler, message_handler, subscription_handler
 from ndk.relay.event_repo import memory_event_repo
@@ -56,7 +56,7 @@ async def test_event_validation_failure_returns_command_result_false(mh):
         raise exceptions.ValidationError("Failed validation")
 
     with mock.patch.object(
-        event.SignedEvent, "from_dict", lambda self, **kwargs: raise_validation_error()
+        event_builder, "from_dict", lambda self, **kwargs: raise_validation_error()
     ):
         response = await mh.handle_event_message(event_message.Event({"id": "1"}))
 
@@ -71,9 +71,7 @@ async def test_accepted_returns_command_result_true(mh):
     mocked = mock.MagicMock()
     mocked.id = "1"
 
-    with mock.patch.object(
-        event.SignedEvent, "from_dict", lambda self, **kwargs: mocked
-    ):
+    with mock.patch.object(event_builder, "from_dict", lambda self, **kwargs: mocked):
         response = await mh.handle_event_message(event_message.Event({"id": "1"}))
 
         assert len(response) == 1
@@ -87,9 +85,7 @@ async def test_accepted_calls_event_handler(mh, eh_mock):
     mocked = mock.MagicMock()
     mocked.id = "1"
 
-    with mock.patch.object(
-        event.SignedEvent, "from_dict", lambda self, **kwargs: mocked
-    ):
+    with mock.patch.object(event_builder, "from_dict", lambda self, **kwargs: mocked):
         await mh.handle_event_message(event_message.Event({"id": "1"}))
 
     eh_mock.handle_event.assert_called_with(mocked)
@@ -125,9 +121,7 @@ async def test_accepted_calls_subscription_handler(mh, sh_mock, repo):
 
     mocked = mock.AsyncMock()
     mocked.id = "1"
-    with mock.patch.object(
-        event.SignedEvent, "from_dict", lambda self, **kwargs: mocked
-    ):
+    with mock.patch.object(event_builder, "from_dict", lambda self, **kwargs: mocked):
         response = await mh.handle_event_message(event_message.Event({"id": "1"}))
 
         assert len(response) == 1

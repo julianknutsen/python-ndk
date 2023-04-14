@@ -86,9 +86,13 @@ async def test_event_missing_required_fields(md):
     assert isinstance(response_msg, notice.Notice)
 
 
-async def test_close_without_req_raises(md):
-    with pytest.raises(ValueError):
-        await md.process_message(close.Close("1").serialize())
+async def test_close_without_req_sends_notice(md):
+    response = await md.process_message(close.Close("1").serialize())
+
+    assert len(response) == 1
+    response_msg = message_factory.from_str(response[0])
+
+    assert isinstance(response_msg, notice.Notice)
 
 
 async def test_handle_request_no_match(md):

@@ -22,127 +22,20 @@
 
 import pytest
 
-from ndk import crypto, exceptions, types
-from ndk.event import event, metadata_event
+from ndk import crypto, types
+from ndk.event import metadata_event
 
 
 @pytest.fixture
-def unsigned():
-    return metadata_event.MetadataEvent.from_metadata_parts()
+def signed():
+    return metadata_event.MetadataEvent.from_metadata_parts(crypto.KeyPair())
 
 
-@pytest.fixture
-def signed(unsigned):
-    keys = crypto.KeyPair()
-    return event.build_signed_event(unsigned, keys)
-
-
-def test_event_id_bad_size():
+def test_event_validate_invalid(signed):
+    signed.kind = types.EventKind.INVALID
     with pytest.raises(ValueError):
-        types.EventID("a" * 63)
+        signed.validate()
 
 
-def test_event_id_non_hex():
-    with pytest.raises(ValueError):
-        types.EventID("$" * 64)
-
-
-def test_event_id_non_str():
-    with pytest.raises(ValueError):
-        types.EventID([])
-
-
-def test_signed_event_from_dict_bad_input():
-    with pytest.raises(exceptions.ParseError):
-        event.SignedEvent.from_dict({})
-
-
-def test_signed_event_from_dict_bad_pubkey(signed):
-    base_dict = signed.__dict__
-    base_dict["pubkey"] = "badpubkey"
-
-    with pytest.raises(ValueError):
-        event.SignedEvent.from_dict(base_dict)
-
-
-def test_signed_event_from_dict_malformed_sig(signed):
-    base_dict = signed.__dict__
-    base_dict["sig"] = "badsig"
-
-    with pytest.raises(ValueError):
-        event.SignedEvent.from_dict(base_dict)
-
-
-def test_signed_event_from_dict_formed_bad_sig(signed):
-    base_dict = signed.__dict__
-    base_dict["sig"] = "a" * 128
-
-    with pytest.raises(ValueError):
-        event.SignedEvent.from_dict(base_dict)
-
-
-def test_signed_event_from_dict_malformed_id(signed):
-    base_dict = signed.__dict__
-    base_dict["id"] = "a" * 63
-
-    with pytest.raises(ValueError):
-        event.SignedEvent.from_dict(base_dict)
-
-
-def test_signed_event_from_dict_wrong_sig(signed):
-    keys2 = crypto.KeyPair()
-    unsigned = metadata_event.MetadataEvent.from_metadata_parts()
-    signed2 = event.build_signed_event(unsigned, keys2)
-
-    base_dict = signed.__dict__
-    base_dict["sig"] = signed2.sig
-
-    with pytest.raises(exceptions.ValidationError):
-        event.SignedEvent.from_dict(base_dict)
-
-
-def test_signed_event_from_dict_wrong_id(signed):
-    keys2 = crypto.KeyPair()
-    unsigned = metadata_event.MetadataEvent.from_metadata_parts()
-    signed2 = event.build_signed_event(unsigned, keys2)
-
-    base_dict = signed.__dict__
-    base_dict["id"] = signed2.id
-
-    with pytest.raises(exceptions.ValidationError):
-        event.SignedEvent.from_dict(base_dict)
-
-
-def test_signed_event_from_dict_ok(signed):
-    event.SignedEvent.from_dict(signed.__dict__)
-
-
-def test_from_dict_id_sig_mismatch(signed):
-    d = signed.__dict__
-    d["id"] = "a" * 64
-    with pytest.raises(exceptions.ValidationError):
-        event.SignedEvent.from_dict(d)
-
-
-def test_from_dict_invalid_id_errors(signed):
-    d = signed.__dict__
-    d["kind"] = event.EventKind.INVALID
-    with pytest.raises(exceptions.ValidationError):
-        event.SignedEvent.from_dict(d)
-
-
-def test_unsigned_from_signed(unsigned, signed):
-    unsigned2 = metadata_event.MetadataEvent.from_signed_event(signed)
-
-    assert unsigned == unsigned2
-
-
-def test_from_validated_dict_correct(signed):
-    signed2 = event.SignedEvent.from_validated_dict(signed.__dict__)
-    assert signed == signed2
-
-
-def test_from_validated_dict_bad_no_error(signed):
-    d = signed.__dict__
-    d["id"] = "uh oh"
-    event.SignedEvent.from_validated_dict(d)
+def test_event_eq_bad_other(signed):
+    assert not signed == 1

@@ -26,6 +26,7 @@ import ssl
 import pytest
 import websockets
 
+from ndk import crypto
 from ndk.relay import (
     event_handler,
     message_dispatcher,
@@ -50,6 +51,11 @@ def pytest_addoption(parser):
         default=None,
         help="The URL of the relay server to test",
     )
+
+
+@pytest.fixture
+def keys():
+    return crypto.KeyPair()
 
 
 @pytest.fixture(scope="session")

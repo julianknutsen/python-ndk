@@ -22,20 +22,24 @@
 import dataclasses
 import typing
 
-from ndk import serialize
+from ndk import crypto, serialize, types
 from ndk.event import event
 
 
 @dataclasses.dataclass
-class MetadataEvent(event.UnsignedEvent):
+class MetadataEvent(event.SignedEvent):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     @classmethod
     def from_metadata_parts(
         cls,
+        keys: crypto.KeyPair,
         name: typing.Optional[str] = None,
         about: typing.Optional[str] = None,
         picture: typing.Optional[str] = None,
         **kwargs,
-    ) -> "MetadataEvent":
+    ):
         content = {**kwargs}
         if name:
             content["name"] = name
@@ -47,4 +51,6 @@ class MetadataEvent(event.UnsignedEvent):
             content["picture"] = picture
 
         serialized_content = serialize.serialize_as_str(content)
-        return cls(kind=event.EventKind.SET_METADATA, content=serialized_content)
+        return cls.build(
+            keys=keys, kind=types.EventKind.SET_METADATA, content=serialized_content
+        )

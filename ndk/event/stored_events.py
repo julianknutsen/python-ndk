@@ -21,18 +21,18 @@
 
 import typing
 
-from ndk.event import event, event_parser
+from ndk.event import event, event_builder
 from ndk.messages import eose, message, notice, relay_event
 
 
 class StoredEvents:
-    _events: list[event.UnsignedEvent]
+    _events: list[event.SignedEvent]
     _complete: bool = False
 
     def __init__(self):
         self._events = []
 
-    def get(self) -> typing.Sequence[event.UnsignedEvent]:
+    def get(self) -> typing.Sequence[event.SignedEvent]:
         assert self._complete, "cant access results before processing complete"
         return self._events
 
@@ -49,7 +49,5 @@ class StoredEvents:
         if not isinstance(msg, relay_event.RelayEvent):
             raise RuntimeError(f"Unhandled message type: {msg}")
 
-        self._events.append(
-            event_parser.signed_to_unsigned(event.SignedEvent.from_dict(msg.event_dict))
-        )
+        self._events.append(event_builder.from_dict(msg.event_dict))
         return False

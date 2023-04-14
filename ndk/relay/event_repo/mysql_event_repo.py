@@ -25,7 +25,7 @@ import sqlalchemy
 from sqlalchemy.ext import asyncio as sa_asyncio
 
 from ndk import serialize, types
-from ndk.event import event, event_filter
+from ndk.event import event, event_builder, event_filter
 from ndk.relay.event_repo import event_repo
 
 logger = logging.getLogger(__name__)
@@ -269,7 +269,7 @@ class MySqlEventRepo(event_repo.EventRepo):
             result = (await conn.execute(final)).fetchall()
 
             return [
-                event.SignedEvent.from_validated_dict(
+                event_builder.from_validated_dict(
                     {
                         "id": row[0],
                         "pubkey": row[1],

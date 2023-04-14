@@ -22,7 +22,7 @@
 import asyncio
 
 from ndk import crypto
-from ndk.event import event, metadata_event
+from ndk.event import metadata_event
 from ndk.relay import (
     event_handler,
     message_dispatcher,
@@ -45,8 +45,7 @@ async def test_init():
     handler_task = asyncio.create_task(server.connection_handler(rq, wq, mb))
 
     keys = crypto.KeyPair()
-    ev = metadata_event.MetadataEvent.from_metadata_parts()
-    signed = event.build_signed_event(ev, keys)
+    signed = metadata_event.MetadataEvent.from_metadata_parts(keys)
 
     ph = protocol_handler.ProtocolHandler(wq, rq)
     read_loop_task = asyncio.create_task(ph.start_read_loop())

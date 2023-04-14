@@ -19,6 +19,8 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import enum
+
 
 class FixedLengthHexStr(str):
     _length: int
@@ -44,3 +46,13 @@ class FixedLengthHexStr(str):
 
 class EventID(FixedLengthHexStr):
     _length: int = 64
+
+
+class EventKind(enum.IntEnum):
+    INVALID = -1
+    SET_METADATA = 0
+    TEXT_NOTE = 1
+    RECOMMEND_SERVER = 2
+    CONTACT_LIST = 3
+    REPOST = 6
+    REACTION = 7

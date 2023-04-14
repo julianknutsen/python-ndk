@@ -25,8 +25,7 @@ import asyncio
 
 import pytest
 
-from ndk import crypto
-from ndk.event import event, repost_event, text_note_event
+from ndk.event import repost_event, text_note_event
 from spec_tests import utils
 
 
@@ -45,16 +44,9 @@ def ctx(request):
     return request.getfixturevalue(request.param)
 
 
-@pytest.fixture
-def keys():
-    return crypto.KeyPair()
-
-
 @pytest.fixture()
-def text_note(request_queue, response_queue):
-    keys1 = crypto.KeyPair()
-    unsigned_event = text_note_event.TextNoteEvent.from_content("Hello World!")
-    signed_event = event.build_signed_event(unsigned_event, keys1)
+def text_note(keys, request_queue, response_queue):
+    signed_event = text_note_event.TextNoteEvent.from_content(keys, "Hello World!")
 
     asyncio.get_event_loop().run_until_complete(
         utils.send_and_expect_command_result(
@@ -66,11 +58,9 @@ def text_note(request_queue, response_queue):
 
 @pytest.fixture
 def signed_repost_event(keys, text_note):
-    unsigned_event = repost_event.RepostEvent.from_text_note_event(
-        text_note, relay_url="ws://nostr.com.se"
+    return repost_event.RepostEvent.from_text_note_event(
+        keys, text_note, relay_url="ws://nostr.com.se"
     )
-    signed_event = event.build_signed_event(unsigned_event, keys)
-    return signed_event
 
 
 @pytest.mark.usefixtures("ctx")
@@ -88,7 +78,7 @@ async def test_query_repost_by_repost_author(
         signed_repost_event, request_queue, response_queue
     )
 
-    fltr = {"authors": [keys.public]}
+    fltr = {"authors": [keys.public], "kinds": [6]}
 
     await utils.send_req_with_filter("1", [fltr], request_queue)
     await utils.expect_repost_event(response_queue)

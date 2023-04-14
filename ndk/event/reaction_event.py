@@ -19,14 +19,15 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-from ndk import exceptions
+from ndk import crypto, exceptions, types
 from ndk.event import event, event_tags
 
 
-class ReactionEvent(event.UnsignedEvent):
+class ReactionEvent(event.SignedEvent):
     @classmethod
     def from_text_note_event(
         cls,
+        keys: crypto.KeyPair,
         text_note: event.SignedEvent,
         content: str = "+",
     ) -> "ReactionEvent":
@@ -37,7 +38,9 @@ class ReactionEvent(event.UnsignedEvent):
         tags.add(event_tags.PublicKeyTag.from_pubkey(text_note.pubkey))
         tags.add(event_tags.EventIdTag.from_event_id(text_note.id))
 
-        return cls(kind=event.EventKind.REACTION, content=content, tags=tags)
+        return cls.build(
+            keys=keys, kind=types.EventKind.REACTION, content=content, tags=tags
+        )
 
     def validate(self):
         if len(self.tags) < 2:

@@ -131,7 +131,6 @@ jobs:
 
       - name: Start Tilt
         run: |
-          minikube addons enable ingress
           tilt up --stream -f relay/deploy/Tiltfile > /tmp/server.log 2>&1 &
 
       - name: Wait for Traefik to come up

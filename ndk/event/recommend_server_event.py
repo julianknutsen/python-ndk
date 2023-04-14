@@ -19,10 +19,11 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+from ndk import crypto, types
 from ndk.event import event
 
 
-class RecommendServerEvent(event.UnsignedEvent):
+class RecommendServerEvent(event.SignedEvent):
     @classmethod
-    def from_url(cls, url: str) -> "RecommendServerEvent":
-        return cls(kind=event.EventKind.RECOMMEND_SERVER, content=url)
+    def from_url(cls, keys: crypto.KeyPair, url: str) -> "RecommendServerEvent":
+        return cls.build(keys=keys, kind=types.EventKind.RECOMMEND_SERVER, content=url)

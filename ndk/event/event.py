@@ -20,11 +20,11 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 
 import dataclasses
-import enum
 import hashlib
 import logging
 import time
 import traceback
+import typing
 
 from ndk import crypto, exceptions, serialize, types
 from ndk.event import event_tags
@@ -32,24 +32,15 @@ from ndk.event import event_tags
 logger = logging.getLogger(__name__)
 
 
-class EventKind(enum.IntEnum):
-    INVALID = -1
-    SET_METADATA = 0
-    TEXT_NOTE = 1
-    RECOMMEND_SERVER = 2
-    CONTACT_LIST = 3
-    REPOST = 6
-    REACTION = 7
-
-
 @dataclasses.dataclass
-class UnsignedEvent:
-    created_at: int = dataclasses.field(default_factory=lambda: int(time.time()))
-    kind: EventKind = EventKind.INVALID
-    tags: event_tags.EventTags = dataclasses.field(
-        default_factory=lambda: event_tags.EventTags([])
-    )
-    content: str = ""
+class SignedEvent:
+    id: types.EventID
+    pubkey: crypto.PublicKeyStr
+    created_at: int
+    kind: types.EventKind
+    tags: event_tags.EventTags
+    content: str
+    sig: crypto.SchnorrSigStr
     skip_validate: dataclasses.InitVar[bool] = False
 
     def __post_init__(self, skip_validate: bool):
@@ -57,51 +48,7 @@ class UnsignedEvent:
             self.validate()
 
     def validate(self):
-        pass
-
-    @classmethod
-    def from_signed_event(cls, ev: "SignedEvent"):
-        return cls(ev.created_at, ev.kind, ev.tags, ev.content)
-
-
-@dataclasses.dataclass
-class SignedEvent(UnsignedEvent):
-    id: types.EventID = dataclasses.field(init=False)
-    pubkey: crypto.PublicKeyStr = dataclasses.field(init=False)
-    sig: crypto.SchnorrSigStr = dataclasses.field(init=False)
-
-    def __init__(
-        self,
-        id: types.EventID,  # pylint: disable=redefined-builtin
-        pubkey: crypto.PublicKeyStr,
-        created_at: int,
-        kind: EventKind,
-        tags: event_tags.EventTags,
-        content: str,
-        sig: crypto.SchnorrSigStr,
-        skip_validate: bool = False,
-    ):
-        self.id = id
-        self.pubkey = pubkey
-        self.sig = sig
-
-        super().__init__(
-            created_at=created_at,
-            kind=kind,
-            tags=tags,
-            content=content,
-            skip_validate=skip_validate,
-        )
-
-    def __post_init__(self, skip_validate: bool):
-        if not skip_validate:
-            self.validate()
-
-        super().__post_init__(skip_validate)
-
-    def validate(self):
-        valid_kinds = [kind.value for kind in EventKind if kind != EventKind.INVALID]
-        if self.kind not in valid_kinds:
+        if self.kind == types.EventKind.INVALID:
             raise exceptions.ValidationError(f"Invalid event kind {self.kind}")
 
         payload = serialize.serialize_as_bytes(
@@ -127,46 +74,32 @@ class SignedEvent(UnsignedEvent):
             )
 
     @classmethod
-    def from_dict(cls, fields: dict):
-        required = set(cls.__annotations__.keys())
-        for base_cls in cls.__bases__:
-            required.update(base_cls.__annotations__)
-        required.remove("skip_validate")
-        actual = set(fields.keys())
-        if not required == actual:
-            raise exceptions.ParseError(
-                f"Required attributes not provided: {required} != {actual}"
-            )
+    def build(
+        cls,
+        keys: crypto.KeyPair,
+        kind: types.EventKind,
+        tags: typing.Optional[event_tags.EventTags] = None,
+        content: typing.Optional[str] = None,
+    ):
+        created_at = int(time.time())
+        if tags is None:
+            tags = event_tags.EventTags()
+        if content is None:
+            content = ""
 
-        return cls(
-            id=types.EventID(fields["id"]),
-            pubkey=crypto.PublicKeyStr(fields["pubkey"]),
-            created_at=fields["created_at"],
-            kind=EventKind(fields["kind"]),
-            tags=event_tags.EventTags(fields["tags"]),
-            content=fields["content"],
-            sig=crypto.SchnorrSigStr(fields["sig"]),
+        payload = serialize.serialize_as_bytes(
+            [0, keys.public, created_at, kind, tags, content]
         )
 
-    @classmethod
-    def from_validated_dict(cls, fields: dict):
-        return cls(**fields, skip_validate=True)
-
-
-def build_signed_event(ev: UnsignedEvent, keys: crypto.KeyPair) -> SignedEvent:
-    payload = serialize.serialize_as_bytes(
-        [0, keys.public, ev.created_at, ev.kind, ev.tags, ev.content]
-    )
-
-    hashed_payload = hashlib.sha256(payload)
-    signed_hash = keys.private.sign_schnorr(hashed_payload.digest())
-
-    return SignedEvent(
-        types.EventID(hashed_payload.hexdigest()),
-        keys.public,
-        ev.created_at,
-        ev.kind,
-        ev.tags,
-        ev.content,
-        signed_hash,
-    )
+        hashed_payload = hashlib.sha256(payload)
+        signed_hash = keys.private.sign_schnorr(hashed_payload.digest())
+        return cls(
+            id=types.EventID(hashed_payload.hexdigest()),
+            pubkey=keys.public,
+            kind=kind,
+            created_at=created_at,
+            tags=tags,
+            content=content,
+            sig=signed_hash,
+            skip_validate=False,
+        )

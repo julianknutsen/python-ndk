@@ -24,8 +24,7 @@ import asyncio
 import mock
 import pytest
 
-from ndk import crypto
-from ndk.event import event, metadata_event
+from ndk.event import metadata_event
 from ndk.relay import subscription_handler
 
 
@@ -62,7 +61,7 @@ async def test_no_output_with_wrong_filter():
     assert q.empty()
 
 
-async def test_output_with_matching_filter():
+async def test_output_with_matching_filter(keys):
     q = asyncio.Queue()
     sh = subscription_handler.SubscriptionHandler(q)
 
@@ -70,14 +69,12 @@ async def test_output_with_matching_filter():
     fltr.matches_event.return_value = True
     sh.set_filters("subid", [fltr])
 
-    keys = crypto.KeyPair()
-    unsigned = metadata_event.MetadataEvent.from_metadata_parts()
-    signed = event.build_signed_event(unsigned, keys)
+    signed = metadata_event.MetadataEvent.from_metadata_parts(keys=keys)
     await sh.handle_event(signed)
     assert not q.empty()
 
 
-async def test_two_output_with_two_matching_filter():
+async def test_two_output_with_two_matching_filter(keys):
     q = asyncio.Queue()
     sh = subscription_handler.SubscriptionHandler(q)
 
@@ -86,9 +83,7 @@ async def test_two_output_with_two_matching_filter():
     sh.set_filters("subid", [fltr])
     sh.set_filters("subid2", [fltr])
 
-    keys = crypto.KeyPair()
-    unsigned = metadata_event.MetadataEvent.from_metadata_parts()
-    signed = event.build_signed_event(unsigned, keys)
+    signed = metadata_event.MetadataEvent.from_metadata_parts(keys=keys)
     await sh.handle_event(signed)
     assert q.qsize() == 2
 
