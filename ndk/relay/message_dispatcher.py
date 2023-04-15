@@ -22,7 +22,15 @@
 import logging
 
 from ndk import exceptions
-from ndk.messages import close, event_message, message, message_factory, notice, request
+from ndk.messages import (
+    auth,
+    close,
+    event_message,
+    message,
+    message_factory,
+    notice,
+    request,
+)
 from ndk.relay import message_handler
 
 logger = logging.getLogger(__name__)
@@ -33,8 +41,8 @@ def create_notice(text: str) -> str:
 
 
 class MessageDispatcher:
-    def __init__(self, ev_handler: message_handler.MessageHandler):
-        self._ev_handler = ev_handler
+    def __init__(self, msg_handler: message_handler.MessageHandler):
+        self._msg_handler = msg_handler
 
     async def process_message(self, data: str) -> list[str]:
         try:
@@ -47,10 +55,12 @@ class MessageDispatcher:
 
     async def _handle_msg(self, msg: message.Message) -> list[str]:
         if isinstance(msg, event_message.Event):
-            return await self._ev_handler.handle_event_message(msg)
+            return await self._msg_handler.handle_event_message(msg)
         elif isinstance(msg, request.Request):
-            return await self._ev_handler.handle_request(msg)
+            return await self._msg_handler.handle_request(msg)
         elif isinstance(msg, close.Close):
-            return await self._ev_handler.handle_close(msg)
+            return await self._msg_handler.handle_close(msg)
+        elif isinstance(msg, auth.AuthResponse):
+            return await self._msg_handler.handle_auth_response(msg)
         else:
             return [create_notice(f"Relay does not support message of type: {msg}")]

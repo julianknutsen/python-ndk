@@ -42,8 +42,8 @@ def md():
     auth = auth_handler.AuthHandler("wss://unittests")
     sh = subscription_handler.SubscriptionHandler(asyncio.Queue())
     repo = memory_event_repo.MemoryEventRepo()
-    eh = event_handler.EventHandler(auth, repo, event_notifier.EventNotifier())
-    ev_handler = message_handler.MessageHandler(repo, sh, eh)
+    eh = event_handler.EventHandler(repo, event_notifier.EventNotifier())
+    ev_handler = message_handler.MessageHandler(auth, repo, sh, eh)
     return message_dispatcher.MessageDispatcher(ev_handler)
 
 

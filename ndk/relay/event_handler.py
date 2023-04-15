@@ -20,23 +20,20 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 
 
-from ndk.event import auth_event, event, event_filter
-from ndk.relay import auth_handler, event_notifier
+from ndk.event import event, event_filter
+from ndk.relay import event_notifier
 from ndk.relay.event_repo import event_repo
 
 
 class EventHandler:
-    _auth_handler: auth_handler.AuthHandler
     _received_event_notifier: event_notifier.EventNotifier
     _repo: event_repo.EventRepo
 
     def __init__(
         self,
-        auth: auth_handler.AuthHandler,
         repo: event_repo.EventRepo,
         notifier: event_notifier.EventNotifier,
     ):
-        self._auth_handler = auth
         self._received_event_notifier = notifier
         self._repo = repo
 
@@ -53,9 +50,6 @@ class EventHandler:
 
         if isinstance(ev, event.BroadcastEvent):
             await self._received_event_notifier.handle_event(ev)
-
-        if isinstance(ev, auth_event.AuthEvent):
-            self._auth_handler.handle_auth_event(ev)
 
     def register_received_cb(
         self, cb: event_notifier.EventNotifierCb

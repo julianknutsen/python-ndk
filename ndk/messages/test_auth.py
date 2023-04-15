@@ -22,33 +22,78 @@
 import pytest
 
 from ndk import serialize
+from ndk.event import auth_event, metadata_event
 from ndk.messages import auth
 
 
 def test_init_wrong_type():
     with pytest.raises(TypeError):
-        auth.Auth(1)  # type: ignore
+        auth.AuthRequest(1)  # type: ignore
 
 
-def test_close_message_empty():
+def test_auth_message_empty():
     msg = ["AUTH"]
 
     with pytest.raises(TypeError):
         auth.Auth.deserialize_list(msg)
 
 
-def test_close_correct():
+def test_auth_request_message_empty():
+    msg = ["AUTH"]
+
+    with pytest.raises(TypeError):
+        auth.AuthRequest.deserialize_list(msg)
+
+
+def test_auth_request_correct():
     msg = ["AUTH", "challenge"]
 
-    c = auth.Auth.deserialize_list(msg)
+    c = auth.AuthRequest.deserialize_list(msg)
 
     assert c.challenge == "challenge"
 
 
-def test_serialize():
-    c = auth.Auth("1")
+def test_auth_request_serialize():
+    c = auth.AuthRequest("1")
     serialized = c.serialize()
 
     deserialized = serialize.deserialize(serialized)
 
     assert deserialized == ["AUTH", "1"]
+
+
+def test_auth_response_init_wrong_type():
+    with pytest.raises(TypeError):
+        auth.AuthResponse(1)  # type: ignore
+
+
+def test_auth_response_message_empty():
+    msg = ["AUTH"]
+
+    with pytest.raises(TypeError):
+        auth.AuthResponse.deserialize_list(msg)
+
+
+def test_auth_response_correct(keys):
+    ev = auth_event.AuthEvent.from_parts(keys, "wss://localhost", "1234")
+    msg = ["AUTH", serialize.serialize_as_str(ev.__dict__)]
+
+    c = auth.AuthResponse.deserialize_list(msg)
+
+    assert c.ev == ev
+
+
+def test_auth_response_deserialize_list(keys):
+    ev = auth_event.AuthEvent.from_parts(keys, "wss://localhost", "1234")
+    c = auth.AuthResponse(ev)
+
+    auth.AuthResponse.deserialize_list(serialize.deserialize(c.serialize()))
+
+
+def test_auth_response_deserialize_bad_payload(keys):
+    wrong_ev = metadata_event.MetadataEvent.from_metadata_parts(keys)
+    msg = ["AUTH", serialize.serialize_as_str(wrong_ev.__dict__)]
+    with pytest.raises(ValueError, match="Unexpected format of AUTH message"):
+        auth.AuthResponse.deserialize_list(
+            serialize.deserialize(serialize.serialize_as_str(msg))
+        )

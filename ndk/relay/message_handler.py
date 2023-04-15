@@ -24,6 +24,7 @@ import logging
 from ndk import exceptions
 from ndk.event import event_builder, event_filter
 from ndk.messages import (
+    auth,
     close,
     command_result,
     eose,
@@ -31,23 +32,26 @@ from ndk.messages import (
     relay_event,
     request,
 )
-from ndk.relay import event_handler, subscription_handler
+from ndk.relay import auth_handler, event_handler, subscription_handler
 from ndk.relay.event_repo import event_repo
 
 logger = logging.getLogger(__name__)
 
 
 class MessageHandler:
+    _auth: auth_handler.AuthHandler
     _repo: event_repo.EventRepo
     _subscription_handler: subscription_handler.SubscriptionHandler
     _event_handler: event_handler.EventHandler
 
     def __init__(
         self,
+        auth_hndlr: auth_handler.AuthHandler,
         repo: event_repo.EventRepo,
         sh: subscription_handler.SubscriptionHandler,
         eh: event_handler.EventHandler,
     ):
+        self._auth = auth_hndlr
         self._repo = repo
         self._subscription_handler = sh
         self._event_handler = eh
@@ -76,3 +80,7 @@ class MessageHandler:
             relay_event.RelayEvent(msg.sub_id, ev.__dict__).serialize()
             for ev in fetched
         ] + [eose.EndOfStoredEvents(msg.sub_id).serialize()]
+
+    async def handle_auth_response(self, msg: auth.AuthResponse) -> list[str]:
+        self._auth.handle_auth_event(msg.ev)
+        return []

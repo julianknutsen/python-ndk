@@ -22,11 +22,28 @@
 import dataclasses
 
 from ndk import serialize
+from ndk.event import auth_event, event_builder
 from ndk.messages import message
 
 
+class Auth(message.ReadableMessage):
+    @classmethod
+    def deserialize_list(cls, lst: list):
+        assert len(lst) > 0
+        assert lst[0] == "AUTH"
+
+        if len(lst) != 2:
+            raise TypeError(
+                f"Unexpected format of AUTH message. Expected two items, but got: {lst}"
+            )
+        try:
+            return AuthResponse.deserialize_list(lst)
+        except ValueError:
+            return AuthRequest.deserialize_list(lst)
+
+
 @dataclasses.dataclass
-class Auth(message.ReadableMessage, message.WriteableMessage):
+class AuthRequest(message.ReadableMessage, message.WriteableMessage):
     """NIP-42 Auth event sent from the server to a client to request authentication"""
 
     challenge: str
@@ -45,3 +62,33 @@ class Auth(message.ReadableMessage, message.WriteableMessage):
 
     def serialize(self) -> str:
         return serialize.serialize_as_str(["AUTH", self.challenge])
+
+
+@dataclasses.dataclass
+class AuthResponse(message.ReadableMessage, message.WriteableMessage):
+    """NIP-42 Auth event sent from the server to a client to request authentication"""
+
+    ev: auth_event.AuthEvent
+
+    @classmethod
+    def deserialize_list(cls, lst: list):
+        assert len(lst) > 0
+        assert lst[0] == "AUTH"
+
+        if len(lst) != 2:
+            raise TypeError(
+                f"Unexpected format of AUTH message. Expected two items, but got: {lst}"
+            )
+
+        deserialized_ev = event_builder.from_dict(serialize.deserialize(lst[1]))
+        if not isinstance(deserialized_ev, auth_event.AuthEvent):
+            raise ValueError(
+                f"Unexpected format of AUTH message. Expected AuthEvent, but got: {deserialized_ev}"
+            )
+
+        return cls(deserialized_ev)
+
+    def serialize(self) -> str:
+        return serialize.serialize_as_str(
+            ["AUTH", serialize.serialize_as_str(self.ev.__dict__)]
+        )

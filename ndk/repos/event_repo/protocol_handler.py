@@ -26,9 +26,10 @@ import uuid
 
 from websockets import exceptions as websockets_exceptions
 
-from ndk import exceptions, types
-from ndk.event import event, event_filter, stored_events
+from ndk import crypto, exceptions, types
+from ndk.event import auth_event, event, event_filter, stored_events
 from ndk.messages import (
+    auth,
     close,
     command_result,
     eose,
@@ -66,13 +67,23 @@ async def write_handler(websocket, write_queue: asyncio.Queue):
 
 
 class ProtocolHandler:
+    _keys: typing.Optional[crypto.KeyPair]
+    _relay_url: typing.Optional[str]
     _write_waiters: dict[types.EventID, asyncio.Future]
     _read_waiters: dict[str, asyncio.Queue[message.Message]]
     _read_queue: asyncio.Queue
     _write_queue: asyncio.Queue
     _stop: asyncio.Event
 
-    def __init__(self, read_queue: asyncio.Queue, write_queue: asyncio.Queue):
+    def __init__(
+        self,
+        keys: typing.Optional[crypto.KeyPair],
+        relay_url: typing.Optional[str],
+        read_queue: asyncio.Queue,
+        write_queue: asyncio.Queue,
+    ):
+        self._keys = keys
+        self._relay_url = relay_url
         self._read_queue = read_queue
         self._write_queue = write_queue
         self._stop = asyncio.Event()
@@ -105,6 +116,18 @@ class ProtocolHandler:
                 return
 
             await self._read_waiters[msg.sub_id].put(msg)
+
+        elif isinstance(msg, auth.AuthRequest):
+            if self._keys is None:
+                logger.warning("Authentication not supported. Did you provide a key?")
+            else:
+                assert self._relay_url
+                assert self._keys
+                challenge_ev = auth_event.AuthEvent.from_parts(
+                    self._keys, self._relay_url, msg.challenge
+                )
+                challenge_resp = auth.AuthResponse(challenge_ev)
+                await self._write_queue.put(challenge_resp.serialize())
 
     async def start_read_loop(self):
         logger.debug("Read loop starting")

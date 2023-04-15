@@ -41,8 +41,8 @@ async def write_queue() -> asyncio.Queue:
 
 
 @pytest.fixture(autouse=True)
-async def protocol(read_queue: asyncio.Queue, write_queue: asyncio.Queue):
-    t = protocol_handler.ProtocolHandler(read_queue, write_queue)
+async def local_protocol(keys, read_queue: asyncio.Queue, write_queue: asyncio.Queue):
+    t = protocol_handler.ProtocolHandler(keys, "wss://tests", read_queue, write_queue)
     read_task = asyncio.create_task(t.start_read_loop())
     await asyncio.sleep(0)
     yield t
@@ -76,8 +76,8 @@ async def assert_sent(write_queue, expected: str):
     assert expected == data
 
 
-async def test_write_event(read_queue, write_queue, protocol, event):
-    future_cmd_result = asyncio.create_task(protocol.write_event(event))
+async def test_write_event(read_queue, write_queue, local_protocol, event):
+    future_cmd_result = asyncio.create_task(local_protocol.write_event(event))
 
     await assert_sent(write_queue, event_message.Event.from_event(event).serialize())
 
@@ -86,8 +86,10 @@ async def test_write_event(read_queue, write_queue, protocol, event):
     assert await future_cmd_result == command_result.CommandResult(event.id, True, "")
 
 
-async def test_write_event_receive_bad_data_logs(read_queue, protocol, caplog, event):
-    future_cmd_result = asyncio.create_task(protocol.write_event(event))
+async def test_write_event_receive_bad_data_logs(
+    read_queue, local_protocol, caplog, event
+):
+    future_cmd_result = asyncio.create_task(local_protocol.write_event(event))
 
     await simulate_server_reponse(read_queue, [])
 
@@ -104,9 +106,9 @@ async def test_event_received_before_query(read_queue, caplog):
     assert "Dropping received message" in caplog.text
 
 
-async def test_query_sends_correct_message(write_queue, protocol):
+async def test_query_sends_correct_message(write_queue, local_protocol):
     future_events = asyncio.create_task(
-        protocol.query_events([event_filter.EventFilter(kinds=[0])])
+        local_protocol.query_events([event_filter.EventFilter(kinds=[0])])
     )
 
     # verify correct message was sent to server
@@ -120,9 +122,9 @@ async def test_query_sends_correct_message(write_queue, protocol):
     future_events.cancel()
 
 
-async def test_query_success_empty(read_queue, write_queue, protocol):
+async def test_query_success_empty(read_queue, write_queue, local_protocol):
     future_events = asyncio.create_task(
-        protocol.query_events([event_filter.EventFilter(kinds=[0])])
+        local_protocol.query_events([event_filter.EventFilter(kinds=[0])])
     )
 
     data = await write_queue.get()
@@ -136,9 +138,9 @@ async def test_query_success_empty(read_queue, write_queue, protocol):
     assert len(events) == 0
 
 
-async def test_query_success(read_queue, write_queue, protocol, event):
+async def test_query_success(read_queue, write_queue, local_protocol, event):
     future_events = asyncio.create_task(
-        protocol.query_events([event_filter.EventFilter(kinds=[0])])
+        local_protocol.query_events([event_filter.EventFilter(kinds=[0])])
     )
 
     data = await write_queue.get()
@@ -155,3 +157,14 @@ async def test_query_success(read_queue, write_queue, protocol, event):
 
     assert len(events) == 1
     assert events[0] == event
+
+
+async def test_auth_challenge(read_queue, write_queue):
+    await simulate_server_reponse(read_queue, ["AUTH", "challenge"])
+
+    # verify correct message was sent to server
+    data = await write_queue.get()
+    write_queue.task_done()
+    request = serialize.deserialize(data)
+    assert isinstance(request, list)
+    assert request[0] == "AUTH"
