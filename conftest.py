@@ -91,7 +91,7 @@ async def response_queue():
             except ValueError:
                 return data
 
-            if isinstance(msg, auth.Auth):
+            if isinstance(msg, auth.AuthRequest):
                 return await super().get()
             else:
                 return data
@@ -105,8 +105,10 @@ async def request_queue():
 
 
 @pytest.fixture(scope="function")
-async def protocol(response_queue, request_queue):
-    ph = protocol_handler.ProtocolHandler(response_queue, request_queue)
+async def local_protocol(keys, response_queue, request_queue):
+    ph = protocol_handler.ProtocolHandler(
+        keys, "wss://tests", response_queue, request_queue
+    )
     protocol_read_loop = asyncio.create_task(ph.start_read_loop())
     yield ph
     await ph.stop_read_thread()
@@ -150,12 +152,12 @@ async def local_relay(
     response_queue,
     request_queue,
 ):
-    auth = auth_handler.AuthHandler("wss://in-memory")
+    auth = auth_handler.AuthHandler("wss://tests")
     sh = subscription_handler.SubscriptionHandler(response_queue)
     repo = memory_event_repo.MemoryEventRepo()
     ev_notifier = event_notifier.EventNotifier()
-    eh = event_handler.EventHandler(auth, repo, ev_notifier)
-    msg_handler = message_handler.MessageHandler(repo, sh, eh)
+    eh = event_handler.EventHandler(repo, ev_notifier)
+    msg_handler = message_handler.MessageHandler(auth, repo, sh, eh)
     md = message_dispatcher.MessageDispatcher(msg_handler)
     eh.register_received_cb(sh.handle_event)
     await response_queue.put(auth.build_auth_message())
@@ -174,5 +176,22 @@ async def local_relay(
 
 
 @pytest.fixture(scope="function")
-async def ev_repo(protocol):
-    return relay_event_repo.RelayEventRepo(protocol)
+async def local_ev_repo(keys, local_relay, request_queue, response_queue):
+    ph = protocol_handler.ProtocolHandler(
+        keys, "wss://tests", response_queue, request_queue
+    )
+    protocol_read_loop = asyncio.create_task(ph.start_read_loop())
+    yield relay_event_repo.RelayEventRepo(ph)
+    await ph.stop_read_thread()
+    await protocol_read_loop
+
+
+@pytest.fixture(scope="function")
+async def remote_ev_repo(keys, remote_relay, relay_url, request_queue, response_queue):
+    ph = protocol_handler.ProtocolHandler(
+        keys, relay_url, response_queue, request_queue
+    )
+    protocol_read_loop = asyncio.create_task(ph.start_read_loop())
+    yield relay_event_repo.RelayEventRepo(ph)
+    await ph.stop_read_thread()
+    await protocol_read_loop

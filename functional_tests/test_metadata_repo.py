@@ -46,13 +46,13 @@ def fake():
 
 
 @pytest.fixture
-def local(local_relay, ev_repo):
-    return event_backed_metadata_repo.EventBackedMetadataRepo(ev_repo)
+def local(local_ev_repo):
+    return event_backed_metadata_repo.EventBackedMetadataRepo(local_ev_repo)
 
 
 @pytest.fixture
-def remote(remote_relay, ev_repo):
-    return event_backed_metadata_repo.EventBackedMetadataRepo(ev_repo)
+def remote(remote_ev_repo):
+    return event_backed_metadata_repo.EventBackedMetadataRepo(remote_ev_repo)
 
 
 @pytest.fixture(params=["fake", "local", "remote"])

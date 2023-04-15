@@ -24,16 +24,27 @@ import mock
 import pytest
 
 from ndk import exceptions
-from ndk.event import event, event_builder, event_filter
-from ndk.messages import close, command_result, event_message, message_factory, request
+from ndk.event import auth_event, event, event_builder, event_filter
+from ndk.messages import (
+    auth,
+    close,
+    command_result,
+    event_message,
+    message_factory,
+    request,
+)
 from ndk.relay import (
-    auth_handler,
     event_handler,
     event_notifier,
     message_handler,
     subscription_handler,
 )
 from ndk.relay.event_repo import memory_event_repo
+
+
+@pytest.fixture
+def auth_hndlr():
+    return mock.Mock()
 
 
 @pytest.fixture
@@ -48,17 +59,14 @@ def sh_mock():
 
 @pytest.fixture
 def eh_mock(repo):
-    auth = auth_handler.AuthHandler("wss://unittests")
     return mock.AsyncMock(
-        wraps=event_handler.EventHandler(
-            auth, repo, notifier=event_notifier.EventNotifier()
-        )
+        wraps=event_handler.EventHandler(repo, notifier=event_notifier.EventNotifier())
     )
 
 
 @pytest.fixture
-def mh(repo, sh_mock, eh_mock):
-    yield message_handler.MessageHandler(repo, sh_mock, eh_mock)
+def mh(auth_hndlr, repo, sh_mock, eh_mock):
+    yield message_handler.MessageHandler(auth_hndlr, repo, sh_mock, eh_mock)
 
 
 async def test_event_validation_failure_returns_command_result_false(mh):
@@ -138,3 +146,11 @@ async def test_accepted_calls_subscription_handler(mh, eh_mock, sh_mock):
         assert isinstance(response_msg, command_result.CommandResult)
         assert response_msg.accepted
     sh_mock.handle_event.assert_called_with(mocked)
+
+
+async def test_handle_auth_response(auth_hndlr, mh):
+    ev = mock.Mock(auth_event.AuthEvent)
+    msg = auth.AuthResponse(ev)
+    await mh.handle_auth_response(msg)
+
+    auth_hndlr.handle_auth_event.assert_called_once_with(ev)

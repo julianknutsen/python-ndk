@@ -36,7 +36,7 @@ class AuthHandler:
         self._relay_url = relay_url
 
     def build_auth_message(self) -> str:
-        return auth.Auth(self._challenge).serialize()
+        return auth.AuthRequest(self._challenge).serialize()
 
     def handle_auth_event(self, ev: auth_event.AuthEvent):
         ev_relay_url = ev.tags.get("relay")

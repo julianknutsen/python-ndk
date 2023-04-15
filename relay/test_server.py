@@ -43,8 +43,8 @@ async def test_init():
     sh = subscription_handler.SubscriptionHandler(wq)
     repo = memory_event_repo.MemoryEventRepo()
     ev_notifier = event_notifier.EventNotifier()
-    eh = event_handler.EventHandler(auth, repo, ev_notifier)
-    mh = message_handler.MessageHandler(repo, sh, eh)
+    eh = event_handler.EventHandler(repo, ev_notifier)
+    mh = message_handler.MessageHandler(auth, repo, sh, eh)
     mb = message_dispatcher.MessageDispatcher(mh)
     await wq.put(auth.build_auth_message())
     handler_task = asyncio.create_task(server.connection_handler(rq, wq, mb))
@@ -52,7 +52,7 @@ async def test_init():
     keys = crypto.KeyPair()
     event = metadata_event.MetadataEvent.from_metadata_parts(keys)
 
-    ph = protocol_handler.ProtocolHandler(wq, rq)
+    ph = protocol_handler.ProtocolHandler(keys, "wss://tests", wq, rq)
     read_loop_task = asyncio.create_task(ph.start_read_loop())
     ev_repo = relay_event_repo.RelayEventRepo(ph)
 

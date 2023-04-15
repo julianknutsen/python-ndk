@@ -60,7 +60,7 @@ class ProtocolContext:
             protocol_handler.write_handler(self._ws, self._wq)
         )
 
-        self.protocol = protocol_handler.ProtocolHandler(self._rq, self._wq)
+        self.protocol = protocol_handler.ProtocolHandler(None, None, self._rq, self._wq)
         protocol_read_loop = self._loop.create_task(self.protocol.start_read_loop())
 
         self._tasks = [reader_task, writer_task, protocol_read_loop]

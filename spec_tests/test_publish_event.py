@@ -30,13 +30,13 @@ from ndk.repos.event_repo import event_repo
 
 
 @pytest.fixture
-def local(local_relay, ev_repo):
-    return ev_repo
+def local(local_ev_repo):
+    return local_ev_repo
 
 
 @pytest.fixture
-def remote(remote_relay, ev_repo):
-    return ev_repo
+def remote(remote_ev_repo):
+    return remote_ev_repo
 
 
 @pytest.fixture(params=["local", "remote"])
