@@ -19,39 +19,36 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import pytest
 
-class FixedLengthHexStr(str):
-    _length: int
-
-    def __new__(cls, value: str):
-        cls.validate(value)
-
-        return super().__new__(cls, value)
-
-    @classmethod
-    def validate(cls, value):
-        if not isinstance(value, str):
-            raise ValueError(f"{cls.__name__} must be a string, not {type(value)}")
-
-        if len(value) != cls._length:
-            raise ValueError(
-                f"{cls.__name__} must be {cls._length} bytes long, not {value}"
-            )
-
-        if not all(c in "0123456789abcdef" for c in value):
-            raise ValueError(f"{cls.__name__} must be a hex string, not {value}")
+from ndk import serialize
+from ndk.messages import auth
 
 
-class EventID(FixedLengthHexStr):
-    _length: int = 64
+def test_init_wrong_type():
+    with pytest.raises(TypeError):
+        auth.Auth(1)  # type: ignore
 
 
-class EventKind:
-    INVALID = -1
-    SET_METADATA = 0
-    TEXT_NOTE = 1
-    RECOMMEND_SERVER = 2
-    CONTACT_LIST = 3
-    REPOST = 6
-    REACTION = 7
-    AUTH = 22242
+def test_close_message_empty():
+    msg = ["AUTH"]
+
+    with pytest.raises(TypeError):
+        auth.Auth.deserialize_list(msg)
+
+
+def test_close_correct():
+    msg = ["AUTH", "challenge"]
+
+    c = auth.Auth.deserialize_list(msg)
+
+    assert c.challenge == "challenge"
+
+
+def test_serialize():
+    c = auth.Auth("1")
+    serialized = c.serialize()
+
+    deserialized = serialize.deserialize(serialized)
+
+    assert deserialized == ["AUTH", "1"]

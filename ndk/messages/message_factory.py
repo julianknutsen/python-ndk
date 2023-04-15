@@ -24,6 +24,7 @@ import typing
 
 from ndk import exceptions, serialize
 from ndk.messages import (
+    auth,
     close,
     command_result,
     eose,
@@ -60,6 +61,7 @@ def from_str(data: str) -> message.Message:
         "EVENT": relay_event.RelayEvent,
         "REQ": request.Request,
         "CLOSE": close.Close,
+        "AUTH": auth.Auth,
     }
 
     if hdr not in factories:

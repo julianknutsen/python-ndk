@@ -27,6 +27,7 @@ import pytest
 from ndk import serialize
 from ndk.messages import close, eose, event_message, message_factory, notice, request
 from ndk.relay import (
+    auth_handler,
     event_handler,
     event_notifier,
     message_dispatcher,
@@ -38,9 +39,10 @@ from ndk.relay.event_repo import memory_event_repo
 
 @pytest.fixture
 def md():
+    auth = auth_handler.AuthHandler("wss://unittests")
     sh = subscription_handler.SubscriptionHandler(asyncio.Queue())
     repo = memory_event_repo.MemoryEventRepo()
-    eh = event_handler.EventHandler(repo, event_notifier.EventNotifier())
+    eh = event_handler.EventHandler(auth, repo, event_notifier.EventNotifier())
     ev_handler = message_handler.MessageHandler(repo, sh, eh)
     return message_dispatcher.MessageDispatcher(ev_handler)
 

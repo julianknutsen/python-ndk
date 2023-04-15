@@ -19,39 +19,29 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import dataclasses
 
-class FixedLengthHexStr(str):
-    _length: int
+from ndk import serialize
+from ndk.messages import message
 
-    def __new__(cls, value: str):
-        cls.validate(value)
 
-        return super().__new__(cls, value)
+@dataclasses.dataclass
+class Auth(message.ReadableMessage, message.WriteableMessage):
+    """NIP-42 Auth event sent from the server to a client to request authentication"""
+
+    challenge: str
 
     @classmethod
-    def validate(cls, value):
-        if not isinstance(value, str):
-            raise ValueError(f"{cls.__name__} must be a string, not {type(value)}")
+    def deserialize_list(cls, lst: list):
+        assert len(lst) > 0
+        assert lst[0] == "AUTH"
 
-        if len(value) != cls._length:
-            raise ValueError(
-                f"{cls.__name__} must be {cls._length} bytes long, not {value}"
+        if len(lst) != 2:
+            raise TypeError(
+                f"Unexpected format of AUTH message. Expected two items, but got: {lst}"
             )
 
-        if not all(c in "0123456789abcdef" for c in value):
-            raise ValueError(f"{cls.__name__} must be a hex string, not {value}")
+        return cls(lst[1])
 
-
-class EventID(FixedLengthHexStr):
-    _length: int = 64
-
-
-class EventKind:
-    INVALID = -1
-    SET_METADATA = 0
-    TEXT_NOTE = 1
-    RECOMMEND_SERVER = 2
-    CONTACT_LIST = 3
-    REPOST = 6
-    REACTION = 7
-    AUTH = 22242
+    def serialize(self) -> str:
+        return serialize.serialize_as_str(["AUTH", self.challenge])

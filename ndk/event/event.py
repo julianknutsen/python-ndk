@@ -78,10 +78,12 @@ class Event:
         cls,
         keys: crypto.KeyPair,
         kind: int,
+        created_at: typing.Optional[int] = None,
         tags: typing.Optional[event_tags.EventTags] = None,
         content: typing.Optional[str] = None,
     ):
-        created_at = int(time.time())
+        if created_at is None:
+            created_at = int(time.time())
         if tags is None:
             tags = event_tags.EventTags()
         if content is None:

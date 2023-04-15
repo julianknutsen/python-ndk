@@ -27,6 +27,7 @@ from ndk.event import event_tags
 VALID_PUBKEY_STR = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
 VALID_EVENT_ID_STR = VALID_PUBKEY_STR
 VALID_RELAY_STR = "wss://nostr.com.se"
+VALID_CHALLENGE = "1234"
 
 
 def test_init_event_tag_bad_type_fails():
@@ -132,6 +133,54 @@ def test_init_e_tag_from_pubkey_and_relay():
 def test_init_e_tag_from_pubkey_and_malformed_relay():
     with pytest.raises(ValueError):
         event_tags.EventIdTag.from_event_id(types.EventID(VALID_EVENT_ID_STR), "blergh")
+
+
+def test_relay_tag_bad_length_4():
+    with pytest.raises(ValueError):
+        event_tags.AuthRelayTag(["relay", VALID_RELAY_STR, "b", "g"])
+
+
+def test_relay_tag_bad_length_1():
+    with pytest.raises(ValueError):
+        event_tags.AuthRelayTag(["relay"])
+
+
+def test_relay_tag_bad_identifier():
+    with pytest.raises(ValueError):
+        event_tags.AuthRelayTag(["challenge", VALID_RELAY_STR])
+
+
+def test_relay_tag_correct():
+    event_tags.AuthRelayTag(["relay", VALID_RELAY_STR])
+
+
+def test_relay_tag_from_relay_url():
+    et = event_tags.AuthRelayTag.from_relay_url(VALID_RELAY_STR)
+    assert str(et) == f"['relay', '{VALID_RELAY_STR}']"
+
+
+def test_challenge_tag_bad_length_4():
+    with pytest.raises(ValueError):
+        event_tags.AuthChallengeTag(["challenge", VALID_CHALLENGE, "b", "g"])
+
+
+def test_challenge_tag_bad_length_1():
+    with pytest.raises(ValueError):
+        event_tags.AuthChallengeTag(["challenge"])
+
+
+def test_challenge_tag_bad_identifier():
+    with pytest.raises(ValueError):
+        event_tags.AuthChallengeTag(["relay", VALID_CHALLENGE])
+
+
+def test_challenge_tag_correct():
+    event_tags.AuthChallengeTag(["challenge", VALID_CHALLENGE])
+
+
+def test_challenge_tag_from_challenge():
+    et = event_tags.AuthChallengeTag.from_challenge(VALID_CHALLENGE)
+    assert str(et) == f"['challenge', '{VALID_CHALLENGE}']"
 
 
 def test_unknown_event_tag():

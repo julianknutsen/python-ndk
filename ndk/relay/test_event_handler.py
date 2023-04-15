@@ -23,9 +23,16 @@
 import mock
 import pytest
 
-from ndk.event import event
-from ndk.relay import event_handler, event_notifier
+from ndk.event import auth_event, event
+from ndk.relay import auth_handler, event_handler, event_notifier
 from ndk.relay.event_repo import memory_event_repo
+
+RELAY_URL = "wss://relay.example.com"
+
+
+@pytest.fixture
+def auth():
+    return mock.Mock()
 
 
 @pytest.fixture
@@ -39,31 +46,33 @@ def notifier():
 
 
 @pytest.fixture
-def eh(repo, notifier):
-    return event_handler.EventHandler(repo, notifier)
+def eh(auth, repo, notifier):
+    return event_handler.EventHandler(auth, repo, notifier)
 
 
 @pytest.fixture
 def real_eh():
+    auth = auth_handler.AuthHandler(RELAY_URL)
     repo = memory_event_repo.MemoryEventRepo()
     notifier = event_notifier.EventNotifier()
-    return event_handler.EventHandler(repo, notifier)
+    return event_handler.EventHandler(auth, repo, notifier)
 
 
 def test_init(repo, notifier, eh):
     pass  # fixtures do the work
 
 
-async def test_handle_regular_event_behavior(repo, notifier, eh):
+async def test_handle_regular_event_behavior(auth, repo, notifier, eh):
     ev = mock.MagicMock(spec=event.RegularEvent, id="1")
     await eh.handle_event(ev)
 
     repo.add.assert_called_once_with(ev)
     repo.remove.assert_not_called()
     notifier.handle_event.assert_called_once_with(ev)
+    auth.assert_not_called()
 
 
-async def test_handle_replaceable_event_behavior(repo, notifier, eh):
+async def test_handle_replaceable_event_behavior(auth, repo, notifier, eh):
     existing_ev = mock.MagicMock(
         event.ReplaceableEvent, id="1", kind=0, pubkey="1", created_at=1, tags=[]
     )
@@ -78,15 +87,37 @@ async def test_handle_replaceable_event_behavior(repo, notifier, eh):
     repo.add.assert_called_once_with(newer_ev)
     repo.remove.assert_called_once_with("1")
     notifier.handle_event.assert_called_once_with(newer_ev)
+    auth.assert_not_called()
 
 
-async def test_handle_ephemeral_event_behavior(repo, notifier, eh):
+async def test_handle_ephemeral_event_behavior(auth, repo, notifier, eh):
     ev = mock.MagicMock(event.EphemeralEvent)
     await eh.handle_event(ev)
 
     repo.add.assert_not_called()
     repo.remove.assert_not_called()
     notifier.handle_event.assert_called_once_with(ev)
+    auth.assert_not_called()
+
+
+async def test_handle_basic_event_behavior(auth, repo, notifier, eh):
+    ev = mock.MagicMock(event.Event)
+    await eh.handle_event(ev)
+
+    repo.add.assert_not_called()
+    repo.remove.assert_not_called()
+    notifier.handle_event.assert_not_called()
+    auth.assert_not_called()
+
+
+async def test_handle_auth_event(auth, repo, notifier, eh):
+    ev = mock.MagicMock(auth_event.AuthEvent)
+    await eh.handle_event(ev)
+
+    repo.add.assert_not_called()
+    repo.remove.assert_not_called()
+    notifier.handle_event.assert_not_called()
+    auth.handle_auth_event.assert_called_once_with(ev)
 
 
 async def test_no_register_not_called(real_eh):
