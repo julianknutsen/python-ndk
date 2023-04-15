@@ -27,6 +27,7 @@ from ndk import exceptions
 from ndk.event import event, event_builder, event_filter
 from ndk.messages import close, command_result, event_message, message_factory, request
 from ndk.relay import (
+    auth_handler,
     event_handler,
     event_notifier,
     message_handler,
@@ -47,8 +48,11 @@ def sh_mock():
 
 @pytest.fixture
 def eh_mock(repo):
+    auth = auth_handler.AuthHandler("wss://unittests")
     return mock.AsyncMock(
-        wraps=event_handler.EventHandler(repo, notifier=event_notifier.EventNotifier())
+        wraps=event_handler.EventHandler(
+            auth, repo, notifier=event_notifier.EventNotifier()
+        )
     )
 
 

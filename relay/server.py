@@ -32,6 +32,7 @@ from websockets.legacy.server import serve
 
 from ndk import serialize
 from ndk.relay import (
+    auth_handler,
     event_handler,
     event_notifier,
     message_dispatcher,
@@ -48,6 +49,7 @@ RELAY_EVENT_REPO = os.environ.get("RELAY_EVENT_REPO", "memory").lower()
 HOST = os.environ.get("RELAY_HOST", "localhost")
 PORT = int(os.environ.get("RELAY_PORT", "2700"))
 DEBUG_LEVEL = os.environ.get("RELAY_LOG_LEVEL", "INFO")
+RELAY_URL = os.environ.get("RELAY_URL", "wss://localhost")
 
 if RELAY_EVENT_REPO == "mysql":
     DB_HOST = os.environ.get("DB_HOST")
@@ -82,12 +84,14 @@ async def handler_wrapper(repo: event_repo.EventRepo, websocket):
     request_queue: asyncio.Queue[str] = asyncio.Queue()
     response_queue: asyncio.Queue[str] = asyncio.Queue()
 
+    auth = auth_handler.AuthHandler(RELAY_URL)
     sh = subscription_handler.SubscriptionHandler(response_queue)
     ev_notifier = event_notifier.EventNotifier()
-    eh = event_handler.EventHandler(repo, ev_notifier)
+    eh = event_handler.EventHandler(auth, repo, ev_notifier)
     mh = message_handler.MessageHandler(repo, sh, eh)
     md = message_dispatcher.MessageDispatcher(mh)
     eh.register_received_cb(sh.handle_event)
+    await response_queue.put(auth.build_auth_message())
 
     consumer_task = asyncio.create_task(
         protocol_handler.read_handler(websocket, request_queue)

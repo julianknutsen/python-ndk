@@ -27,7 +27,9 @@ import pytest
 import websockets
 
 from ndk import crypto
+from ndk.messages import auth, message_factory
 from ndk.relay import (
+    auth_handler,
     event_handler,
     event_notifier,
     message_dispatcher,
@@ -81,7 +83,20 @@ def db_url(pytestconfig):
 
 @pytest.fixture(scope="function")
 async def response_queue():
-    return asyncio.Queue()
+    class UnauthResponseQueue(asyncio.Queue):
+        async def get(self):
+            data = await super().get()
+            try:
+                msg = message_factory.from_str(data)
+            except ValueError:
+                return data
+
+            if isinstance(msg, auth.Auth):
+                return await super().get()
+            else:
+                return data
+
+    return UnauthResponseQueue()
 
 
 @pytest.fixture(scope="function")
@@ -131,14 +146,19 @@ async def remote_relay(ws_handlers):
 
 
 @pytest.fixture(scope="function")
-async def local_relay(response_queue, request_queue):
+async def local_relay(
+    response_queue,
+    request_queue,
+):
+    auth = auth_handler.AuthHandler("wss://in-memory")
     sh = subscription_handler.SubscriptionHandler(response_queue)
     repo = memory_event_repo.MemoryEventRepo()
     ev_notifier = event_notifier.EventNotifier()
-    eh = event_handler.EventHandler(repo, ev_notifier)
+    eh = event_handler.EventHandler(auth, repo, ev_notifier)
     msg_handler = message_handler.MessageHandler(repo, sh, eh)
     md = message_dispatcher.MessageDispatcher(msg_handler)
     eh.register_received_cb(sh.handle_event)
+    await response_queue.put(auth.build_auth_message())
 
     handler_task = asyncio.create_task(
         server.connection_handler(request_queue, response_queue, md)

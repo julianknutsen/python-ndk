@@ -24,6 +24,7 @@ import typing
 
 from ndk import crypto, types
 from ndk.event import (
+    auth_event,
     contact_list_event,
     event,
     event_tags,
@@ -43,6 +44,7 @@ LOOKUP: dict[int, typing.Type[event.Event]] = {
     types.EventKind.CONTACT_LIST: contact_list_event.ContactListEvent,
     types.EventKind.REPOST: repost_event.RepostEvent,
     types.EventKind.REACTION: reaction_event.ReactionEvent,
+    types.EventKind.AUTH: auth_event.AuthEvent,
 }
 
 REQUIRED_FIELDS = set(["id", "pubkey", "created_at", "kind", "tags", "content", "sig"])

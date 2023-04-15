@@ -95,6 +95,46 @@ class EventIdTag(EventTag):
         return cls(["e", event_id])
 
 
+class AuthRelayTag(EventTag):
+    def __init__(self, value: list[str]):
+        if len(value) != 2:
+            raise ValueError(
+                f"{self.__class__.__name__} must have 2 items, not {value}"
+            )
+
+        if value[0] != "relay":
+            raise ValueError(
+                f"{self.__class__.__name__} must start with 'relay', not {value}"
+            )
+
+        validate_relay_url(value[1])
+
+        super().__init__(value)
+
+    @classmethod
+    def from_relay_url(cls, relay_url: str):
+        return cls(["relay", relay_url])
+
+
+class AuthChallengeTag(EventTag):
+    def __init__(self, value: list[str]):
+        if len(value) != 2:
+            raise ValueError(
+                f"{self.__class__.__name__} must have 2 items, not {value}"
+            )
+
+        if value[0] != "challenge":
+            raise ValueError(
+                f"{self.__class__.__name__} must start with 'relay', not {value}"
+            )
+
+        super().__init__(value)
+
+    @classmethod
+    def from_challenge(cls, challenge: str):
+        return cls(["challenge", challenge])
+
+
 class UnknownEventTag(EventTag):
     pass
 
@@ -130,6 +170,10 @@ class EventTags(list):
             return PublicKeyTag(tag)
         elif tag[0] == "e":
             return EventIdTag(tag)
+        elif tag[0] == "relay":
+            return AuthRelayTag(tag)
+        elif tag[0] == "challenge":
+            return AuthChallengeTag(tag)
         else:
             return UnknownEventTag(tag)
 

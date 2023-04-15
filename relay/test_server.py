@@ -24,6 +24,7 @@ import asyncio
 from ndk import crypto
 from ndk.event import metadata_event
 from ndk.relay import (
+    auth_handler,
     event_handler,
     event_notifier,
     message_dispatcher,
@@ -38,12 +39,14 @@ from relay import server
 async def test_init():
     rq = asyncio.Queue()
     wq = asyncio.Queue()
+    auth = auth_handler.AuthHandler("wss://relay.example.com")
     sh = subscription_handler.SubscriptionHandler(wq)
     repo = memory_event_repo.MemoryEventRepo()
     ev_notifier = event_notifier.EventNotifier()
-    eh = event_handler.EventHandler(repo, ev_notifier)
+    eh = event_handler.EventHandler(auth, repo, ev_notifier)
     mh = message_handler.MessageHandler(repo, sh, eh)
     mb = message_dispatcher.MessageDispatcher(mh)
+    await wq.put(auth.build_auth_message())
     handler_task = asyncio.create_task(server.connection_handler(rq, wq, mb))
 
     keys = crypto.KeyPair()

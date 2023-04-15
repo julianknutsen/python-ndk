@@ -19,39 +19,39 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import secrets
 
-class FixedLengthHexStr(str):
-    _length: int
+from ndk.event import auth_event
+from ndk.messages import auth
 
-    def __new__(cls, value: str):
-        cls.validate(value)
 
-        return super().__new__(cls, value)
+class AuthHandler:
+    _authenticated: bool
+    _challenge: str
+    _relay_url: str
 
-    @classmethod
-    def validate(cls, value):
-        if not isinstance(value, str):
-            raise ValueError(f"{cls.__name__} must be a string, not {type(value)}")
+    def __init__(self, relay_url):
+        self._authenticated = False
+        self._challenge = secrets.token_hex(16)
+        self._relay_url = relay_url
 
-        if len(value) != cls._length:
+    def build_auth_message(self) -> str:
+        return auth.Auth(self._challenge).serialize()
+
+    def handle_auth_event(self, ev: auth_event.AuthEvent):
+        ev_relay_url = ev.tags.get("relay")
+        if ev_relay_url[0][1] != self._relay_url:
             raise ValueError(
-                f"{cls.__name__} must be {cls._length} bytes long, not {value}"
+                f"AuthEvent relay does not match expected relay: {self._relay_url} != {ev_relay_url}"
             )
 
-        if not all(c in "0123456789abcdef" for c in value):
-            raise ValueError(f"{cls.__name__} must be a hex string, not {value}")
+        ev_challenge = ev.tags.get("challenge")
+        if ev_challenge[0][1] != self._challenge:
+            raise ValueError(
+                f"AuthEvent challenge does not match expected challenge: {self._challenge} != {ev_challenge}"
+            )
 
+        self._authenticated = True
 
-class EventID(FixedLengthHexStr):
-    _length: int = 64
-
-
-class EventKind:
-    INVALID = -1
-    SET_METADATA = 0
-    TEXT_NOTE = 1
-    RECOMMEND_SERVER = 2
-    CONTACT_LIST = 3
-    REPOST = 6
-    REACTION = 7
-    AUTH = 22242
+    def is_authenticated(self):
+        return self._authenticated
