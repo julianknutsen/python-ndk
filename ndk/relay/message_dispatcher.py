@@ -52,9 +52,12 @@ class MessageDispatcher:
             text = f"Unable to parse message: {data}"
             logger.info(text, exc_info=True)
             return [create_notice(text)]
-        except PermissionError:
+        except PermissionError as exc:
+            logger.info("NIP-42 authentication required: %s", data)
             return [
-                create_notice("restricted: all actions require NIP-42 authentication")
+                create_notice(
+                    f"restricted: action requires NIP-42 authentication: {exc.args[0]}"
+                )
             ]
 
     async def _handle_msg(self, msg: message.Message) -> list[str]:

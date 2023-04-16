@@ -20,7 +20,6 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 
 import dataclasses
-import json
 
 from ndk import serialize
 from ndk.event import auth_event, event_builder
@@ -37,10 +36,14 @@ class Auth(message.ReadableMessage):
             raise TypeError(
                 f"Unexpected format of AUTH message. Expected two items, but got: {lst}"
             )
-        try:
+        if isinstance(lst[1], dict):
             return AuthResponse.deserialize_list(lst)
-        except json.decoder.JSONDecodeError:
+        elif isinstance(lst[1], str):
             return AuthRequest.deserialize_list(lst)
+        else:
+            raise TypeError(
+                f"Unexpected format of AUTH message. Expected str or dict, but got: {lst}"
+            )
 
 
 @dataclasses.dataclass
@@ -81,7 +84,7 @@ class AuthResponse(message.ReadableMessage, message.WriteableMessage):
                 f"Unexpected format of AUTH message. Expected two items, but got: {lst}"
             )
 
-        deserialized_ev = event_builder.from_dict(serialize.deserialize(lst[1]))
+        deserialized_ev = event_builder.from_dict(lst[1])
         if not isinstance(deserialized_ev, auth_event.AuthEvent):
             raise ValueError(
                 f"Unexpected format of AUTH message. Expected AuthEvent, but got: {deserialized_ev}"
@@ -90,6 +93,4 @@ class AuthResponse(message.ReadableMessage, message.WriteableMessage):
         return cls(deserialized_ev)
 
     def serialize(self) -> str:
-        return serialize.serialize_as_str(
-            ["AUTH", serialize.serialize_as_str(self.ev.__dict__)]
-        )
+        return serialize.serialize_as_str(["AUTH", self.ev.__dict__])

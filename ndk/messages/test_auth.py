@@ -38,6 +38,13 @@ def test_auth_message_empty():
         auth.Auth.deserialize_list(msg)
 
 
+def test_auth_message_wrong_type():
+    msg = ["AUTH", 1]
+
+    with pytest.raises(TypeError):
+        auth.Auth.deserialize_list(msg)
+
+
 def test_auth_request_message_empty():
     msg = ["AUTH"]
 
@@ -76,7 +83,7 @@ def test_auth_response_message_empty():
 
 def test_auth_response_correct(keys):
     ev = auth_event.AuthEvent.from_parts(keys, "wss://localhost", "1234")
-    msg = ["AUTH", serialize.serialize_as_str(ev.__dict__)]
+    msg = ["AUTH", ev.__dict__]
 
     c = auth.AuthResponse.deserialize_list(msg)
 
@@ -92,7 +99,7 @@ def test_auth_response_deserialize_list(keys):
 
 def test_auth_response_deserialize_bad_payload(keys):
     wrong_ev = metadata_event.MetadataEvent.from_metadata_parts(keys)
-    msg = ["AUTH", serialize.serialize_as_str(wrong_ev.__dict__)]
+    msg = ["AUTH", wrong_ev.__dict__]
     with pytest.raises(ValueError, match="Unexpected format of AUTH message"):
         auth.AuthResponse.deserialize_list(
             serialize.deserialize(serialize.serialize_as_str(msg))

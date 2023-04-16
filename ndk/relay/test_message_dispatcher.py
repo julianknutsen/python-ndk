@@ -22,6 +22,7 @@
 
 import asyncio
 
+import mock
 import pytest
 
 from ndk import serialize
@@ -43,8 +44,8 @@ def md():
     sh = subscription_handler.SubscriptionHandler(asyncio.Queue())
     repo = memory_event_repo.MemoryEventRepo()
     eh = event_handler.EventHandler(repo, event_notifier.EventNotifier())
-    ev_handler = message_handler.MessageHandler(auth, repo, sh, eh)
-    return message_dispatcher.MessageDispatcher(ev_handler)
+    msg_handler = message_handler.MessageHandler(auth, repo, sh, eh)
+    return message_dispatcher.MessageDispatcher(msg_handler)
 
 
 async def test_init(md):  # pylint: disable=unused-argument
@@ -102,3 +103,18 @@ async def test_handle_request_no_match(md):
     response_msg = message_factory.from_str(response[0])
 
     assert isinstance(response_msg, eose.EndOfStoredEvents)
+
+
+async def test_process_unauthenticated_ev():
+    msg_handler = mock.AsyncMock()
+    msg_handler.handle_event_message = mock.AsyncMock(
+        side_effect=PermissionError("uh oh")
+    )
+    md = message_dispatcher.MessageDispatcher(msg_handler)
+    response = await md.process_message(event_message.Event({}).serialize())
+
+    assert len(response) == 1
+    response_msg = message_factory.from_str(response[0])
+
+    assert isinstance(response_msg, notice.Notice)
+    assert "uh oh" in response_msg.message

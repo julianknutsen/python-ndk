@@ -24,7 +24,7 @@ import dataclasses
 import logging
 import typing
 
-from ndk import types
+from ndk import crypto, types
 from ndk.event import event
 
 # "ids": <a list of event ids or prefixes>,
@@ -168,3 +168,39 @@ class EventFilter:
             until=d.get("until"),
             limit=d.get("limit"),
         )
+
+
+@dataclasses.dataclass
+class AuthenticatedEventFilter(EventFilter):
+    @classmethod
+    def from_dict_and_auth_pubkey(
+        cls, d: dict, auth_pubkey: typing.Optional[crypto.PublicKeyStr]
+    ) -> EventFilter:
+        fltr = super().from_dict(d)
+
+        # Kind 4 is a special case where we need to restrict clients
+        # that can query
+        if fltr.kinds and 4 in fltr.kinds:
+            if not auth_pubkey:
+                raise PermissionError(
+                    "Cannot query for kind 4 events without NIP-42 auth"
+                )
+
+            if not fltr.p_tags and not fltr.authors:
+                raise PermissionError(
+                    "Cannot query for kind 4 events without a receiver or author"
+                )
+
+            # receiver can be the auth pubkey
+            if fltr.p_tags and fltr.p_tags != [auth_pubkey]:
+                raise PermissionError(
+                    "Cannot query for kind 4 events with a receiver other than the auth pubkey"
+                )
+
+            # or the event can be signed by the auth pubkey
+            if fltr.authors and fltr.authors != [auth_pubkey]:
+                raise PermissionError(
+                    "Cannot query for kind 4 events signed by a pubkey other than the auth pubkey"
+                )
+
+        return fltr
