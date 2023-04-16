@@ -65,7 +65,7 @@ def from_dict(fields: dict, skip_validate=False):
         logger.warning("Handling unspecified RegularEvent: %s", fields)
     elif 10000 <= kind < 20000:
         builder = event.ReplaceableEvent
-        logger.warning("Handling unspecified RepalceableEvent: %s", fields)
+        logger.warning("Handling unspecified ReplaceableEvent: %s", fields)
     elif 20000 <= kind < 30000:
         builder = event.EphemeralEvent
         logger.warning("Handling unspecified EphemeralEvent: %s", fields)
