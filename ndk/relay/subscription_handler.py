@@ -20,19 +20,37 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 
 import asyncio
+import functools
 
 from ndk.event import event, event_filter
 from ndk.messages import relay_event
 
 
+def locked():
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(self, *args, **kwargs):
+            async with self._lock:  # pylint: disable=protected-access
+                return await func(self, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
 class SubscriptionHandler:
     _sub_id_to_fltrs: dict[str, list[event_filter.EventFilter]]
     _response_queue: asyncio.Queue[str]
+    _pending_deletes: set[str]
+    _lock: asyncio.Lock
 
     def __init__(self, response_queue: asyncio.Queue[str]):
         self._sub_id_to_fltrs = {}
         self._response_queue = response_queue
+        self._pending_deletes = set()
+        self._lock = asyncio.Lock()
 
+    @locked()
     async def handle_event(self, ev: event.Event):
         for sub_id, fltrs in self._sub_id_to_fltrs.items():
             if fltrs and any(fltr.matches_event(ev) for fltr in fltrs):
@@ -40,10 +58,16 @@ class SubscriptionHandler:
                     relay_event.RelayEvent(sub_id, ev.__dict__).serialize()
                 )
 
-    def set_filters(self, sub_id: str, fltrs: list[event_filter.EventFilter]):
-        self._sub_id_to_fltrs[sub_id] = fltrs
+    @locked()
+    async def set_filters(self, sub_id: str, fltrs: list[event_filter.EventFilter]):
+        if sub_id in self._pending_deletes:
+            self._pending_deletes.remove(sub_id)
+        else:
+            self._sub_id_to_fltrs[sub_id] = fltrs
 
-    def clear_filters(self, sub_id: str):
+    @locked()
+    async def clear_filters(self, sub_id: str):
         if sub_id not in self._sub_id_to_fltrs:
-            raise ValueError(f"Subscription {sub_id} does not exist")
-        del self._sub_id_to_fltrs[sub_id]
+            self._pending_deletes.add(sub_id)
+        else:
+            del self._sub_id_to_fltrs[sub_id]

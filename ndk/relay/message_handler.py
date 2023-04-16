@@ -19,6 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import functools
 import logging
 
 from ndk import exceptions
@@ -36,6 +37,20 @@ from ndk.relay import auth_handler, event_handler, subscription_handler
 from ndk.relay.event_repo import event_repo
 
 logger = logging.getLogger(__name__)
+
+
+def requires_authentication():
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(self, *args, **kwargs):
+            await self._auth.wait_for_authenticated(  # pylint: disable=protected-access
+                timeout=1
+            )
+            return await func(self, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 class MessageHandler:
@@ -56,6 +71,7 @@ class MessageHandler:
         self._subscription_handler = sh
         self._event_handler = eh
 
+    @requires_authentication()
     async def handle_event_message(self, msg: event_message.Event) -> list[str]:
         try:
             ev = event_builder.from_dict(msg.event_dict)
@@ -67,14 +83,16 @@ class MessageHandler:
             ev_id = msg.event_dict["id"]  # guaranteed if passed Type check above
             return [command_result.CommandResult(ev_id, False, text).serialize()]
 
+    @requires_authentication()
     async def handle_close(self, msg: close.Close) -> list[str]:
-        self._subscription_handler.clear_filters(msg.sub_id)
+        await self._subscription_handler.clear_filters(msg.sub_id)
         return []
 
+    @requires_authentication()
     async def handle_request(self, msg: request.Request) -> list[str]:
         fltrs = [event_filter.EventFilter.from_dict(fltr) for fltr in msg.filter_list]
         fetched = await self._repo.get(fltrs)
-        self._subscription_handler.set_filters(msg.sub_id, fltrs)
+        await self._subscription_handler.set_filters(msg.sub_id, fltrs)
 
         return [
             relay_event.RelayEvent(msg.sub_id, ev.__dict__).serialize()
@@ -83,4 +101,5 @@ class MessageHandler:
 
     async def handle_auth_response(self, msg: auth.AuthResponse) -> list[str]:
         self._auth.handle_auth_event(msg.ev)
+        logger.debug("Client authenticated")
         return []

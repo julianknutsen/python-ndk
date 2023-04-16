@@ -49,7 +49,7 @@ RELAY_EVENT_REPO = os.environ.get("RELAY_EVENT_REPO", "memory").lower()
 HOST = os.environ.get("RELAY_HOST", "localhost")
 PORT = int(os.environ.get("RELAY_PORT", "2700"))
 DEBUG_LEVEL = os.environ.get("RELAY_LOG_LEVEL", "INFO")
-RELAY_URL = os.environ.get("RELAY_URL", "wss://localhost")
+RELAY_URL = os.environ.get("RELAY_URL", "wss://tests")
 
 if RELAY_EVENT_REPO == "mysql":
     DB_HOST = os.environ.get("DB_HOST")
@@ -62,6 +62,19 @@ logging.basicConfig(level=DEBUG_LEVEL, format="%(asctime)s %(levelname)s %(messa
 logging.getLogger("websockets").setLevel(logging.WARNING)
 
 
+async def process_message(
+    data: str, write_queue: asyncio.Queue[str], md: message_dispatcher.MessageDispatcher
+):
+    try:
+        responses = await md.process_message(data)
+    except:  # pylint: disable=bare-except
+        logger.exception("Error processing message: %s", data)
+        return
+
+    for response in responses:
+        await write_queue.put(response)
+
+
 async def connection_handler(
     read_queue: asyncio.Queue[str],
     write_queue: asyncio.Queue[str],
@@ -70,13 +83,7 @@ async def connection_handler(
     while True:
         data = await read_queue.get()
         read_queue.task_done()
-        try:
-            responses = await md.process_message(data)
-        except:  # pylint: disable=bare-except
-            logger.exception("Error processing message: %s", data)
-            continue
-        for response in responses:
-            await write_queue.put(response)
+        asyncio.create_task(process_message(data, write_queue, md))
 
 
 async def handler_wrapper(repo: event_repo.EventRepo, websocket):

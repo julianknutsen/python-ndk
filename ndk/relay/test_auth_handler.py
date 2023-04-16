@@ -63,3 +63,31 @@ def test_handle_auth_event(keys):
         auth_event.AuthEvent.from_parts(keys, VALID_RELAY_URL, h._challenge)
     )
     assert h.is_authenticated()
+
+
+@pytest.mark.parametrize(
+    "one_two",
+    [
+        ("www.example.com", "ws://example.com"),
+        ("example.com", "ws://www.example.com"),
+        ("example.com", "example.com"),
+        ("example.com:443", "example.com"),
+        ("localhost", "wss://localhost"),
+    ],
+)
+def test_relay_match(one_two):
+    one, two = one_two
+    assert auth_handler.relay_url_match(one, two)
+
+
+@pytest.mark.parametrize(
+    "one_two",
+    [
+        ("example.com", "example.org"),
+        ("bad", "wss://good.com"),
+        ("wss://good.com", "bad"),
+    ],
+)
+def test_relay_not_match(one_two):
+    one, two = one_two
+    assert not auth_handler.relay_url_match(one, two)

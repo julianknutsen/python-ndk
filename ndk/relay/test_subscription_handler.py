@@ -22,7 +22,6 @@
 import asyncio
 
 import mock
-import pytest
 
 from ndk.event import metadata_event
 from ndk.relay import subscription_handler
@@ -32,11 +31,18 @@ def test_init():
     subscription_handler.SubscriptionHandler(asyncio.Queue())
 
 
-def test_clear_with_no_set_filter():
+async def test_clear_before_set_no_output():
     q = asyncio.Queue()
     sh = subscription_handler.SubscriptionHandler(q)
-    with pytest.raises(ValueError):
-        sh.clear_filters("subid")
+    await sh.clear_filters("subid")
+
+    fltr = mock.MagicMock()
+    fltr.matches_event.return_value = False
+    await sh.set_filters("subid", [fltr])
+
+    ev = mock.MagicMock()
+    await sh.handle_event(ev)
+    assert q.empty()
 
 
 async def test_no_output_with_no_filter():
@@ -54,7 +60,7 @@ async def test_no_output_with_wrong_filter():
 
     fltr = mock.MagicMock()
     fltr.matches_event.return_value = False
-    sh.set_filters("subid", [fltr])
+    await sh.set_filters("subid", [fltr])
 
     ev = mock.MagicMock()
     await sh.handle_event(ev)
@@ -67,7 +73,7 @@ async def test_output_with_matching_filter(keys):
 
     fltr = mock.MagicMock()
     fltr.matches_event.return_value = True
-    sh.set_filters("subid", [fltr])
+    await sh.set_filters("subid", [fltr])
 
     event = metadata_event.MetadataEvent.from_metadata_parts(keys=keys)
     await sh.handle_event(event)
@@ -80,8 +86,8 @@ async def test_two_output_with_two_matching_filter(keys):
 
     fltr = mock.MagicMock()
     fltr.matches_event.return_value = True
-    sh.set_filters("subid", [fltr])
-    sh.set_filters("subid2", [fltr])
+    await sh.set_filters("subid", [fltr])
+    await sh.set_filters("subid2", [fltr])
 
     event = metadata_event.MetadataEvent.from_metadata_parts(keys=keys)
     await sh.handle_event(event)
@@ -94,11 +100,11 @@ async def test_output_with_filter_overwrite():
 
     fltr = mock.MagicMock()
     fltr.matches_event.return_value = True
-    sh.set_filters("subid", [fltr])
+    await sh.set_filters("subid", [fltr])
 
     fltr2 = mock.MagicMock()
     fltr2.matches_event.return_value = False
-    sh.set_filters("subid", [fltr2])
+    await sh.set_filters("subid", [fltr2])
 
     ev = mock.MagicMock()
     await sh.handle_event(ev)
@@ -111,8 +117,8 @@ async def test_no_output_with_matching_filter_after_clear():
 
     fltr = mock.MagicMock()
     fltr.matches_event.return_value = True
-    sh.set_filters("subid", [fltr])
-    sh.clear_filters(
+    await sh.set_filters("subid", [fltr])
+    await sh.clear_filters(
         "subid",
     )
 
