@@ -19,6 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import functools
 import logging
 
 from ndk import exceptions
@@ -38,18 +39,23 @@ from ndk.relay.event_repo import event_repo
 logger = logging.getLogger(__name__)
 
 
-# def requires_authentication():
-#     def decorator(func):
-#         @functools.wraps(func)
-#         async def wrapper(self, *args, **kwargs):
-#             await self._auth.wait_for_authenticated(  # pylint: disable=protected-access
-#                 timeout=5
-#             )
-#             return await func(self, *args, **kwargs)
+# Race condition between handling AUTH and handling first message. This decorator
+# will attempt to wait for the auth to process.
+def authentication_retry():
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(self, *args, **kwargs):
+            try:
+                return await func(self, *args, **kwargs)
+            except PermissionError:
+                await self._auth.wait_for_authenticated(  # pylint: disable=protected-access
+                    timeout=5
+                )
+                return await func(self, *args, **kwargs)
 
-#         return wrapper
+        return wrapper
 
-#     return decorator
+    return decorator
 
 
 class MessageHandler:
@@ -85,6 +91,7 @@ class MessageHandler:
         await self._subscription_handler.clear_filters(msg.sub_id)
         return []
 
+    @authentication_retry()
     async def handle_request(self, msg: request.Request) -> list[str]:
         fltrs = [
             event_filter.AuthenticatedEventFilter.from_dict_and_auth_pubkey(
