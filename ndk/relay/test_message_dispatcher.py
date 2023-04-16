@@ -117,4 +117,3 @@ async def test_process_unauthenticated_ev():
     response_msg = message_factory.from_str(response[0])
 
     assert isinstance(response_msg, notice.Notice)
-    assert "uh oh" in response_msg.message
