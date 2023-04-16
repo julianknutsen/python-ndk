@@ -27,7 +27,7 @@ import mock
 import pytest
 
 from ndk import crypto
-from ndk.event import event_filter, event_tags, metadata_event, text_note_event
+from ndk.event import event, event_filter, event_tags, metadata_event, text_note_event
 from ndk.relay.event_repo import memory_event_repo, mysql_event_repo
 
 
@@ -49,7 +49,7 @@ def repo(request):
 
 
 @pytest.fixture
-def event(keys):
+def metadata_ev(keys):
     return metadata_event.MetadataEvent.from_metadata_parts(keys)
 
 
@@ -59,62 +59,62 @@ async def test_get_empty(repo):
     assert len(items) == 0
 
 
-async def test_get_matches_by_id(repo, event):
-    ev_id = await repo.add(event)
+async def test_get_matches_by_id(repo, metadata_ev):
+    ev_id = await repo.add(metadata_ev)
 
     items = await repo.get([event_filter.EventFilter(ids=[ev_id])])
 
     assert len(items) == 1
-    assert items[0] == event
+    assert items[0] == metadata_ev
 
 
-async def test_duplicate_insert_one_result(repo, event):
-    ev_id1 = await repo.add(event)
-    ev_id2 = await repo.add(event)
+async def test_duplicate_insert_one_result(repo, metadata_ev):
+    ev_id1 = await repo.add(metadata_ev)
+    ev_id2 = await repo.add(metadata_ev)
     assert ev_id1 == ev_id2
 
     items = await repo.get([event_filter.EventFilter(ids=[ev_id1])])
 
     assert len(items) == 1
-    assert items[0] == event
+    assert items[0] == metadata_ev
 
 
-async def test_get_matches_by_id_prefix(repo, event):
-    ev_id = await repo.add(event)
+async def test_get_matches_by_id_prefix(repo, metadata_ev):
+    ev_id = await repo.add(metadata_ev)
 
     items = await repo.get([event_filter.EventFilter(ids=[ev_id[0]])])
 
     assert len(items) == 1
-    assert items[0] == event
+    assert items[0] == metadata_ev
 
 
-async def test_get_matches_by_author(repo, keys, event):
-    _ = await repo.add(event)
+async def test_get_matches_by_author(repo, keys, metadata_ev):
+    _ = await repo.add(metadata_ev)
 
     items = await repo.get([event_filter.EventFilter(authors=[keys.public])])
 
     assert len(items) == 1
-    assert items[0] == event
+    assert items[0] == metadata_ev
 
 
-async def test_get_matches_by_author_prefix(repo, keys, event):
-    _ = await repo.add(event)
+async def test_get_matches_by_author_prefix(repo, keys, metadata_ev):
+    _ = await repo.add(metadata_ev)
 
     items = await repo.get([event_filter.EventFilter(authors=[keys.public[:3]])])
 
     assert len(items) == 1
-    assert items[0] == event
+    assert items[0] == metadata_ev
 
 
-async def test_get_matches_by_author_and_id(repo, keys, event):
-    ev_id = await repo.add(event)
+async def test_get_matches_by_author_and_id(repo, keys, metadata_ev):
+    ev_id = await repo.add(metadata_ev)
 
     items = await repo.get(
         [event_filter.EventFilter(ids=[ev_id], authors=[keys.public])]
     )
 
     assert len(items) == 1
-    assert items[0] == event
+    assert items[0] == metadata_ev
 
 
 async def test_get_matches_by_id_only_last(repo, keys):
@@ -134,17 +134,17 @@ async def test_get_matches_by_id_only_last(repo, keys):
     assert items[0] == event2
 
 
-async def test_get_matches_by_id_limit_greater(repo, event, keys):
-    _ = await repo.add(event)
+async def test_get_matches_by_id_limit_greater(repo, metadata_ev, keys):
+    _ = await repo.add(metadata_ev)
 
     items = await repo.get([event_filter.EventFilter(authors=[keys.public], limit=2)])
 
     assert len(items) == 1
-    assert items[0] == event
+    assert items[0] == metadata_ev
 
 
-async def test_get_no_matches_by_etag(repo, event, keys):
-    _ = await repo.add(event)
+async def test_get_no_matches_by_etag(repo, metadata_ev, keys):
+    _ = await repo.add(metadata_ev)
 
     items = await repo.get(
         [event_filter.EventFilter(authors=[keys.public], e_tags=[keys.public])]
@@ -286,8 +286,18 @@ async def test_delete_with_no_entry_raises(repo):
         await repo.remove("foo")
 
 
-async def test_delete_deletes(repo, event):
-    ev_id = await repo.add(event)
+async def test_delete_deletes(repo, metadata_ev):
+    ev_id = await repo.add(metadata_ev)
+    await repo.remove(ev_id)
+    events = await repo.get([event_filter.EventFilter(ids=[ev_id])])
+    assert len(events) == 0
+
+
+async def test_delete_with_tags_deletes(keys, repo):
+    ev = event.RegularEvent.build(
+        keys, kind=10001, tags=event_tags.EventTags([["foo", "bar"]])
+    )
+    ev_id = await repo.add(ev)
     await repo.remove(ev_id)
     events = await repo.get([event_filter.EventFilter(ids=[ev_id])])
     assert len(events) == 0
