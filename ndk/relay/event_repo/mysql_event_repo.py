@@ -60,7 +60,9 @@ EVENT_TAGS_TABLE = sqlalchemy.Table(
     METADATA,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column(
-        "event_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("events.id")
+        "event_id",
+        sqlalchemy.Integer,
+        sqlalchemy.ForeignKey("events.id", ondelete="CASCADE"),
     ),
     sqlalchemy.Column("tag_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("tags.id")),
 )
