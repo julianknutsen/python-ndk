@@ -91,6 +91,7 @@ class AuthHandler:
 
         self._authenticated_pubkey = ev.pubkey
         self._authenticated.set()
+        logger.info("%s authenticated with relay", self._authenticated_pubkey)
 
     def is_authenticated(self):
         return self._authenticated.is_set()
