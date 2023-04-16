@@ -24,7 +24,11 @@ import logging
 import mock
 import pytest
 
+from ndk import crypto
 from ndk.event import event_filter
+
+VALID_PUBKEY = crypto.PublicKeyStr("a" * 64)
+WRONG_PUBKEY = crypto.PublicKeyStr("b" * 64)
 
 
 def test_init():
@@ -420,3 +424,102 @@ def test_filter_with_unknown_event_warns(caplog):
     record = caplog.records[0]
     assert record.levelno == logging.WARNING
     assert "unknown event type: -2" in record.message
+
+
+def test_authenticated_filter_no_entries():
+    f = event_filter.EventFilter(kinds=[4])
+
+    with pytest.raises(
+        PermissionError,
+        match="Cannot query for kind 4 events without a receiver or author",
+    ):
+        event_filter.AuthenticatedEventFilter.from_dict_and_auth_pubkey(
+            f.for_req(), VALID_PUBKEY
+        )
+
+
+def test_authenticated_filter_no_author():
+    f = event_filter.EventFilter(kinds=[4], p_tags=[VALID_PUBKEY])
+    event_filter.AuthenticatedEventFilter.from_dict_and_auth_pubkey(
+        f.for_req(), VALID_PUBKEY
+    )
+
+
+def test_authenticated_filter_no_p_tag():
+    f = event_filter.EventFilter(kinds=[4], authors=[VALID_PUBKEY])
+    event_filter.AuthenticatedEventFilter.from_dict_and_auth_pubkey(
+        f.for_req(), VALID_PUBKEY
+    )
+
+
+def test_authenticated_filter_existing_author_but_wrong():
+    f = event_filter.EventFilter(kinds=[4], authors=[WRONG_PUBKEY])
+
+    with pytest.raises(
+        PermissionError,
+        match="Cannot query for kind 4 events signed by a pubkey other than the auth pubkey",
+    ):
+        event_filter.AuthenticatedEventFilter.from_dict_and_auth_pubkey(
+            f.for_req(), VALID_PUBKEY
+        )
+
+
+def test_authenticated_filter_existing_p_tag_but_wrong():
+    f = event_filter.EventFilter(kinds=[4], p_tags=[WRONG_PUBKEY])
+
+    with pytest.raises(
+        PermissionError,
+        match="Cannot query for kind 4 events with a receiver other than the auth pubkey",
+    ):
+        event_filter.AuthenticatedEventFilter.from_dict_and_auth_pubkey(
+            f.for_req(), VALID_PUBKEY
+        )
+
+
+def test_authenticated_filter_existing_both_wrong():
+    f = event_filter.EventFilter(
+        kinds=[4], authors=[WRONG_PUBKEY], p_tags=[WRONG_PUBKEY]
+    )
+
+    with pytest.raises(
+        PermissionError,
+        match="Cannot query for kind 4 events with a receiver other than the auth pubkey",
+    ):
+        event_filter.AuthenticatedEventFilter.from_dict_and_auth_pubkey(
+            f.for_req(), VALID_PUBKEY
+        )
+
+
+def test_authenticated_filter_multiple_authors():
+    f = event_filter.EventFilter(kinds=[4], authors=[VALID_PUBKEY, WRONG_PUBKEY])
+
+    with pytest.raises(
+        PermissionError,
+        match="Cannot query for kind 4 events signed by a pubkey other than the auth pubkey",
+    ):
+        event_filter.AuthenticatedEventFilter.from_dict_and_auth_pubkey(
+            f.for_req(), VALID_PUBKEY
+        )
+
+
+def test_authenticated_filter_multiple_p_tags():
+    f = event_filter.EventFilter(kinds=[4], p_tags=[VALID_PUBKEY, WRONG_PUBKEY])
+
+    with pytest.raises(
+        PermissionError,
+        match="Cannot query for kind 4 events with a receiver other than the auth pubkey",
+    ):
+        event_filter.AuthenticatedEventFilter.from_dict_and_auth_pubkey(
+            f.for_req(), VALID_PUBKEY
+        )
+
+
+def test_authenticated_filter_none_auth_pubkey():
+    f = event_filter.EventFilter(kinds=[4])
+
+    with pytest.raises(
+        PermissionError, match="Cannot query for kind 4 events without NIP-42 auth"
+    ):
+        event_filter.AuthenticatedEventFilter.from_dict_and_auth_pubkey(
+            f.for_req(), None
+        )

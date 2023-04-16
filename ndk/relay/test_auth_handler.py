@@ -91,3 +91,16 @@ def test_relay_match(one_two):
 def test_relay_not_match(one_two):
     one, two = one_two
     assert not auth_handler.relay_url_match(one, two)
+
+
+def test_authenticated_pubkey_prior_to_auth():
+    h = auth_handler.AuthHandler(VALID_RELAY_URL)
+    assert h.authenticated_pubkey() is None
+
+
+def test_authenticated_pubkey_after_auth(keys):
+    h = auth_handler.AuthHandler(VALID_RELAY_URL)
+    h.handle_auth_event(
+        auth_event.AuthEvent.from_parts(keys, VALID_RELAY_URL, h._challenge)
+    )
+    assert h.authenticated_pubkey() == keys.public

@@ -22,8 +22,10 @@
 import asyncio
 import logging
 import secrets
+import typing
 from urllib.parse import urlparse
 
+from ndk import crypto
 from ndk.event import auth_event
 from ndk.messages import auth
 
@@ -61,6 +63,7 @@ class AuthHandler:
     _authenticated: asyncio.Event
     _challenge: str
     _relay_url: str
+    _authenticated_pubkey: typing.Optional[crypto.PublicKeyStr]
 
     def __init__(self, relay_url, allow_all=False):
         self._authenticated = asyncio.Event()
@@ -68,7 +71,7 @@ class AuthHandler:
             self._authenticated.set()
         self._challenge = secrets.token_hex(16)
         self._relay_url = relay_url
-        logger.info("AuthHandler initialized for url: %s", self._relay_url)
+        self._authenticated_pubkey = None
 
     def build_auth_message(self) -> str:
         return auth.AuthRequest(self._challenge).serialize()
@@ -86,6 +89,7 @@ class AuthHandler:
                 f"AuthEvent challenge does not match expected challenge: {self._challenge} != {ev_challenge}"
             )
 
+        self._authenticated_pubkey = ev.pubkey
         self._authenticated.set()
 
     def is_authenticated(self):
@@ -96,3 +100,6 @@ class AuthHandler:
             await asyncio.wait_for(self._authenticated.wait(), timeout=timeout)
         except asyncio.TimeoutError as exc:
             raise PermissionError("Authentication timed out") from exc
+
+    def authenticated_pubkey(self) -> typing.Optional[crypto.PublicKeyStr]:
+        return self._authenticated_pubkey
