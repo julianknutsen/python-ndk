@@ -18,41 +18,33 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
+# https://github.com/nostr-protocol/nips/blob/master/57.md
+
+import dataclasses
+
+from ndk import types
+from ndk.event import event
 
 
-class FixedLengthHexStr(str):
-    _length: int
+@dataclasses.dataclass
+class ZapReceiptEvent(event.Event):
+    """NIP-57 Zap Receipt Event"""
 
-    def __new__(cls, value: str):
-        cls.validate(value)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-        return super().__new__(cls, value)
-
-    @classmethod
-    def validate(cls, value):
-        if not isinstance(value, str):
-            raise ValueError(f"{cls.__name__} must be a string, not {type(value)}")
-
-        if len(value) != cls._length:
+    def validate(self):
+        if self.kind != types.EventKind.ZAP_RECEIPT:
             raise ValueError(
-                f"{cls.__name__} must be {cls._length} bytes long, not {value}"
+                f"ZapReceiptEvent must have kind {types.EventKind.ZAP_RECEIPT}"
             )
 
-        if not all(c in "0123456789abcdef" for c in value):
-            raise ValueError(f"{cls.__name__} must be a hex string, not {value}")
+        if self.content != "":
+            raise ValueError("ZapReceiptEvent must have empty content")
 
+        for identifier in ["p", "bolt11", "description"]:
+            relay_tag = self.tags.get(identifier)
+            if relay_tag == []:
+                raise ValueError(f"ZapReceiptEvent must have a {identifier} tag")
 
-class EventID(FixedLengthHexStr):
-    _length: int = 64
-
-
-class EventKind:
-    INVALID = -1
-    SET_METADATA = 0
-    TEXT_NOTE = 1
-    RECOMMEND_SERVER = 2
-    CONTACT_LIST = 3
-    REPOST = 6
-    REACTION = 7
-    ZAP_RECEIPT = 9735
-    AUTH = 22242
+        return super().validate()
