@@ -44,7 +44,7 @@ from ndk.relay.event_repo import memory_event_repo
 
 @pytest.fixture
 def auth_hndlr():
-    return mock.Mock()
+    return mock.AsyncMock()
 
 
 @pytest.fixture

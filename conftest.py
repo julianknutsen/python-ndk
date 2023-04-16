@@ -27,6 +27,7 @@ import pytest
 import websockets
 
 from ndk import crypto
+from ndk.event import auth_event
 from ndk.messages import auth, message_factory
 from ndk.relay import (
     auth_handler,
@@ -82,8 +83,13 @@ def db_url(pytestconfig):
 
 
 @pytest.fixture(scope="function")
-async def response_queue():
-    class UnauthResponseQueue(asyncio.Queue):
+async def response_queue(keys, request_queue, pytestconfig):
+    relay_url = pytestconfig.option.relay_url
+
+    if not relay_url:
+        relay_url = "wss://tests"
+
+    class AuthResponseQueue(asyncio.Queue):
         async def get(self):
             data = await super().get()
             try:
@@ -92,11 +98,16 @@ async def response_queue():
                 return data
 
             if isinstance(msg, auth.AuthRequest):
+                challenge_ev = auth_event.AuthEvent.from_parts(
+                    keys, relay_url, msg.challenge
+                )
+                challenge_resp = auth.AuthResponse(challenge_ev)
+                await request_queue.put(challenge_resp.serialize())
                 return await super().get()
             else:
                 return data
 
-    return UnauthResponseQueue()
+    return AuthResponseQueue()
 
 
 @pytest.fixture(scope="function")
@@ -151,8 +162,14 @@ async def remote_relay(ws_handlers):
 async def local_relay(
     response_queue,
     request_queue,
+    pytestconfig,
 ):
-    auth = auth_handler.AuthHandler("wss://tests")
+    relay_url = pytestconfig.option.relay_url
+
+    if not relay_url:
+        relay_url = "wss://tests"
+
+    auth = auth_handler.AuthHandler(relay_url)
     sh = subscription_handler.SubscriptionHandler(response_queue)
     repo = memory_event_repo.MemoryEventRepo()
     ev_notifier = event_notifier.EventNotifier()

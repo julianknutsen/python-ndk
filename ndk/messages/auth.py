@@ -20,6 +20,7 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 
 import dataclasses
+import json
 
 from ndk import serialize
 from ndk.event import auth_event, event_builder
@@ -38,7 +39,7 @@ class Auth(message.ReadableMessage):
             )
         try:
             return AuthResponse.deserialize_list(lst)
-        except ValueError:
+        except json.decoder.JSONDecodeError:
             return AuthRequest.deserialize_list(lst)
 
 

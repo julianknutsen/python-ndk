@@ -19,28 +19,63 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import asyncio
+import logging
 import secrets
+from urllib.parse import urlparse
 
 from ndk.event import auth_event
 from ndk.messages import auth
 
+logger = logging.getLogger(__name__)
+
+
+def normalize_url(url: str) -> str:
+    if not url.startswith("wss://") and not url.startswith("ws://"):
+        url = f"wss://{url}"
+    return url
+
+
+def relay_url_match(one, two) -> bool:
+    if one == two:
+        return True
+
+    one = normalize_url(one)
+    two = normalize_url(two)
+
+    urlparsed_one = urlparse(one)
+    urlparsed_two = urlparse(two)
+
+    assert urlparsed_one.hostname
+    assert urlparsed_two.hostname
+
+    normalized_one = urlparsed_one.hostname.replace("www.", "")
+    normalized_two = urlparsed_two.hostname.replace("www.", "")
+    if normalized_one == normalized_two:
+        return True
+
+    return False
+
 
 class AuthHandler:
-    _authenticated: bool
+    _authenticated: asyncio.Event
     _challenge: str
     _relay_url: str
 
-    def __init__(self, relay_url):
-        self._authenticated = False
+    def __init__(self, relay_url, allow_all=False):
+        self._authenticated = asyncio.Event()
+        if allow_all:
+            self._authenticated.set()
         self._challenge = secrets.token_hex(16)
         self._relay_url = relay_url
+        logger.info("AuthHandler initialized for url: %s", self._relay_url)
 
     def build_auth_message(self) -> str:
         return auth.AuthRequest(self._challenge).serialize()
 
     def handle_auth_event(self, ev: auth_event.AuthEvent):
         ev_relay_url = ev.tags.get("relay")
-        if ev_relay_url[0][1] != self._relay_url:
+        if not relay_url_match(ev_relay_url[0][1], self._relay_url):
             raise ValueError(
                 f"AuthEvent relay does not match expected relay: {self._relay_url} != {ev_relay_url}"
             )
@@ -51,7 +86,13 @@ class AuthHandler:
                 f"AuthEvent challenge does not match expected challenge: {self._challenge} != {ev_challenge}"
             )
 
-        self._authenticated = True
+        self._authenticated.set()
 
     def is_authenticated(self):
-        return self._authenticated
+        return self._authenticated.is_set()
+
+    async def wait_for_authenticated(self, timeout=1):
+        try:
+            await asyncio.wait_for(self._authenticated.wait(), timeout=timeout)
+        except asyncio.TimeoutError as exc:
+            raise PermissionError("Authentication timed out") from exc

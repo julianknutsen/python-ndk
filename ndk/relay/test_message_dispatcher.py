@@ -39,7 +39,7 @@ from ndk.relay.event_repo import memory_event_repo
 
 @pytest.fixture
 def md():
-    auth = auth_handler.AuthHandler("wss://unittests")
+    auth = auth_handler.AuthHandler("wss://unittests", allow_all=True)
     sh = subscription_handler.SubscriptionHandler(asyncio.Queue())
     repo = memory_event_repo.MemoryEventRepo()
     eh = event_handler.EventHandler(repo, event_notifier.EventNotifier())
@@ -89,13 +89,10 @@ async def test_event_missing_required_fields(md):
     assert isinstance(response_msg, notice.Notice)
 
 
-async def test_close_without_req_sends_notice(md):
+async def test_close_without_req_is_allowed(md):
     response = await md.process_message(close.Close("1").serialize())
 
-    assert len(response) == 1
-    response_msg = message_factory.from_str(response[0])
-
-    assert isinstance(response_msg, notice.Notice)
+    assert len(response) == 0
 
 
 async def test_handle_request_no_match(md):

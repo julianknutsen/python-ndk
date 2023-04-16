@@ -39,7 +39,7 @@ from relay import server
 async def test_init():
     rq = asyncio.Queue()
     wq = asyncio.Queue()
-    auth = auth_handler.AuthHandler("wss://relay.example.com")
+    auth = auth_handler.AuthHandler("wss://tests")
     sh = subscription_handler.SubscriptionHandler(wq)
     repo = memory_event_repo.MemoryEventRepo()
     ev_notifier = event_notifier.EventNotifier()
@@ -55,6 +55,7 @@ async def test_init():
     ph = protocol_handler.ProtocolHandler(keys, "wss://tests", wq, rq)
     read_loop_task = asyncio.create_task(ph.start_read_loop())
     ev_repo = relay_event_repo.RelayEventRepo(ph)
+    await wq.join()  # wait for auth to be processed
 
     ev_id = await ev_repo.add(event)
     assert ev_id == event.id
