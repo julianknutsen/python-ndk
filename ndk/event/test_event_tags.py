@@ -93,14 +93,20 @@ def test_init_p_tag_from_pubkey_with_malformed_relay():
         )
 
 
-def test_init_e_tag_bad_length():
+def test_init_e_tag_bad_size():
     with pytest.raises(ValueError):
-        event_tags.EventIdTag(["e", VALID_EVENT_ID_STR, "b", "g"])
+        event_tags.EventIdTag(
+            ["p", VALID_EVENT_ID_STR, "relay_url", "marker", "unknown"]
+        )
 
 
 def test_init_e_tag_bad_start():
     with pytest.raises(ValueError):
         event_tags.EventIdTag(["p", VALID_EVENT_ID_STR])
+
+
+def test_init_e_tag_with_marker():
+    event_tags.EventIdTag(["e", VALID_EVENT_ID_STR, "relay_url", "marker"])
 
 
 def test_init_e_tag_event_id_str():

@@ -71,10 +71,8 @@ class PublicKeyTag(EventTag):
 
 class EventIdTag(EventTag):
     def __init__(self, value: list[str]):
-        if len(value) not in (2, 3):
-            raise ValueError(
-                f"{self.__class__.__name__} must have 2 or 3 items, not {value}"
-            )
+        if len(value) not in (2, 3, 4):
+            raise ValueError(f"{self.__class__.__name__} must have 2-4, not {value}")
 
         if value[0] != "e":
             raise ValueError(
