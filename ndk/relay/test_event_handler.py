@@ -23,7 +23,8 @@
 import mock
 import pytest
 
-from ndk.event import event
+from ndk.event import event, event_tags
+from ndk.event import parameterized_replaceable_event as pre
 from ndk.relay import event_handler, event_notifier
 from ndk.relay.event_repo import memory_event_repo
 
@@ -126,3 +127,125 @@ async def test_insert_callback_after_unregister(real_eh):
     await real_eh.handle_event(ev)
 
     cb.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "tags",
+    [
+        None,
+        event_tags.EventTags([["d", ""]]),
+        event_tags.EventTags([["d", ""], ["d", "not empty"]]),
+        event_tags.EventTags([["d", "", "123"]]),
+    ],
+)
+async def test_handle_parameterized_replaceable_event_behavior_no_tags(
+    tags, keys, repo, notifier, eh
+):
+    existing_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=1
+    )
+    await repo.add(existing_ev)
+    repo.reset_mock()
+
+    newer_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=2, tags=tags
+    )
+    await eh.handle_event(newer_ev)
+
+    repo.add.assert_called_once_with(newer_ev)
+    repo.remove.assert_called_once_with(existing_ev.id)
+    notifier.handle_event.assert_called_once_with(newer_ev)
+
+
+@pytest.mark.parametrize(
+    "tags",
+    [
+        None,
+        event_tags.EventTags([["d", ""]]),
+        event_tags.EventTags([["d", ""], ["d", "not empty"]]),
+        event_tags.EventTags([["d", "", "123"]]),
+    ],
+)
+async def test_handle_parameterized_replaceable_event_behavior_empty_d(
+    tags, keys, repo, notifier, eh
+):
+    existing_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=1, tags=event_tags.EventTags([["d", ""]])
+    )
+    await repo.add(existing_ev)
+    repo.reset_mock()
+
+    newer_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=2, tags=tags
+    )
+    await eh.handle_event(newer_ev)
+
+    repo.add.assert_called_once_with(newer_ev)
+    repo.remove.assert_called_once_with(existing_ev.id)
+    notifier.handle_event.assert_called_once_with(newer_ev)
+
+
+async def test_handle_parameterized_replaceable_event_behavior_empty_d_not_replaced(
+    keys, repo, notifier, eh
+):
+    existing_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=1
+    )
+    await repo.add(existing_ev)
+    repo.reset_mock()
+
+    newer_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=2, tags=event_tags.EventTags([["d", "foo"]])
+    )
+    await eh.handle_event(newer_ev)
+
+    repo.add.assert_called_once_with(newer_ev)
+    repo.remove.assert_not_called()
+    notifier.handle_event.assert_called_once_with(newer_ev)
+
+
+@pytest.mark.parametrize(
+    "tags",
+    [
+        None,
+        event_tags.EventTags([["d", ""]]),
+        event_tags.EventTags([["d", ""], ["d", "not empty"]]),
+        event_tags.EventTags([["d", "", "123"]]),
+    ],
+)
+async def test_handle_parameterized_replaceable_event_behavior_not_replaced(
+    tags, keys, repo, notifier, eh
+):
+    existing_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=1, tags=event_tags.EventTags([["d", "foo"]])
+    )
+    await repo.add(existing_ev)
+    repo.reset_mock()
+
+    newer_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=2, tags=tags
+    )
+    await eh.handle_event(newer_ev)
+
+    repo.add.assert_called_once_with(newer_ev)
+    repo.remove.assert_not_called()
+    notifier.handle_event.assert_called_once_with(newer_ev)
+
+
+async def test_handle_parameterized_replaceable_event_behavior_valid_d_replaced(
+    keys, repo, notifier, eh
+):
+    existing_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=1, tags=event_tags.EventTags([["d", "foo"]])
+    )
+    await repo.add(existing_ev)
+    repo.reset_mock()
+
+    newer_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=2, tags=event_tags.EventTags([["d", "foo"]])
+    )
+    await eh.handle_event(newer_ev)
+
+    repo.add.assert_called_once_with(newer_ev)
+    repo.remove.assert_called_once_with(existing_ev.id)
+    notifier.handle_event.assert_called_once_with(newer_ev)

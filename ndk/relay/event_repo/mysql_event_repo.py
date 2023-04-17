@@ -238,11 +238,9 @@ class MySqlEventRepo(event_repo.EventRepo):
             if f.kinds:
                 conditions.append(EVENTS_TABLE.c.kind.in_(f.kinds))
 
-            if f.e_tags:
-                conditions.append(self.tag_query_from("e", f.e_tags))
-
-            if f.p_tags:
-                conditions.append(self.tag_query_from("p", f.p_tags))
+            if f.generic_tags:
+                for k, v in f.generic_tags.items():
+                    conditions.append(self.tag_query_from(k, v))
 
             if f.since:
                 conditions.append(EVENTS_TABLE.c.created_at > f.since)  # type: ignore[arg-type]

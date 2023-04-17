@@ -147,7 +147,11 @@ async def test_get_no_matches_by_etag(repo, metadata_ev, keys):
     _ = await repo.add(metadata_ev)
 
     items = await repo.get(
-        [event_filter.EventFilter(authors=[keys.public], e_tags=[keys.public])]
+        [
+            event_filter.EventFilter(
+                authors=[keys.public], generic_tags={"e": [keys.public]}
+            )
+        ]
     )
 
     assert len(items) == 0
@@ -168,7 +172,11 @@ async def test_matches_by_etag(repo, keys):
     _ = await repo.add(event)
 
     items = await repo.get(
-        [event_filter.EventFilter(authors=[keys.public], e_tags=[keys.public])]
+        [
+            event_filter.EventFilter(
+                authors=[keys.public], generic_tags={"e": [keys.public]}
+            )
+        ]
     )
 
     assert len(items) == 1
@@ -181,7 +189,11 @@ async def test_matches_by_etag_duplicated(repo, keys):
     _ = await repo.add(event)
 
     items = await repo.get(
-        [event_filter.EventFilter(authors=[keys.public], e_tags=[keys.public])]
+        [
+            event_filter.EventFilter(
+                authors=[keys.public], generic_tags={"e": [keys.public]}
+            )
+        ]
     )
 
     assert len(items) == 1
@@ -194,10 +206,18 @@ async def test_matches_by_etag_event_has_multiple_tags(repo, keys):
     _ = await repo.add(event)
 
     items1 = await repo.get(
-        [event_filter.EventFilter(authors=[keys.public], e_tags=[keys.public])]
+        [
+            event_filter.EventFilter(
+                authors=[keys.public], generic_tags={"e": [keys.public]}
+            )
+        ]
     )
     items2 = await repo.get(
-        [event_filter.EventFilter(authors=[keys.public], p_tags=[keys.public])]
+        [
+            event_filter.EventFilter(
+                authors=[keys.public], generic_tags={"p": [keys.public]}
+            )
+        ]
     )
 
     assert len(items1) == 1
@@ -212,7 +232,11 @@ async def test_get_no_matches_by_ptag(repo, keys):
     _ = await repo.add(event)
 
     items = await repo.get(
-        [event_filter.EventFilter(authors=[keys.public], p_tags=[keys.public])]
+        [
+            event_filter.EventFilter(
+                authors=[keys.public], generic_tags={"p": [keys.public]}
+            )
+        ]
     )
 
     assert len(items) == 0
@@ -224,7 +248,11 @@ async def test_matches_by_ptag(repo, keys):
     _ = await repo.add(event)
 
     items = await repo.get(
-        [event_filter.EventFilter(authors=[keys.public], p_tags=[keys.public])]
+        [
+            event_filter.EventFilter(
+                authors=[keys.public], generic_tags={"p": [keys.public]}
+            )
+        ]
     )
 
     assert len(items) == 1
@@ -237,7 +265,11 @@ async def test_matches_by_ptag_with_relay(repo, keys):
     _ = await repo.add(event)
 
     items = await repo.get(
-        [event_filter.EventFilter(authors=[keys.public], p_tags=[keys.public])]
+        [
+            event_filter.EventFilter(
+                authors=[keys.public], generic_tags={"p": [keys.public]}
+            )
+        ]
     )
 
     assert len(items) == 1
@@ -255,7 +287,7 @@ async def test_matches_by_ptags(repo, keys):
     items = await repo.get(
         [
             event_filter.EventFilter(
-                authors=[keys.public], p_tags=[keys.public, keys2.public]
+                authors=[keys.public], generic_tags={"p": [keys.public, keys2.public]}
             )
         ]
     )
@@ -279,6 +311,20 @@ async def test_matches_multiple_filters_or(repo, keys):
     )
 
     assert len(items) == 2
+
+
+async def test_multiple_filters_match_same_event_returns_one(repo, keys):
+    event = build_text_note(keys)
+    _ = await repo.add(event)
+
+    items = await repo.get(
+        [
+            event_filter.EventFilter(authors=[keys.public]),
+            event_filter.EventFilter(authors=[keys.public]),
+        ]
+    )
+
+    assert len(items) == 1
 
 
 async def test_delete_with_no_entry_raises(repo):

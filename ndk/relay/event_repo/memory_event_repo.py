@@ -19,6 +19,8 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import collections
+
 from ndk import types
 from ndk.event import event, event_filter
 from ndk.relay.event_repo import event_repo
@@ -36,7 +38,9 @@ class MemoryEventRepo(event_repo.EventRepo):
         return ev.id
 
     async def get(self, fltrs: list[event_filter.EventFilter]) -> list[event.Event]:
-        fetched: list[event.Event] = []
+        fetched: collections.OrderedDict[
+            types.EventID, event.Event
+        ] = collections.OrderedDict()
 
         for fltr in fltrs:
             tmp = [
@@ -48,9 +52,11 @@ class MemoryEventRepo(event_repo.EventRepo):
             if fltr.limit is not None:
                 tmp = tmp[-fltr.limit :]
 
-            fetched.extend(tmp)
+            for ev in tmp:
+                if ev.id not in fetched:
+                    fetched[ev.id] = ev
 
-        return sorted(fetched, key=lambda ev: ev.created_at, reverse=True)
+        return sorted(fetched.values(), key=lambda ev: ev.created_at, reverse=True)
 
     async def remove(self, event_id: types.EventID):
         if event_id not in self._stored_events:
