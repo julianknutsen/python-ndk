@@ -53,16 +53,13 @@ def test_init_bad_type_kinds(kinds):
         event_filter.EventFilter(kinds=kinds)  # type: ignore
 
 
-@pytest.mark.parametrize("e_tags", ["1", [1]])
-def test_init_bad_type_e_tags(e_tags):
+@pytest.mark.parametrize(
+    "generic_tags",
+    ["1", [1], {"ab": "foo"}, {"a": 1}, {1: []}, {"d": [1, 2, 3]}, {"$": ["valid"]}],
+)
+def test_init_bad_type_generic_tags(generic_tags):
     with pytest.raises(ValueError):
-        event_filter.EventFilter(e_tags=e_tags)  # type: ignore
-
-
-@pytest.mark.parametrize("p_tags", ["1", [1]])
-def test_init_bad_type_p_tags(p_tags):
-    with pytest.raises(ValueError):
-        event_filter.EventFilter(p_tags=p_tags)  # type: ignore
+        event_filter.EventFilter(generic_tags=generic_tags)  # type: ignore
 
 
 @pytest.mark.parametrize("since", [-1, "1"])
@@ -210,7 +207,7 @@ def test_matches_event_kinds_many():
 
 
 def test_matches_event_tags_empty_list_matches_all():
-    f = event_filter.EventFilter(e_tags=[])
+    f = event_filter.EventFilter(generic_tags={"e": []})
 
     mock_ev = mock.MagicMock()
     mock_ev.tags = [["e", "eventid"]]
@@ -221,7 +218,7 @@ def test_matches_event_tags_empty_list_matches_all():
 
 
 def test_matches_event_tags_exist_doesnt_match_empty():
-    f = event_filter.EventFilter(authors=["author"], p_tags=["author"])
+    f = event_filter.EventFilter(authors=["author"], generic_tags={"e": ["author"]})
 
     mock_ev = mock.MagicMock()
     mock_ev.pubkey = "author"
@@ -230,7 +227,7 @@ def test_matches_event_tags_exist_doesnt_match_empty():
 
 
 def test_matches_event_tags():
-    f = event_filter.EventFilter(e_tags=["eventid"])
+    f = event_filter.EventFilter(generic_tags={"e": ["eventid"]})
 
     mock_ev = mock.MagicMock()
 
@@ -245,7 +242,7 @@ def test_matches_event_tags():
 
 
 def test_matches_event_tags_many():
-    f = event_filter.EventFilter(e_tags=["eventid", "eventid2"])
+    f = event_filter.EventFilter(generic_tags={"e": ["eventid", "eventid2"]})
 
     mock_ev = mock.MagicMock()
     mock_ev.tags = [["e", "eventid"]]
@@ -259,26 +256,34 @@ def test_matches_event_tags_many():
 
 
 def test_matches_event_tags_many_in_event():
-    f = event_filter.EventFilter(e_tags=["eventid"])
+    f = event_filter.EventFilter(generic_tags={"e": ["eventid"]})
 
     mock_ev = mock.MagicMock()
     mock_ev.tags = [["e", "eventid"], ["e", "eventid2"]]
     assert f.matches_event(mock_ev)
 
-    f = event_filter.EventFilter(e_tags=["eventid2"])
+    f = event_filter.EventFilter(generic_tags={"e": ["eventid2"]})
     assert f.matches_event(mock_ev)
 
 
 def test_matches_event_tags_unknown_identifier_ignored():
-    f = event_filter.EventFilter(e_tags=["eventid"])
+    f = event_filter.EventFilter(generic_tags={"e": ["eventid"]})
 
     mock_ev = mock.MagicMock()
     mock_ev.tags = [["e", "eventid"], ["f", "unknown tag"]]
     assert f.matches_event(mock_ev)
 
 
+def test_matches_event_tags_nonalpha_generic_ignored():
+    f = event_filter.EventFilter(generic_tags={"e": ["eventid"]})
+
+    mock_ev = mock.MagicMock()
+    mock_ev.tags = [["fo", "eventid"]]
+    assert not f.matches_event(mock_ev)
+
+
 def test_matches_pubkey_tags_empty_list_matches_all():
-    f = event_filter.EventFilter(p_tags=["matches"])
+    f = event_filter.EventFilter(generic_tags={"p": ["matches"]})
 
     mock_ev = mock.MagicMock()
     mock_ev.tags = [["p", "matches"]]
@@ -286,62 +291,6 @@ def test_matches_pubkey_tags_empty_list_matches_all():
 
     mock_ev.tags = [["p", "notmatches"]]
     assert not f.matches_event(mock_ev)
-
-
-def test_matches_pubkey_tags():
-    f = event_filter.EventFilter(p_tags=["matches"])
-
-    mock_ev = mock.MagicMock()
-    mock_ev.tags = [["p", "matches"]]
-    assert f.matches_event(mock_ev)
-
-    mock_ev.tags = [["p", "notmatches"]]
-    assert not f.matches_event(mock_ev)
-
-    mock_ev.tags = [["e", "othereventid"]]
-    assert not f.matches_event(mock_ev)
-
-
-def test_matches_pubkey_tags_many():
-    f = event_filter.EventFilter(p_tags=["matches", "matches2"])
-
-    mock_ev = mock.MagicMock()
-    mock_ev.tags = [["p", "matches"]]
-    assert f.matches_event(mock_ev)
-
-    mock_ev.tags = [["p", "matches2"]]
-    assert f.matches_event(mock_ev)
-
-    mock_ev.tags = [["p", "notmatches"]]
-    assert not f.matches_event(mock_ev)
-
-
-def test_matches_pubkey_tags_many_in_event():
-    f = event_filter.EventFilter(p_tags=["matches"])
-
-    mock_ev = mock.MagicMock()
-    mock_ev.tags = [["p", "matches"], ["p", "matches2"]]
-    assert f.matches_event(mock_ev)
-
-    f = event_filter.EventFilter(p_tags=["matches"])
-    assert f.matches_event(mock_ev)
-
-    f = event_filter.EventFilter(p_tags=["matches2"])
-    assert f.matches_event(mock_ev)
-
-
-def test_matches_event_and_pubkey_tags():
-    f = event_filter.EventFilter(p_tags=["matches"], e_tags=["eventid"])
-
-    mock_ev = mock.MagicMock()
-    mock_ev.tags = [["p", "matches"]]
-    assert not f.matches_event(mock_ev)
-
-    mock_ev.tags = [["e", "eventid"]]
-    assert not f.matches_event(mock_ev)
-
-    mock_ev.tags = [["p", "matches"], ["e", "eventid"]]
-    assert f.matches_event(mock_ev)
 
 
 def test_matches_since_earlier():
@@ -399,9 +348,17 @@ def test_to_req():
 
 def test_to_req_tags():
     f = event_filter.EventFilter(
-        e_tags=["eventid", "eventid2"], p_tags=["pubkey", "pubkey2"]
+        generic_tags={"e": ["eventid", "eventid2"], "p": ["pubkey", "pubkey2"]}
     )
+
     assert f.for_req() == {"#e": ["eventid", "eventid2"], "#p": ["pubkey", "pubkey2"]}
+
+
+def test_from_dict_nonalpha_generic_ignored():
+    d = {"#as": ["eventid"], "#p": ["pubkey", "pubkey2"]}
+    f = event_filter.EventFilter.from_dict(d)
+
+    assert f.for_req() == {"#p": ["pubkey", "pubkey2"]}
 
 
 @pytest.mark.parametrize(
@@ -410,11 +367,11 @@ def test_to_req_tags():
         ("ids", []),
         ("authors", []),
         ("kinds", []),
-        ("e_tags", []),
-        ("p_tags", []),
+        ("generic_tags", {}),
+        ("generic_tags", {"d": []}),
     ],
 )
-def test_to_req_empty_list_excluded(field, value):
+def test_to_req_empty_obj_excluded(field, value):
     f = event_filter.EventFilter(**{field: value})
     assert not f.for_req()
 
@@ -439,7 +396,7 @@ def test_authenticated_filter_no_entries():
 
 
 def test_authenticated_filter_no_author():
-    f = event_filter.EventFilter(kinds=[4], p_tags=[VALID_PUBKEY])
+    f = event_filter.EventFilter(kinds=[4], generic_tags={"p": [VALID_PUBKEY]})
     event_filter.AuthenticatedEventFilter.from_dict_and_auth_pubkey(
         f.for_req(), VALID_PUBKEY
     )
@@ -465,7 +422,7 @@ def test_authenticated_filter_existing_author_but_wrong():
 
 
 def test_authenticated_filter_existing_p_tag_but_wrong():
-    f = event_filter.EventFilter(kinds=[4], p_tags=[WRONG_PUBKEY])
+    f = event_filter.EventFilter(kinds=[4], generic_tags={"p": [WRONG_PUBKEY]})
 
     with pytest.raises(
         PermissionError,
@@ -478,7 +435,7 @@ def test_authenticated_filter_existing_p_tag_but_wrong():
 
 def test_authenticated_filter_existing_both_wrong():
     f = event_filter.EventFilter(
-        kinds=[4], authors=[WRONG_PUBKEY], p_tags=[WRONG_PUBKEY]
+        kinds=[4], authors=[WRONG_PUBKEY], generic_tags={"p": [WRONG_PUBKEY]}
     )
 
     with pytest.raises(
@@ -503,7 +460,9 @@ def test_authenticated_filter_multiple_authors():
 
 
 def test_authenticated_filter_multiple_p_tags():
-    f = event_filter.EventFilter(kinds=[4], p_tags=[VALID_PUBKEY, WRONG_PUBKEY])
+    f = event_filter.EventFilter(
+        kinds=[4], generic_tags={"p": [VALID_PUBKEY, WRONG_PUBKEY]}
+    )
 
     with pytest.raises(
         PermissionError,

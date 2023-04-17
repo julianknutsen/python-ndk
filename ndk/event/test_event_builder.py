@@ -24,6 +24,7 @@ import pytest
 
 from ndk import crypto, exceptions, types
 from ndk.event import event, event_builder, metadata_event
+from ndk.event import parameterized_replaceable_event as pre
 
 
 @pytest.fixture
@@ -148,3 +149,14 @@ def test_ephemeral_event():
 
     reconstructed_event = event_builder.from_dict(ev.__dict__)
     assert isinstance(reconstructed_event, event.EphemeralEvent)
+
+
+def test_parameterized_replaceable_event():
+    ev = event.Event.build(
+        keys=crypto.KeyPair(),
+        kind=30000,
+        content="special state",
+    )
+
+    reconstructed_event = event_builder.from_dict(ev.__dict__)
+    assert isinstance(reconstructed_event, pre.ParameterizedReplaceableEvent)

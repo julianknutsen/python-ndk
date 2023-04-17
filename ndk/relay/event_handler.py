@@ -21,6 +21,7 @@
 
 
 from ndk.event import event, event_filter
+from ndk.event import parameterized_replaceable_event as pre
 from ndk.relay import event_notifier
 from ndk.relay.event_repo import event_repo
 
@@ -42,9 +43,41 @@ class EventHandler:
             await self._repo.add(ev)
 
         if isinstance(ev, event.SingletonEvent):
-            existing_evs = await self._repo.get(
-                [event_filter.EventFilter(authors=[ev.pubkey], kinds=[ev.kind])]
-            )
+            if isinstance(ev, event.ReplaceableEvent):
+                existing_evs = await self._repo.get(
+                    [event_filter.EventFilter(authors=[ev.pubkey], kinds=[ev.kind])]
+                )
+
+            else:
+                assert isinstance(ev, pre.ParameterizedReplaceableEvent)
+                fltrs = []
+                existing_evs = []
+                normalized_d_tag = ev.get_normalized_d_tag_value()
+                if normalized_d_tag is None:
+                    # search for ["d", ""], or no tag at all, per NIP-33
+                    fltrs.append(
+                        event_filter.EventFilter(authors=[ev.pubkey], kinds=[ev.kind])
+                    )
+
+                    # query language has no way to search for "no tag" so need to check them all
+                    existing_evs = await self._repo.get(fltrs)
+                    existing_evs = [
+                        ev
+                        for ev in existing_evs
+                        if len(ev.tags) == 0
+                        or (ev.tags[0][0] == "d" and ev.tags[0][1] == "")
+                    ]
+                else:
+                    fltrs.append(
+                        event_filter.EventFilter(
+                            authors=[ev.pubkey],
+                            kinds=[ev.kind],
+                            generic_tags={"d": [normalized_d_tag]},
+                        )
+                    )
+
+                    existing_evs = await self._repo.get(fltrs)
+
             for e in existing_evs[1:]:  # first entry (latest) is the one we just added
                 await self._repo.remove(e.id)
 

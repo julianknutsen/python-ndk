@@ -22,6 +22,7 @@
 import collections
 import dataclasses
 import logging
+import string
 import typing
 
 from ndk import crypto, types
@@ -45,8 +46,7 @@ class EventFilter:
     ids: typing.Optional[list[str]] = None
     authors: typing.Optional[list[str]] = None
     kinds: typing.Optional[list[int]] = None
-    e_tags: typing.Optional[list[str]] = None
-    p_tags: typing.Optional[list[str]] = None
+    generic_tags: typing.Optional[dict[str, list[str]]] = None
     since: typing.Optional[int] = None
     until: typing.Optional[int] = None
     limit: typing.Optional[int] = None
@@ -77,12 +77,29 @@ class EventFilter:
         if self.kinds is not None:
             self.check_list("kinds", int)
             self.set_falsy_to_none("kinds")
-        if self.e_tags is not None:
-            self.check_list("e_tags", str)
-            self.set_falsy_to_none("e_tags")
-        if self.p_tags is not None:
-            self.check_list("p_tags", str)
-            self.set_falsy_to_none("p_tags")
+        if self.generic_tags is not None:
+            if not isinstance(self.generic_tags, dict):
+                raise ValueError("generic_tags must be a dict")
+            for k, v in self.generic_tags.items():
+                if not isinstance(k, str):
+                    raise ValueError("generic_tags keys must be strings")
+                if len(k) != 1 or k not in string.ascii_letters:
+                    raise ValueError("generic_tags keys must be a single letter")
+                if not isinstance(v, list):
+                    raise ValueError("generic_tags values must be lists")
+                for i in v:
+                    if not isinstance(i, str):
+                        raise ValueError("generic_tags list values must be strings")
+
+            # Remove all empty lists from generic_tags
+            to_del = []
+            for k, v in self.generic_tags.items():
+                if len(v) == 0:
+                    to_del.append(k)
+            for k in to_del:
+                del self.generic_tags[k]
+
+            self.set_falsy_to_none("generic_tags")
         if self.since is not None:
             self.check_value("since", int)
             if self.since < 0:
@@ -107,10 +124,9 @@ class EventFilter:
         d = {}
         for k, v in self.__dict__.items():
             if v is not None:
-                if k == "e_tags":
-                    d["#e"] = v
-                elif k == "p_tags":
-                    d["#p"] = v
+                if k == "generic_tags":
+                    for k2, v2 in v.items():
+                        d[f"#{k2}"] = v2
                 else:
                     d[k] = v
         return d
@@ -125,28 +141,24 @@ class EventFilter:
         if self.kinds and ev.kind not in self.kinds:
             return False
 
-        if self.e_tags or self.p_tags:
+        if self.generic_tags:
             if not ev.tags:
+                # no tags in ev, but filter requires them
                 return False
 
-        ev_tags = collections.defaultdict(list)
-        for tag in ev.tags:
-            if tag[0] == "e":
-                ev_tags["e"].append(tag[1])
-            elif tag[0] == "p":
-                ev_tags["p"].append(tag[1])
+            ev_tags = collections.defaultdict(list)
+            for tag in ev.tags:
+                # allow generic queries for all `#[alpha]` based on NIP-12
+                if tag[0] in string.ascii_letters:
+                    ev_tags[tag[0]].append(tag[1])
 
-        if self.e_tags:
-            if "e" not in ev_tags:
-                return False
-            elif not any(t in ev_tags["e"] for t in self.e_tags):
-                return False
-
-        if self.p_tags:
-            if "p" not in ev_tags:
-                return False
-            elif not any(t in ev_tags["p"] for t in self.p_tags):
-                return False
+            for identifier, lst in self.generic_tags.items():
+                if identifier not in ev_tags:
+                    # identifier required in filter, but event has no tags w/ identifier
+                    return False
+                elif not any(val in ev_tags[identifier] for val in lst):
+                    # ev has required identifier, but values in filter don't match ev values
+                    return False
 
         if self.until and ev.created_at >= self.until:
             return False
@@ -158,12 +170,17 @@ class EventFilter:
 
     @classmethod
     def from_dict(cls, d: dict) -> "EventFilter":
+        generic_tag_queries = {}
+        for c in string.ascii_lowercase:
+            key = f"#{c}"
+            if key in d:
+                generic_tag_queries[c] = d[key]
+
         return EventFilter(
             ids=d.get("ids"),
             authors=d.get("authors"),
             kinds=d.get("kinds"),
-            e_tags=d.get("#e"),
-            p_tags=d.get("#p"),
+            generic_tags=generic_tag_queries,
             since=d.get("since"),
             until=d.get("until"),
             limit=d.get("limit"),
@@ -186,13 +203,20 @@ class AuthenticatedEventFilter(EventFilter):
                     "Cannot query for kind 4 events without NIP-42 auth"
                 )
 
-            if not fltr.p_tags and not fltr.authors:
+            # p tag or author must be set
+            if (
+                not fltr.generic_tags or "p" not in fltr.generic_tags
+            ) and not fltr.authors:
                 raise PermissionError(
                     "Cannot query for kind 4 events without a receiver or author"
                 )
 
             # receiver can be the auth pubkey
-            if fltr.p_tags and fltr.p_tags != [auth_pubkey]:
+            if (
+                fltr.generic_tags
+                and "p" in fltr.generic_tags
+                and fltr.generic_tags["p"] != [auth_pubkey]
+            ):
                 raise PermissionError(
                     "Cannot query for kind 4 events with a receiver other than the auth pubkey"
                 )

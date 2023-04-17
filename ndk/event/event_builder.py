@@ -23,12 +23,9 @@ import logging
 import typing
 
 from ndk import crypto, types
+from ndk.event import auth_event, contact_list_event, event, event_tags, metadata_event
+from ndk.event import parameterized_replaceable_event as pre
 from ndk.event import (
-    auth_event,
-    contact_list_event,
-    event,
-    event_tags,
-    metadata_event,
     reaction_event,
     recommend_server_event,
     repost_event,
@@ -69,6 +66,9 @@ def from_dict(fields: dict, skip_validate=False):
     elif 20000 <= kind < 30000:
         builder = event.EphemeralEvent
         logger.warning("Handling unspecified EphemeralEvent: %s", fields)
+    elif 30000 <= kind < 40000:
+        builder = pre.ParameterizedReplaceableEvent
+        logger.warning("Handling unspecified ParameterizedReplaceableEvent: %s", fields)
     else:
         raise ValueError(f"Invalid event kind {kind}")
 

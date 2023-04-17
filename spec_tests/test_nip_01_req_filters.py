@@ -348,6 +348,26 @@ async def test_text_note_find_by_tag_etag(request_queue, response_queue, keys, e
 
 
 @pytest.mark.usefixtures("ctx")
+async def test_text_note_find_by_other_generic_tag(
+    request_queue, response_queue, keys, event
+):
+    cmd_result = await utils.send_and_expect_command_result(
+        event, request_queue, response_queue
+    )
+
+    event2 = build_with_tags(keys, tags=[["d", cmd_result.event_id]])
+
+    await utils.send_and_expect_command_result(event2, request_queue, response_queue)
+
+    fltr = {"authors": [event.pubkey], "#d": [event.id]}
+
+    await utils.send_req_with_filter("1", [fltr], request_queue)
+    relay_event = await utils.expect_text_note_event(response_queue)
+    assert relay_event == event2
+    await utils.expect_eose(response_queue)
+
+
+@pytest.mark.usefixtures("ctx")
 async def test_text_note_find_by_tag_etag_and_ptag(
     request_queue, response_queue, keys, event
 ):
