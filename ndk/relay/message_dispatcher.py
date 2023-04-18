@@ -72,8 +72,8 @@ class MessageDispatcher:
             text = f"Unable to parse message: {data}"
             logger.info(text, exc_info=True)
             return [create_notice(text)]
-        except PermissionError:
-            text = f"restricted: action requires NIP-42 authentication: {data}"
+        except PermissionError as exc:
+            text = f"restricted: action requires NIP-42 authentication: {exc.args[0]} {data}"
             logger.info(text)
             return [create_notice(text)]
 
