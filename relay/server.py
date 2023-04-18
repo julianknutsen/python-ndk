@@ -103,7 +103,13 @@ async def handler_wrapper(
             cfg.limitations.max_event_tags, cfg.limitations.max_content_length
         ),
     )
-    mh = message_handler.MessageHandler(auth, repo, sh, eh)
+    mh = message_handler.MessageHandler(
+        auth,
+        repo,
+        sh,
+        eh,
+        message_handler.MessageHandlerConfig(cfg.limitations.max_filters),
+    )
     md = message_dispatcher.MessageDispatcher(mh)
     eh.register_received_cb(sh.handle_event)
     await response_queue.put(auth.build_auth_message())

@@ -28,7 +28,7 @@ import requests
 
 from ndk import serialize
 from ndk.event import event, event_tags
-from ndk.messages import command_result, event_message, message_factory, notice
+from ndk.messages import command_result, event_message, message_factory, notice, request
 
 
 @pytest.fixture
@@ -141,5 +141,18 @@ async def test_message_over_configured_length_errors(
     )
 
     await request_queue.put(event_message.Event.from_event(ev).serialize())
+    msg = message_factory.from_str(await response_queue.get())
+    assert isinstance(msg, notice.Notice)
+
+
+async def test_request_too_many_filters_errors(
+    relay_info, keys, request_queue, response_queue
+):
+    skip_if_no_field(relay_info, "limitation", "max_filters")
+
+    max_supported_size = relay_info["limitation"]["max_filters"]
+    req = request.Request("1", [{} for _ in range(max_supported_size + 1)])
+
+    await request_queue.put(req.serialize())
     msg = message_factory.from_str(await response_queue.get())
     assert isinstance(msg, notice.Notice)

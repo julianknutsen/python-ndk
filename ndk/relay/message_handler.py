@@ -19,6 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import dataclasses
 import functools
 import logging
 
@@ -30,6 +31,7 @@ from ndk.messages import (
     command_result,
     eose,
     event_message,
+    notice,
     relay_event,
     request,
 )
@@ -37,6 +39,11 @@ from ndk.relay import auth_handler, event_handler, subscription_handler
 from ndk.relay.event_repo import event_repo
 
 logger = logging.getLogger(__name__)
+
+
+@dataclasses.dataclass
+class MessageHandlerConfig:
+    max_filters: int = 100
 
 
 # Race condition between handling AUTH and handling first message. This decorator
@@ -60,9 +67,10 @@ def authentication_retry():
 
 class MessageHandler:
     _auth: auth_handler.AuthHandler
+    _cfg: MessageHandlerConfig
+    _event_handler: event_handler.EventHandler
     _repo: event_repo.EventRepo
     _subscription_handler: subscription_handler.SubscriptionHandler
-    _event_handler: event_handler.EventHandler
 
     def __init__(
         self,
@@ -70,11 +78,13 @@ class MessageHandler:
         repo: event_repo.EventRepo,
         sh: subscription_handler.SubscriptionHandler,
         eh: event_handler.EventHandler,
+        cfg: MessageHandlerConfig = MessageHandlerConfig(),
     ):
         self._auth = auth_hndlr
+        self._cfg = cfg
+        self._event_handler = eh
         self._repo = repo
         self._subscription_handler = sh
-        self._event_handler = eh
 
     async def handle_event_message(self, msg: event_message.Event) -> list[str]:
         try:
@@ -93,6 +103,13 @@ class MessageHandler:
 
     @authentication_retry()
     async def handle_request(self, msg: request.Request) -> list[str]:
+        if len(msg.filter_list) > self._cfg.max_filters:
+            return [
+                notice.Notice(
+                    f"Relay does not support more than {self._cfg.max_filters} filters."
+                ).serialize()
+            ]
+
         fltrs = [
             event_filter.AuthenticatedEventFilter.from_dict_and_auth_pubkey(
                 fltr, self._auth.authenticated_pubkey()

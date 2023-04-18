@@ -31,6 +31,7 @@ from ndk.messages import (
     command_result,
     event_message,
     message_factory,
+    notice,
     request,
 )
 from ndk.relay import (
@@ -156,3 +157,27 @@ async def test_handle_auth_response(auth_hndlr, mh):
     await mh.handle_auth_response(msg)
 
     auth_hndlr.handle_auth_event.assert_called_once_with(ev)
+
+
+async def test_handle_too_many_filters_default(mh):
+    response = await mh.handle_request(request.Request("sub", [{} for _ in range(101)]))
+
+    assert len(response) == 1
+    response_msg = message_factory.from_str(response[0])
+
+    assert isinstance(response_msg, notice.Notice)
+    assert "more than 100 filters" in response_msg.message
+
+
+async def test_handle_too_many_filters_override(auth_hndlr, repo, sh_mock, eh_mock):
+    mh = message_handler.MessageHandler(
+        auth_hndlr, repo, sh_mock, eh_mock, message_handler.MessageHandlerConfig(0)
+    )
+
+    response = await mh.handle_request(request.Request("sub", [{} for _ in range(101)]))
+
+    assert len(response) == 1
+    response_msg = message_factory.from_str(response[0])
+
+    assert isinstance(response_msg, notice.Notice)
+    assert "more than 0 filters" in response_msg.message
