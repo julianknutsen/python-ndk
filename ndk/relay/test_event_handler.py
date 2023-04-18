@@ -23,6 +23,7 @@
 import mock
 import pytest
 
+from ndk import exceptions
 from ndk.event import event, event_tags
 from ndk.event import parameterized_replaceable_event as pre
 from ndk.relay import event_handler, event_notifier
@@ -56,7 +57,7 @@ def test_init(repo, notifier, eh):
 
 
 async def test_handle_regular_event_behavior(repo, notifier, eh):
-    ev = mock.MagicMock(spec=event.RegularEvent, id="1")
+    ev = mock.MagicMock(spec=event.RegularEvent, id="1", content="")
     await eh.handle_event(ev)
 
     repo.add.assert_called_once_with(ev)
@@ -64,15 +65,42 @@ async def test_handle_regular_event_behavior(repo, notifier, eh):
     notifier.handle_event.assert_called_once_with(ev)
 
 
+async def test_over_default_content_length(eh):
+    ev = mock.MagicMock(spec=event.RegularEvent, id="1", content="a" * 8197)
+    with pytest.raises(exceptions.ValidationError, match="greater than 8196 bytes"):
+        await eh.handle_event(ev)
+
+
+async def test_over_overridden_content_length():
+    repo = memory_event_repo.MemoryEventRepo()
+    notifier = event_notifier.EventNotifier()
+    eh = event_handler.EventHandler(repo, notifier, event_handler.EventHandlerConfig(0))
+    ev = mock.MagicMock(spec=event.RegularEvent, id="1", content="a")
+    with pytest.raises(exceptions.ValidationError, match="greater than 0 bytes"):
+        await eh.handle_event(ev)
+
+
 async def test_handle_replaceable_event_behavior(repo, notifier, eh):
     existing_ev = mock.MagicMock(
-        event.ReplaceableEvent, id="1", kind=0, pubkey="1", created_at=1, tags=[]
+        event.ReplaceableEvent,
+        id="1",
+        kind=0,
+        pubkey="1",
+        created_at=1,
+        content="",
+        tags=[],
     )
     await repo.add(existing_ev)
     repo.reset_mock()
 
     newer_ev = mock.MagicMock(
-        event.ReplaceableEvent, id="2", kind=0, pubkey="1", created_at=2, tags=[]
+        event.ReplaceableEvent,
+        id="2",
+        kind=0,
+        pubkey="1",
+        created_at=2,
+        content="",
+        tags=[],
     )
     await eh.handle_event(newer_ev)
 
@@ -82,7 +110,7 @@ async def test_handle_replaceable_event_behavior(repo, notifier, eh):
 
 
 async def test_handle_ephemeral_event_behavior(repo, notifier, eh):
-    ev = mock.MagicMock(event.EphemeralEvent)
+    ev = mock.MagicMock(event.EphemeralEvent, content="")
     await eh.handle_event(ev)
 
     repo.add.assert_not_called()
@@ -91,7 +119,7 @@ async def test_handle_ephemeral_event_behavior(repo, notifier, eh):
 
 
 async def test_handle_basic_event_behavior(repo, notifier, eh):
-    ev = mock.MagicMock(event.Event)
+    ev = mock.MagicMock(event.Event, content="")
     await eh.handle_event(ev)
 
     repo.add.assert_not_called()
@@ -100,7 +128,7 @@ async def test_handle_basic_event_behavior(repo, notifier, eh):
 
 
 async def test_no_register_not_called(real_eh):
-    ev = mock.MagicMock(event.EphemeralEvent)
+    ev = mock.MagicMock(event.EphemeralEvent, content="")
     cb = mock.AsyncMock()
 
     await real_eh.handle_event(ev)
@@ -109,7 +137,7 @@ async def test_no_register_not_called(real_eh):
 
 
 async def test_register_cb_called(real_eh):
-    ev = mock.MagicMock(event.EphemeralEvent)
+    ev = mock.MagicMock(event.EphemeralEvent, content="")
     cb = mock.AsyncMock()
     real_eh.register_received_cb(cb)
 
@@ -119,7 +147,7 @@ async def test_register_cb_called(real_eh):
 
 
 async def test_insert_callback_after_unregister(real_eh):
-    ev = mock.MagicMock(event.EphemeralEvent)
+    ev = mock.MagicMock(event.EphemeralEvent, content="")
     cb = mock.AsyncMock()
     cb_id = real_eh.register_received_cb(cb)
     real_eh.unregister_received_cb(cb_id)

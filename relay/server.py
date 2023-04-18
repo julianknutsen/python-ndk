@@ -37,11 +37,11 @@ from ndk.relay import (
     event_notifier,
     message_dispatcher,
     message_handler,
-    relay_information_document,
     subscription_handler,
 )
 from ndk.relay.event_repo import event_repo, memory_event_repo, mysql_event_repo
 from ndk.repos.event_repo import protocol_handler
+from relay import config
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,9 @@ async def connection_handler(
         asyncio.create_task(process_message(data, write_queue, md))
 
 
-async def handler_wrapper(repo: event_repo.EventRepo, websocket):
+async def handler_wrapper(
+    cfg: config.RelayConfig, repo: event_repo.EventRepo, websocket
+):
     logger.debug("New connection established from: %s", websocket.remote_address)
     request_queue: asyncio.Queue[str] = asyncio.Queue()
     response_queue: asyncio.Queue[str] = asyncio.Queue()
@@ -94,7 +96,11 @@ async def handler_wrapper(repo: event_repo.EventRepo, websocket):
     auth = auth_handler.AuthHandler(RELAY_URL)
     sh = subscription_handler.SubscriptionHandler(response_queue)
     ev_notifier = event_notifier.EventNotifier()
-    eh = event_handler.EventHandler(repo, ev_notifier)
+    eh = event_handler.EventHandler(
+        repo,
+        ev_notifier,
+        event_handler.EventHandlerConfig(cfg.limitations.max_content_length),
+    )
     mh = message_handler.MessageHandler(auth, repo, sh, eh)
     md = message_dispatcher.MessageDispatcher(mh)
     eh.register_received_cb(sh.handle_event)
@@ -118,9 +124,7 @@ async def handler_wrapper(repo: event_repo.EventRepo, websocket):
         task.cancel()
 
 
-async def health_check(
-    rid: relay_information_document.RelayInformationDocument, path, headers
-):
+async def health_check(rid_bytes: bytes, path, headers):
     if path == "/healthz":
         return http.HTTPStatus.OK, [], b"OK"
 
@@ -136,7 +140,7 @@ async def health_check(
                 ("Access-Control-Allow-Headers", "*"),
                 ("Access-Control-Allow-Methods", "GET"),
             ],
-            rid.serialize_as_bytes(),
+            rid_bytes,
         )
 
     if "Upgrade" not in headers or headers["Upgrade"] != "websocket":
@@ -144,7 +148,7 @@ async def health_check(
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Generate load on a relay")
+    parser = argparse.ArgumentParser(description="Nostr Relay")
     parser.add_argument(
         "--config",
         help="path to the config file",
@@ -155,27 +159,11 @@ def parse_args():
     return parser.parse_args()
 
 
-def parse_config(config_path):
-    config = configparser.ConfigParser()
-    config.read(config_path)
-    return config
-
-
-def build_rid(config):
-    return relay_information_document.RelayInformationDocument(
-        name=config.get("General", "name"),
-        description=config.get("General", "description"),
-        software=config.get("General", "software"),
-        supported_nips=serialize.deserialize(config.get("General", "supported_nips")),
-        version=config.get("General", "version"),
-        limitation_auth_required=config.getboolean("Limitation", "auth_required"),
-        limitation_payment_required=config.getboolean("Limitation", "payment_required"),
-    )
-
-
 async def main():
     args = parse_args()
-    config = parse_config(args.config)
+    ini_parser = configparser.ConfigParser()
+    ini_parser.read(args.config)
+    cfg = config.RelayConfig(ini_parser)
 
     logger.info("Logging set to %s", DEBUG_LEVEL)
 
@@ -194,10 +182,12 @@ async def main():
     loop.add_signal_handler(signal.SIGTERM, stop.set_result, None)
 
     async with serve(
-        functools.partial(handler_wrapper, repo),
+        functools.partial(handler_wrapper, cfg, repo),
         HOST,
         PORT,
-        process_request=functools.partial(health_check, build_rid(config)),
+        process_request=functools.partial(
+            health_check, serialize.serialize_as_bytes(cfg.to_rid())
+        ),
     ):
         await stop
 
