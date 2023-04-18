@@ -27,10 +27,12 @@ import pytest
 import requests
 
 from ndk import serialize
+from ndk.event import event, event_tags
+from ndk.messages import command_result, event_message, message_factory, notice
 
 
 @pytest.fixture
-def response(relay_url):
+def relay_info(relay_url, remote_relay):
     url = relay_url.replace("wss://", "https://")
     response = requests.get(
         url, headers={"Accept": "application/nostr+json"}, timeout=10, verify=False
@@ -43,7 +45,14 @@ def response(relay_url):
         return serialize.deserialize(response.content.decode())
 
 
-def test_basic(response):
+def skip_if_no_field(relay_info, category, field):
+    if category not in relay_info or field not in relay_info[category]:
+        text = f"No {category}.{field} in relay_info"
+        warnings.warn(text)
+        pytest.skip(text)
+
+
+def test_basic(relay_info):
     pass  # test in fixture
 
 
@@ -60,8 +69,8 @@ def test_basic(response):
         "foobar",
     ],
 )
-def test_has_known_general_fields(field, response):
-    if field not in response:
+def test_has_known_general_fields(field, relay_info):
+    if field not in relay_info:
         warnings.warn(f"No '{field}' field in response")
 
 
@@ -81,9 +90,56 @@ def test_has_known_general_fields(field, response):
         "payment_required",
     ],
 )
-def test_has_known_limitation_fields(field, response):
-    if "limitation" not in response:
-        warnings.warn("No limitation section")
+def test_has_known_limitation_fields(field, relay_info):
+    skip_if_no_field(relay_info, "limitation", field)
 
-    elif field not in response["limitation"]:
-        warnings.warn(f"No '{field}' field in limitation section")
+
+async def test_event_over_configured_size_errors(
+    relay_info, keys, request_queue, response_queue
+):
+    skip_if_no_field(relay_info, "limitation", "max_content_length")
+
+    max_supported_size = relay_info["limitation"]["max_content_length"]
+    ev = event.RegularEvent.build(
+        keys, kind=1000, content="a" * (max_supported_size + 1)
+    )
+
+    await request_queue.put(event_message.Event.from_event(ev).serialize())
+    msg = message_factory.from_str(await response_queue.get())
+    assert isinstance(msg, command_result.CommandResult)
+    assert not msg.accepted
+
+
+async def test_event_over_configured_tags_errors(
+    relay_info, keys, request_queue, response_queue
+):
+    skip_if_no_field(relay_info, "limitation", "max_event_tags")
+
+    max_supported_size = relay_info["limitation"]["max_event_tags"]
+    ev = event.RegularEvent.build(
+        keys,
+        kind=1000,
+        tags=event_tags.EventTags([["d", ""] for _ in range(max_supported_size + 1)]),
+    )
+
+    await request_queue.put(event_message.Event.from_event(ev).serialize())
+    msg = message_factory.from_str(await response_queue.get())
+    assert isinstance(msg, command_result.CommandResult)
+    assert not msg.accepted
+
+
+async def test_message_over_configured_length_errors(
+    relay_info, keys, request_queue, response_queue
+):
+    skip_if_no_field(relay_info, "limitation", "max_message_length")
+
+    max_supported_size = relay_info["limitation"]["max_message_length"]
+    ev = event.RegularEvent.build(
+        keys,
+        kind=1000,
+        content="a" * (max_supported_size + 1),
+    )
+
+    await request_queue.put(event_message.Event.from_event(ev).serialize())
+    msg = message_factory.from_str(await response_queue.get())
+    assert isinstance(msg, notice.Notice)

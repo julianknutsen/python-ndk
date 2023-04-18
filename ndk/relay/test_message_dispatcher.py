@@ -117,3 +117,31 @@ async def test_process_unauthenticated_ev():
     response_msg = message_factory.from_str(response[0])
 
     assert isinstance(response_msg, notice.Notice)
+
+
+async def test_process_message_too_long_default(md):
+    response = await md.process_message("a" * 16385)
+
+    assert len(response) == 1
+    response_msg = message_factory.from_str(response[0])
+
+    assert isinstance(response_msg, notice.Notice)
+    assert "messages longer than" in response_msg.message
+
+
+async def test_process_message_too_long_override():
+    auth = auth_handler.AuthHandler("wss://unittests", allow_all=True)
+    sh = subscription_handler.SubscriptionHandler(asyncio.Queue())
+    repo = memory_event_repo.MemoryEventRepo()
+    eh = event_handler.EventHandler(repo, event_notifier.EventNotifier())
+    msg_handler = message_handler.MessageHandler(auth, repo, sh, eh)
+    md = message_dispatcher.MessageDispatcher(
+        msg_handler, message_dispatcher.MessageHandlerConfig(0)
+    )
+    response = await md.process_message("a")
+
+    assert len(response) == 1
+    response_msg = message_factory.from_str(response[0])
+
+    assert isinstance(response_msg, notice.Notice)
+    assert "messages longer than" in response_msg.message

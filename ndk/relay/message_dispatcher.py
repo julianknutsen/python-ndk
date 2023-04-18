@@ -19,6 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import dataclasses
 import logging
 
 from ndk import exceptions
@@ -40,11 +41,30 @@ def create_notice(text: str) -> str:
     return notice.Notice(text).serialize()
 
 
+@dataclasses.dataclass
+class MessageHandlerConfig:
+    max_message_length: int = 16384
+
+
 class MessageDispatcher:
-    def __init__(self, msg_handler: message_handler.MessageHandler):
+    _cfg: MessageHandlerConfig
+
+    def __init__(
+        self,
+        msg_handler: message_handler.MessageHandler,
+        cfg: MessageHandlerConfig = MessageHandlerConfig(),
+    ):
+        self._cfg = cfg
         self._msg_handler = msg_handler
 
     async def process_message(self, data: str) -> list[str]:
+        if len(data) > self._cfg.max_message_length:
+            return [
+                create_notice(
+                    f"Relay doesn't support messages longer than {self._cfg.max_message_length} bytes"
+                )
+            ]
+
         try:
             msg = message_factory.from_str(data)
             return await self._handle_msg(msg)
@@ -54,7 +74,7 @@ class MessageDispatcher:
             return [create_notice(text)]
         except PermissionError:
             text = f"restricted: action requires NIP-42 authentication: {data}"
-            logger.info(text, exc_info=True)
+            logger.info(text)
             return [create_notice(text)]
 
     async def _handle_msg(self, msg: message.Message) -> list[str]:
