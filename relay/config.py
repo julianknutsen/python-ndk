@@ -64,6 +64,7 @@ class GeneralConfig:
 @dataclasses.dataclass
 class LimitationsConfig:
     max_message_length: int
+    max_filters: int
     max_event_tags: int
     max_content_length: int
     auth_required: bool
@@ -75,6 +76,7 @@ class LimitationsConfig:
             max_message_length=cfg.getint(
                 "Limitation", "max_message_length", fallback=16384
             ),
+            max_filters=cfg.getint("Limitation", "max_filters", fallback=100),
             max_event_tags=cfg.getint("Limitation", "max_event_tags", fallback=100),
             max_content_length=cfg.getint(
                 "Limitation", "max_content_length", fallback=8196
