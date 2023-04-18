@@ -24,7 +24,7 @@ import mock
 import pytest
 
 from ndk import exceptions
-from ndk.event import auth_event, event, event_builder, event_filter
+from ndk.event import auth_event, event, event_builder, event_filter, event_tags
 from ndk.messages import (
     auth,
     close,
@@ -136,7 +136,9 @@ async def test_new_req_overwrites_filter(mh, sh_mock):
 
 async def test_accepted_calls_subscription_handler(mh, eh_mock, sh_mock):
     await eh_mock.register_received_cb(sh_mock.handle_event)
-    mocked = mock.AsyncMock(spec=event.EphemeralEvent, id="1", content="")
+    mocked = mock.AsyncMock(
+        spec=event.EphemeralEvent, id="1", content="", tags=event_tags.EventTags()
+    )
     with mock.patch.object(event_builder, "from_dict", lambda self, **kwargs: mocked):
         response = await mh.handle_event_message(event_message.Event({"id": "1"}))
 

@@ -63,6 +63,7 @@ class GeneralConfig:
 
 @dataclasses.dataclass
 class LimitationsConfig:
+    max_event_tags: int
     max_content_length: int
     auth_required: bool
     payment_required: bool
@@ -70,6 +71,7 @@ class LimitationsConfig:
     @classmethod
     def from_config(cls, cfg: configparser.ConfigParser):
         return cls(
+            max_event_tags=cfg.getint("Limitation", "max_event_tags", fallback=100),
             max_content_length=cfg.getint(
                 "Limitation", "max_content_length", fallback=8196
             ),

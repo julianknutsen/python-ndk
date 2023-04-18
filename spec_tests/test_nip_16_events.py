@@ -29,7 +29,7 @@ import pytest
 import requests
 
 from ndk import crypto, serialize
-from ndk.event import event
+from ndk.event import event, event_tags
 from ndk.messages import command_result, event_message, message_factory
 from spec_tests import utils
 
@@ -111,9 +111,38 @@ async def test_ephemeral_event_broadcast(ephemeral_ev, request_queue, response_q
 async def test_event_over_configured_size_errors(
     relay_info, keys, request_queue, response_queue
 ):
+    if (
+        "limitation" not in relay_info
+        or "max_content_length" not in relay_info["limitation"]
+    ):
+        pytest.skip("No max_content_length in relay_info")
+
     max_supported_size = relay_info["limitation"]["max_content_length"]
     ev = event.RegularEvent.build(
         keys, kind=1000, content="a" * (max_supported_size + 1)
+    )
+
+    await request_queue.put(event_message.Event.from_event(ev).serialize())
+    msg = message_factory.from_str(await response_queue.get())
+    assert isinstance(msg, command_result.CommandResult)
+    assert not msg.accepted
+
+
+@pytest.mark.usefixtures("remote")
+async def test_event_over_configured_tags_errors(
+    relay_info, keys, request_queue, response_queue
+):
+    if (
+        "limitation" not in relay_info
+        or "max_event_tags" not in relay_info["limitation"]
+    ):
+        pytest.skip("No max_event_tags in relay_info")
+
+    max_supported_size = relay_info["limitation"]["max_event_tags"]
+    ev = event.RegularEvent.build(
+        keys,
+        kind=1000,
+        tags=event_tags.EventTags([["d", ""] for _ in range(max_supported_size + 1)]),
     )
 
     await request_queue.put(event_message.Event.from_event(ev).serialize())
