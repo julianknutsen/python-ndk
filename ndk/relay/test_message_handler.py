@@ -270,3 +270,17 @@ async def test_handle_req_with_author_prefix_too_short_override(
 
     assert isinstance(response_msg, notice.Notice)
     assert "author prefixes shorter than 1 characters" in response_msg.message
+
+
+async def test_handle_req_config_exception_returns_notice(sh_mock, mh):
+    sh_mock.set_filters = mock.Mock(
+        side_effect=subscription_handler.ConfigLimitsExceeded("test")
+    )
+
+    response = await mh.handle_request(request.Request("sub", [{}]))
+
+    assert len(response) == 1
+    response_msg = message_factory.from_str(response[0])
+
+    assert isinstance(response_msg, notice.Notice)
+    assert "test" in response_msg.message

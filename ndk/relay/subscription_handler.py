@@ -20,6 +20,7 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 
 import asyncio
+import dataclasses
 import functools
 
 from ndk.event import event, event_filter
@@ -38,13 +39,29 @@ def locked():
     return decorator
 
 
+class ConfigLimitsExceeded(Exception):
+    pass
+
+
+@dataclasses.dataclass
+class SubscriptionHandlerConfig:
+    max_subscriptions: int = 20
+    max_subid_length: int = 100
+
+
 class SubscriptionHandler:
+    _cfg: SubscriptionHandlerConfig
     _sub_id_to_fltrs: dict[str, list[event_filter.EventFilter]]
     _response_queue: asyncio.Queue[str]
     _pending_deletes: set[str]
     _lock: asyncio.Lock
 
-    def __init__(self, response_queue: asyncio.Queue[str]):
+    def __init__(
+        self,
+        response_queue: asyncio.Queue[str],
+        cfg: SubscriptionHandlerConfig = SubscriptionHandlerConfig(),
+    ):
+        self._cfg = cfg
         self._sub_id_to_fltrs = {}
         self._response_queue = response_queue
         self._pending_deletes = set()
@@ -63,6 +80,16 @@ class SubscriptionHandler:
         if sub_id in self._pending_deletes:
             self._pending_deletes.remove(sub_id)
         else:
+            if len(sub_id) > self._cfg.max_subid_length:
+                raise ConfigLimitsExceeded(
+                    f"Subscription ID must be less than {self._cfg.max_subid_length} characters."
+                )
+
+            if len(self._sub_id_to_fltrs) >= self._cfg.max_subscriptions:
+                raise ConfigLimitsExceeded(
+                    f"Relay does not support more than {self._cfg.max_subscriptions} subscriptions."
+                )
+
             self._sub_id_to_fltrs[sub_id] = fltrs
 
     @locked()

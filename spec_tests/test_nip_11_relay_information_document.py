@@ -29,6 +29,7 @@ import requests
 from ndk import serialize
 from ndk.event import event, event_tags
 from ndk.messages import command_result, event_message, message_factory, notice, request
+from spec_tests import utils
 
 
 @pytest.fixture
@@ -193,5 +194,32 @@ async def test_request_filter_author_prefix_too_small(
     req = request.Request("1", [{"authors": ["a" * (min_supported_size - 1)]}])
 
     await request_queue.put(req.serialize())
+    msg = message_factory.from_str(await response_queue.get())
+    assert isinstance(msg, notice.Notice)
+
+
+async def test_request_too_many_subs(relay_info, request_queue, response_queue):
+    skip_if_no_field(relay_info, "limitation", "max_subscriptions")
+
+    max_supported_size = relay_info["limitation"]["max_subscriptions"]
+
+    for i in range(max_supported_size):
+        req = request.Request(f"{i}", [{"authors": ["aaaa"]}])
+        await request_queue.put(req.serialize())
+        await utils.expect_eose(response_queue)
+
+    req = request.Request(f"{max_supported_size}", [{"authors": ["aaaa"]}])
+    await request_queue.put(req.serialize())
+    msg = message_factory.from_str(await response_queue.get())
+    assert isinstance(msg, notice.Notice)
+
+
+async def test_request_subid_too_long(relay_info, request_queue, response_queue):
+    skip_if_no_field(relay_info, "limitation", "max_subid_length")
+
+    max_supported_size = relay_info["limitation"]["max_subid_length"]
+    req = request.Request("a" * (max_supported_size + 1), [{"authors": ["aaaa"]}])
+    await request_queue.put(req.serialize())
+
     msg = message_factory.from_str(await response_queue.get())
     assert isinstance(msg, notice.Notice)
