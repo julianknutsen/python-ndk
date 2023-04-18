@@ -67,14 +67,23 @@ class EventFilter:
         if self.__dict__[field_name] is not None and not self.__dict__[field_name]:
             self.__dict__[field_name] = None
 
+    def remove_none(self, field_name):
+        self.check_value(field_name, list)
+        self.__dict__[field_name] = [
+            i for i in self.__dict__[field_name] if i is not None
+        ]
+
     def __post_init__(self):
         if self.ids is not None:
+            self.remove_none("ids")
             self.check_list("ids", str)
             self.set_falsy_to_none("ids")
         if self.authors is not None:
+            self.remove_none("authors")
             self.check_list("authors", str)
             self.set_falsy_to_none("authors")
         if self.kinds is not None:
+            self.remove_none("kinds")
             self.check_list("kinds", int)
             self.set_falsy_to_none("kinds")
         if self.generic_tags is not None:

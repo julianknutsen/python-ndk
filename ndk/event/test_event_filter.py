@@ -24,7 +24,7 @@ import logging
 import mock
 import pytest
 
-from ndk import crypto
+from ndk import crypto, serialize
 from ndk.event import event_filter
 
 VALID_PUBKEY = crypto.PublicKeyStr("a" * 64)
@@ -38,7 +38,8 @@ def test_init():
 @pytest.mark.parametrize("ids", ["1", [1]])
 def test_init_bad_type_ids(ids):
     with pytest.raises(ValueError):
-        event_filter.EventFilter(ids=ids)  # type: ignore
+        f = event_filter.EventFilter(ids=ids)  # type: ignore
+        assert f
 
 
 @pytest.mark.parametrize("authors", ["1", [1]])
@@ -482,3 +483,24 @@ def test_authenticated_filter_none_auth_pubkey():
         event_filter.AuthenticatedEventFilter.from_dict_and_auth_pubkey(
             f.for_req(), None
         )
+
+
+def test_null_in_ids_is_removed():
+    f = event_filter.EventFilter.from_dict(
+        serialize.deserialize('{"ids": ["1", null, "2"]}')
+    )
+    assert f.ids == ["1", "2"]
+
+
+def test_null_in_authors_is_removed():
+    f = event_filter.EventFilter.from_dict(
+        serialize.deserialize('{"authors": ["1", null, "2"]}')
+    )
+    assert f.authors == ["1", "2"]
+
+
+def test_null_in_kinds_is_removed():
+    f = event_filter.EventFilter.from_dict(
+        serialize.deserialize('{"kinds": [1, null, 2]}')
+    )
+    assert f.kinds == [1, 2]
