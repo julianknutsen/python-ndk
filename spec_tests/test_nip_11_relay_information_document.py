@@ -169,3 +169,29 @@ async def test_request_filter_limit_too_large_errors(
     await request_queue.put(req.serialize())
     msg = message_factory.from_str(await response_queue.get())
     assert isinstance(msg, notice.Notice)
+
+
+async def test_request_filter_id_prefix_too_small(
+    relay_info, request_queue, response_queue
+):
+    skip_if_no_field(relay_info, "limitation", "min_prefix")
+
+    min_supported_size = relay_info["limitation"]["min_prefix"]
+    req = request.Request("1", [{"ids": ["a" * (min_supported_size - 1)]}])
+
+    await request_queue.put(req.serialize())
+    msg = message_factory.from_str(await response_queue.get())
+    assert isinstance(msg, notice.Notice)
+
+
+async def test_request_filter_author_prefix_too_small(
+    relay_info, request_queue, response_queue
+):
+    skip_if_no_field(relay_info, "limitation", "min_prefix")
+
+    min_supported_size = relay_info["limitation"]["min_prefix"]
+    req = request.Request("1", [{"authors": ["a" * (min_supported_size - 1)]}])
+
+    await request_queue.put(req.serialize())
+    msg = message_factory.from_str(await response_queue.get())
+    assert isinstance(msg, notice.Notice)
