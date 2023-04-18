@@ -125,12 +125,12 @@ async def test_close_clears_filter(mh, sh_mock):
 
 async def test_new_req_overwrites_filter(mh, sh_mock):
     await mh.handle_request(request.Request("sub", [{}]))
-    await mh.handle_request(request.Request("sub", [{"ids": ["1"]}]))
+    await mh.handle_request(request.Request("sub", [{"ids": ["1234"]}]))
 
     sh_mock.set_filters.assert_has_calls(
         [
             mock.call("sub", [event_filter.EventFilter()]),
-            mock.call("sub", [event_filter.EventFilter(ids=["1"])]),
+            mock.call("sub", [event_filter.EventFilter(ids=["1234"])]),
         ]
     )
 
@@ -210,3 +210,63 @@ async def test_handle_req_with_filter_limit_too_large_override(
 
     assert isinstance(response_msg, notice.Notice)
     assert "limit greater than 0" in response_msg.message
+
+
+async def test_handle_req_with_id_prefix_too_short_default(mh):
+    response = await mh.handle_request(request.Request("sub", [{"ids": ["a"]}]))
+
+    assert len(response) == 1
+    response_msg = message_factory.from_str(response[0])
+
+    assert isinstance(response_msg, notice.Notice)
+    assert "id prefixes shorter than 4 characters" in response_msg.message
+
+
+async def test_handle_req_with_id_prefix_too_short_override(
+    auth_hndlr, repo, sh_mock, eh_mock
+):
+    mh = message_handler.MessageHandler(
+        auth_hndlr,
+        repo,
+        sh_mock,
+        eh_mock,
+        message_handler.MessageHandlerConfig(min_prefix=1),
+    )
+
+    response = await mh.handle_request(request.Request("sub", [{"ids": [""]}]))
+
+    assert len(response) == 1
+    response_msg = message_factory.from_str(response[0])
+
+    assert isinstance(response_msg, notice.Notice)
+    assert "id prefixes shorter than 1 characters" in response_msg.message
+
+
+async def test_handle_req_with_author_prefix_too_short_default(mh):
+    response = await mh.handle_request(request.Request("sub", [{"authors": ["a"]}]))
+
+    assert len(response) == 1
+    response_msg = message_factory.from_str(response[0])
+
+    assert isinstance(response_msg, notice.Notice)
+    assert "author prefixes shorter than 4 characters" in response_msg.message
+
+
+async def test_handle_req_with_author_prefix_too_short_override(
+    auth_hndlr, repo, sh_mock, eh_mock
+):
+    mh = message_handler.MessageHandler(
+        auth_hndlr,
+        repo,
+        sh_mock,
+        eh_mock,
+        message_handler.MessageHandlerConfig(min_prefix=1),
+    )
+
+    response = await mh.handle_request(request.Request("sub", [{"authors": [""]}]))
+
+    assert len(response) == 1
+    response_msg = message_factory.from_str(response[0])
+
+    assert isinstance(response_msg, notice.Notice)
+    assert "author prefixes shorter than 1 characters" in response_msg.message

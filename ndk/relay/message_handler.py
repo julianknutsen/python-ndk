@@ -45,6 +45,7 @@ logger = logging.getLogger(__name__)
 class MessageHandlerConfig:
     max_filters: int = 100
     max_limit: int = 5000
+    min_prefix: int = 4
 
 
 # Race condition between handling AUTH and handling first message. This decorator
@@ -120,6 +121,22 @@ class MessageHandler:
             fltr = event_filter.AuthenticatedEventFilter.from_dict_and_auth_pubkey(
                 d, self._auth.authenticated_pubkey()
             )
+
+            if fltr.ids and any(len(val) < self._cfg.min_prefix for val in fltr.ids):
+                return [
+                    create_notice(
+                        f"Relay does not support filters with id prefixes shorter than {self._cfg.min_prefix} characters."
+                    )
+                ]
+
+            if fltr.authors and any(
+                len(val) < self._cfg.min_prefix for val in fltr.authors
+            ):
+                return [
+                    create_notice(
+                        f"Relay does not support filters with author prefixes shorter than {self._cfg.min_prefix} characters."
+                    )
+                ]
 
             if fltr.limit and fltr.limit > self._cfg.max_limit:
                 return [
