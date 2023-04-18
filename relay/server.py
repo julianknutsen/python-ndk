@@ -99,7 +99,9 @@ async def handler_wrapper(
     eh = event_handler.EventHandler(
         repo,
         ev_notifier,
-        event_handler.EventHandlerConfig(cfg.limitations.max_content_length),
+        event_handler.EventHandlerConfig(
+            cfg.limitations.max_event_tags, cfg.limitations.max_content_length
+        ),
     )
     mh = message_handler.MessageHandler(auth, repo, sh, eh)
     md = message_dispatcher.MessageDispatcher(mh)

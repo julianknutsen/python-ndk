@@ -30,6 +30,7 @@ from ndk.relay.event_repo import event_repo
 
 @dataclasses.dataclass
 class EventHandlerConfig:
+    max_event_tags: int = 100
     max_content_length: int = 8196
 
 
@@ -52,6 +53,11 @@ class EventHandler:
         if ev.content is not None and len(ev.content) > self._cfg.max_content_length:
             raise exceptions.ValidationError(
                 f"Relay doesn't support content greater than {self._cfg.max_content_length} bytes"
+            )
+
+        if len(ev.tags) > self._cfg.max_event_tags:
+            raise exceptions.ValidationError(
+                f"Relay doesn't support more than {self._cfg.max_event_tags} tags"
             )
 
         if isinstance(ev, event.PersistentEvent):
