@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 @dataclasses.dataclass
 class MessageHandlerConfig:
     max_filters: int = 100
+    max_limit: int = 5000
 
 
 # Race condition between handling AUTH and handling first message. This decorator
@@ -63,6 +64,10 @@ def authentication_retry():
         return wrapper
 
     return decorator
+
+
+def create_notice(text: str) -> str:
+    return notice.Notice(text).serialize()
 
 
 class MessageHandler:
@@ -105,17 +110,25 @@ class MessageHandler:
     async def handle_request(self, msg: request.Request) -> list[str]:
         if len(msg.filter_list) > self._cfg.max_filters:
             return [
-                notice.Notice(
+                create_notice(
                     f"Relay does not support more than {self._cfg.max_filters} filters."
-                ).serialize()
+                )
             ]
 
-        fltrs = [
-            event_filter.AuthenticatedEventFilter.from_dict_and_auth_pubkey(
-                fltr, self._auth.authenticated_pubkey()
+        fltrs = []
+        for d in msg.filter_list:
+            fltr = event_filter.AuthenticatedEventFilter.from_dict_and_auth_pubkey(
+                d, self._auth.authenticated_pubkey()
             )
-            for fltr in msg.filter_list
-        ]
+
+            if fltr.limit and fltr.limit > self._cfg.max_limit:
+                return [
+                    create_notice(
+                        f"Relay does not support filters with a limit greater than {self._cfg.max_limit}."
+                    )
+                ]
+
+            fltrs.append(fltr)
 
         fetched = await self._repo.get(fltrs)
         await self._subscription_handler.set_filters(msg.sub_id, fltrs)

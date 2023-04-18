@@ -181,3 +181,32 @@ async def test_handle_too_many_filters_override(auth_hndlr, repo, sh_mock, eh_mo
 
     assert isinstance(response_msg, notice.Notice)
     assert "more than 0 filters" in response_msg.message
+
+
+async def test_handle_req_with_filter_limit_too_large_default(mh):
+    response = await mh.handle_request(request.Request("sub", [{"limit": 5001}]))
+
+    assert len(response) == 1
+    response_msg = message_factory.from_str(response[0])
+
+    assert isinstance(response_msg, notice.Notice)
+    assert "limit greater than 5000" in response_msg.message
+
+
+async def test_handle_req_with_filter_limit_too_large_override(
+    auth_hndlr, repo, sh_mock, eh_mock
+):
+    mh = message_handler.MessageHandler(
+        auth_hndlr,
+        repo,
+        sh_mock,
+        eh_mock,
+        message_handler.MessageHandlerConfig(max_limit=0),
+    )
+    response = await mh.handle_request(request.Request("sub", [{"limit": 1}]))
+
+    assert len(response) == 1
+    response_msg = message_factory.from_str(response[0])
+
+    assert isinstance(response_msg, notice.Notice)
+    assert "limit greater than 0" in response_msg.message
