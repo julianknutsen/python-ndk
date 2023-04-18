@@ -19,26 +19,41 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import dataclasses
 
+from ndk import exceptions
 from ndk.event import event, event_filter
 from ndk.event import parameterized_replaceable_event as pre
 from ndk.relay import event_notifier
 from ndk.relay.event_repo import event_repo
 
 
+@dataclasses.dataclass
+class EventHandlerConfig:
+    max_content_length: int = 8196
+
+
 class EventHandler:
     _received_event_notifier: event_notifier.EventNotifier
     _repo: event_repo.EventRepo
+    _config = EventHandlerConfig
 
     def __init__(
         self,
         repo: event_repo.EventRepo,
         notifier: event_notifier.EventNotifier,
+        cfg: EventHandlerConfig = EventHandlerConfig(),
     ):
         self._received_event_notifier = notifier
         self._repo = repo
+        self._cfg = cfg
 
     async def handle_event(self, ev: event.Event):
+        if ev.content is not None and len(ev.content) > self._cfg.max_content_length:
+            raise exceptions.ValidationError(
+                f"Relay doesn't support content greater than {self._cfg.max_content_length} bytes"
+            )
+
         if isinstance(ev, event.PersistentEvent):
             await self._repo.add(ev)
 

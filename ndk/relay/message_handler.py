@@ -81,8 +81,8 @@ class MessageHandler:
             ev = event_builder.from_dict(msg.event_dict)
             await self._event_handler.handle_event(ev)
             return [command_result.CommandResult(ev.id, True, "").serialize()]
-        except exceptions.ValidationError:
-            text = f"Event validation failed: {msg}"
+        except exceptions.ValidationError as exc:
+            text = f"Event validation failed: {exc.args[0]} {msg}"
             logger.info(text, exc_info=True)
             ev_id = msg.event_dict["id"]  # guaranteed if passed Type check above
             return [command_result.CommandResult(ev_id, False, text).serialize()]

@@ -22,14 +22,30 @@
 # pylint: disable=redefined-outer-name, unused-argument
 
 import time
+import warnings
 
 import mock
 import pytest
+import requests
 
-from ndk import crypto
+from ndk import crypto, serialize
 from ndk.event import event
-from ndk.messages import event_message
+from ndk.messages import command_result, event_message, message_factory
 from spec_tests import utils
+
+
+@pytest.fixture
+def relay_info(relay_url):
+    url = relay_url.replace("wss://", "https://")
+    response = requests.get(
+        url, headers={"Accept": "application/nostr+json"}, timeout=10, verify=False
+    )
+
+    if response.status_code != 200:
+        warnings.warn(f"No support for NIP11, got {response.status_code} from {url}")
+        pytest.skip()
+    else:
+        return serialize.deserialize(response.content.decode())
 
 
 @pytest.fixture
@@ -89,6 +105,21 @@ async def test_ephemeral_event_broadcast(ephemeral_ev, request_queue, response_q
     await request_queue.put(event_message.Event.from_event(ephemeral_ev).serialize())
     await utils.expect_relay_event_of_type(event.EphemeralEvent, response_queue)
     await utils.expect_successful_command_result(response_queue)
+
+
+@pytest.mark.usefixtures("remote")
+async def test_event_over_configured_size_errors(
+    relay_info, keys, request_queue, response_queue
+):
+    max_supported_size = relay_info["limitation"]["max_content_length"]
+    ev = event.RegularEvent.build(
+        keys, kind=1000, content="a" * (max_supported_size + 1)
+    )
+
+    await request_queue.put(event_message.Event.from_event(ev).serialize())
+    msg = message_factory.from_str(await response_queue.get())
+    assert isinstance(msg, command_result.CommandResult)
+    assert not msg.accepted
 
 
 @pytest.mark.usefixtures("ctx")

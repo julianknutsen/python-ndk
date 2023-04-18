@@ -136,7 +136,7 @@ async def test_new_req_overwrites_filter(mh, sh_mock):
 
 async def test_accepted_calls_subscription_handler(mh, eh_mock, sh_mock):
     await eh_mock.register_received_cb(sh_mock.handle_event)
-    mocked = mock.AsyncMock(spec=event.EphemeralEvent, id="1")
+    mocked = mock.AsyncMock(spec=event.EphemeralEvent, id="1", content="")
     with mock.patch.object(event_builder, "from_dict", lambda self, **kwargs: mocked):
         response = await mh.handle_event_message(event_message.Event({"id": "1"}))
 
