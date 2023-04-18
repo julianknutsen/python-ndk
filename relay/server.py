@@ -97,7 +97,7 @@ async def handler_wrapper(
     sh = subscription_handler.SubscriptionHandler(
         response_queue,
         subscription_handler.SubscriptionHandlerConfig(
-            cfg.limitations.max_subscriptions
+            cfg.limitations.max_subscriptions, cfg.limitations.max_subid_length
         ),
     )
     ev_notifier = event_notifier.EventNotifier()

@@ -67,6 +67,7 @@ class LimitationsConfig:
     max_subscriptions: int
     max_filters: int
     max_limit: int
+    max_subid_length: int
     min_prefix: int
     max_event_tags: int
     max_content_length: int
@@ -84,6 +85,7 @@ class LimitationsConfig:
             ),
             max_filters=cfg.getint("Limitation", "max_filters", fallback=100),
             max_limit=cfg.getint("Limitation", "max_limit", fallback=5000),
+            max_subid_length=cfg.getint("Limitation", "max_subid_length", fallback=100),
             min_prefix=cfg.getint("Limitation", "min_prefix", fallback=4),
             max_event_tags=cfg.getint("Limitation", "max_event_tags", fallback=100),
             max_content_length=cfg.getint(

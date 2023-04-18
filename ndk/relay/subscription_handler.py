@@ -39,13 +39,14 @@ def locked():
     return decorator
 
 
-class SubscriptionLimitExceeded(Exception):
+class ConfigLimitsExceeded(Exception):
     pass
 
 
 @dataclasses.dataclass
 class SubscriptionHandlerConfig:
     max_subscriptions: int = 20
+    max_subid_length: int = 100
 
 
 class SubscriptionHandler:
@@ -79,8 +80,13 @@ class SubscriptionHandler:
         if sub_id in self._pending_deletes:
             self._pending_deletes.remove(sub_id)
         else:
+            if len(sub_id) > self._cfg.max_subid_length:
+                raise ConfigLimitsExceeded(
+                    f"Subscription ID must be less than {self._cfg.max_subid_length} characters."
+                )
+
             if len(self._sub_id_to_fltrs) >= self._cfg.max_subscriptions:
-                raise SubscriptionLimitExceeded(
+                raise ConfigLimitsExceeded(
                     f"Relay does not support more than {self._cfg.max_subscriptions} subscriptions."
                 )
 

@@ -212,3 +212,14 @@ async def test_request_too_many_subs(relay_info, request_queue, response_queue):
     await request_queue.put(req.serialize())
     msg = message_factory.from_str(await response_queue.get())
     assert isinstance(msg, notice.Notice)
+
+
+async def test_request_subid_too_long(relay_info, request_queue, response_queue):
+    skip_if_no_field(relay_info, "limitation", "max_subid_length")
+
+    max_supported_size = relay_info["limitation"]["max_subid_length"]
+    req = request.Request("a" * (max_supported_size + 1), [{"authors": ["aaaa"]}])
+    await request_queue.put(req.serialize())
+
+    msg = message_factory.from_str(await response_queue.get())
+    assert isinstance(msg, notice.Notice)

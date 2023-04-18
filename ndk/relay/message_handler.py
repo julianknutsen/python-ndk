@@ -150,7 +150,7 @@ class MessageHandler:
         fetched = await self._repo.get(fltrs)
         try:
             await self._subscription_handler.set_filters(msg.sub_id, fltrs)
-        except subscription_handler.SubscriptionLimitExceeded as exc:
+        except subscription_handler.ConfigLimitsExceeded as exc:
             return [create_notice(exc.args[0])]
 
         return [
