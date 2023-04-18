@@ -94,7 +94,12 @@ async def handler_wrapper(
     response_queue: asyncio.Queue[str] = asyncio.Queue()
 
     auth = auth_handler.AuthHandler(RELAY_URL)
-    sh = subscription_handler.SubscriptionHandler(response_queue)
+    sh = subscription_handler.SubscriptionHandler(
+        response_queue,
+        subscription_handler.SubscriptionHandlerConfig(
+            cfg.limitations.max_subscriptions
+        ),
+    )
     ev_notifier = event_notifier.EventNotifier()
     eh = event_handler.EventHandler(
         repo,
@@ -108,7 +113,11 @@ async def handler_wrapper(
         repo,
         sh,
         eh,
-        message_handler.MessageHandlerConfig(cfg.limitations.max_filters),
+        message_handler.MessageHandlerConfig(
+            cfg.limitations.max_filters,
+            cfg.limitations.max_limit,
+            cfg.limitations.min_prefix,
+        ),
     )
     md = message_dispatcher.MessageDispatcher(mh)
     eh.register_received_cb(sh.handle_event)

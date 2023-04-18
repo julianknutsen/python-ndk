@@ -22,6 +22,7 @@
 import asyncio
 
 import mock
+import pytest
 
 from ndk.event import metadata_event
 from ndk.relay import subscription_handler
@@ -125,3 +126,24 @@ async def test_no_output_with_matching_filter_after_clear():
     ev = mock.MagicMock()
     await sh.handle_event(ev)
     assert q.empty()
+
+
+async def test_more_than_max_subs_default():
+    q = asyncio.Queue()
+    sh = subscription_handler.SubscriptionHandler(q)
+
+    fltr = mock.MagicMock()
+    with pytest.raises(subscription_handler.SubscriptionLimitExceeded):
+        for i in range(21):
+            await sh.set_filters(f"subid{i}", [fltr])
+
+
+async def test_more_than_max_subs_override():
+    q = asyncio.Queue()
+    sh = subscription_handler.SubscriptionHandler(
+        q, subscription_handler.SubscriptionHandlerConfig(0)
+    )
+
+    fltr = mock.MagicMock()
+    with pytest.raises(subscription_handler.SubscriptionLimitExceeded):
+        await sh.set_filters("subid", [fltr])
