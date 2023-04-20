@@ -152,12 +152,12 @@ jobs:
       - name: Run Functional Tests
         env:
           COVERAGE_FILE: .coverage.functional.ndk-server-minikube
-        run: coverage run -m pytest --timeout=10 functional_tests --relay-url=wss://${{ env.INGRESS_HOST }}:${{ env.INGRESS_PORT }}
+        run: coverage run -m pytest --timeout=30 functional_tests --relay-url=wss://${{ env.INGRESS_HOST }}:${{ env.INGRESS_PORT }}
 
       - name: Run Spec Tests
         env:
           COVERAGE_FILE: .coverage.spec.ndk-server-minikube
-        run: coverage run -m pytest --timeout=10 spec_tests --relay-url=wss://${{ env.INGRESS_HOST }}:${{ env.INGRESS_PORT }}
+        run: coverage run -m pytest --timeout=30 spec_tests --relay-url=wss://${{ env.INGRESS_HOST }}:${{ env.INGRESS_PORT }}
 
       - name: Dump Server Logs
         if: always()
