@@ -26,6 +26,7 @@ import time
 import mock
 import pytest
 
+import testing_utils
 from ndk import crypto
 from ndk.event import event
 from ndk.messages import event_message
@@ -99,9 +100,14 @@ async def test_regular_event_saved(regular_ev, request_queue, response_queue):
 
     fltr = {"ids": [cmd_result.event_id]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_relay_event_of_type(event.RegularEvent, response_queue)
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        await utils.expect_relay_event_of_type_gen(event.RegularEvent, msgs)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -124,9 +130,14 @@ async def test_replaceable_event_saved(replaceable_ev, request_queue, response_q
 
     fltr = {"ids": [cmd_result.event_id]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_relay_event_of_type(event.ReplaceableEvent, response_queue)
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        await utils.expect_relay_event_of_type_gen(event.ReplaceableEvent, msgs)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -156,10 +167,15 @@ async def test_replaceable_event_replaced_by_newer(keys, request_queue, response
     await utils.send_and_expect_command_result(newer_ev, request_queue, response_queue)
     fltr = {"authors": [keys.public], "kind": [10000]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    ev = await utils.expect_relay_event_of_type(event.ReplaceableEvent, response_queue)
-    assert ev == newer_ev
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        ev = await utils.expect_relay_event_of_type_gen(event.ReplaceableEvent, msgs)
+        assert ev == newer_ev
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -177,7 +193,12 @@ async def test_replaceable_event_not_replaced_by_older(
     await utils.send_and_expect_command_result(older_ev, request_queue, response_queue)
     fltr = {"authors": [keys.public], "kind": [10000]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    ev = await utils.expect_relay_event_of_type(event.ReplaceableEvent, response_queue)
-    assert ev == newer_ev
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        ev = await utils.expect_relay_event_of_type_gen(event.ReplaceableEvent, msgs)
+        assert ev == newer_ev
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)

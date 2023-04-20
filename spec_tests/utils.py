@@ -58,8 +58,26 @@ async def send_close(sub_id, request_queue):
     await request_queue.put(r.serialize())
 
 
+async def read_until_eose(response_queue):
+    msgs = []
+    while True:
+        msg = message_factory.from_str(await response_queue.get())
+        msgs.append(msg)
+        if isinstance(msg, eose.EndOfStoredEvents):
+            break
+
+    for msg in msgs:
+        yield msg
+
+
 async def expect_relay_event(response_queue):
     msg = message_factory.from_str(await response_queue.get())
+    assert isinstance(msg, relay_event.RelayEvent)
+    return msg
+
+
+async def expect_relay_event_gen(gen):
+    msg = await anext(gen)
     assert isinstance(msg, relay_event.RelayEvent)
     return msg
 
@@ -80,14 +98,29 @@ async def expect_relay_event_of_type(
     return event
 
 
+async def expect_relay_event_of_type_gen(event_type: typing.Type[event.Event], gen):
+    msg = await expect_relay_event_gen(gen)
+    event = event_builder.from_dict(msg.event_dict)
+    assert isinstance(event, event_type)
+    return event
+
+
 async def expect_text_note_event(response_queue) -> event.Event:
     return await expect_relay_event_of_type(
         text_note_event.TextNoteEvent, response_queue
     )
 
 
+async def expect_text_note_event_gen(gen) -> event.Event:
+    return await expect_relay_event_of_type_gen(text_note_event.TextNoteEvent, gen)
+
+
 async def expect_repost_event(response_queue) -> event.Event:
     return await expect_relay_event_of_type(repost_event.RepostEvent, response_queue)
+
+
+async def expect_repost_event_gen(gen) -> event.Event:
+    return await expect_relay_event_of_type_gen(repost_event.RepostEvent, gen)
 
 
 async def expect_reaction_event(response_queue) -> event.Event:
@@ -96,6 +129,15 @@ async def expect_reaction_event(response_queue) -> event.Event:
     )
 
 
+async def expect_reaction_event_gen(gen) -> event.Event:
+    return await expect_relay_event_of_type_gen(reaction_event.ReactionEvent, gen)
+
+
 async def expect_eose(response_queue):
     msg = message_factory.from_str(await response_queue.get())
+    assert isinstance(msg, eose.EndOfStoredEvents)
+
+
+async def expect_eose_gen(gen):
+    msg = await anext(gen)
     assert isinstance(msg, eose.EndOfStoredEvents)

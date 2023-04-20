@@ -29,6 +29,7 @@ python = ">=3.9"
 coincurve = "18.0.0"
 
 # extras / dev
+aiokafka = { version = "*", optional = true }
 aiomysql = { version = "*", optional = true }
 black = { version = "*", optional = true }
 click = { version = "*", optional = true }
@@ -56,9 +57,9 @@ lint = "scripts.verify_format_lint:main"
 
 [tool.poetry.extras]
 cli = ["click", "websockets"]
-dev =  ["aiomysql", "black", "coverage", "cryptography", "isort", "mock", "mypy", "pipreqs", "pylint", "pytest", "pytest-asyncio", "pytest-timeout", "pytest-xdist", "requests", "types-requests", "sqlalchemy", "types-mock", "websockets"]
-relay = ["aiomysql", "cryptography", "sqlalchemy", "websockets"]
-test = ["aiomysql", "mock", "cryptography", "pytest", "pytest-asyncio", "pytest-timeout", "requests", "types-requests", "sqlalchemy", "types-mock", "websockets"]
+dev =  ["aiokafka", "aiomysql", "black", "coverage", "cryptography", "isort", "mock", "mypy", "pipreqs", "pylint", "pytest", "pytest-asyncio", "pytest-timeout", "pytest-xdist", "requests", "types-requests", "sqlalchemy", "types-mock", "websockets"]
+relay = ["aiokafka", "aiomysql", "cryptography", "sqlalchemy", "websockets"]
+test = ["aiokafka", "aiomysql", "mock", "cryptography", "pytest", "pytest-asyncio", "pytest-timeout", "requests", "types-requests", "sqlalchemy", "types-mock", "websockets"]
 
 [tool.isort]
 profile = "black"
@@ -89,4 +90,8 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "asyncpg.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "aiokafka.*"
 ignore_missing_imports = true

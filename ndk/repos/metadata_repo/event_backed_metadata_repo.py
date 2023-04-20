@@ -69,7 +69,7 @@ class EventBackedMetadataRepo(metadata_repo.MetadataRepo):
             types.EventKind.SET_METADATA, pubkey
         )
         if mev:
-            metadata = serialize.deserialize(mev.content)
+            metadata = serialize.deserialize_str(mev.content)
         else:
             logger.debug("No MetadataEvent returned")
 

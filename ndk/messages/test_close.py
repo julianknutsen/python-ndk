@@ -49,6 +49,6 @@ def test_serialize():
     c = close.Close("1")
     serialized = c.serialize()
 
-    deserialized = serialize.deserialize(serialized)
+    deserialized = serialize.deserialize_str(serialized)
 
     assert deserialized == ["CLOSE", "1"]

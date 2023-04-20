@@ -47,7 +47,7 @@ class GeneralConfig:
                 "software",
                 fallback="git+https://github.com/julianknutsen/python-ndk",
             ),
-            supported_nips=serialize.deserialize(
+            supported_nips=serialize.deserialize_str(
                 cfg.get(
                     "General",
                     "supported_nips",

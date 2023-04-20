@@ -119,17 +119,13 @@ class BroadcastEvent:
     pass
 
 
-class SingletonEvent:
-    """Only the latest event of this type and author should exist"""
+class ReplaceableEvent(Event, PersistentEvent, BroadcastEvent):
+    """Only the latest event of this kind and author should exist"""
 
     pass
 
 
 class RegularEvent(Event, PersistentEvent, BroadcastEvent):
-    pass
-
-
-class ReplaceableEvent(Event, PersistentEvent, SingletonEvent, BroadcastEvent):
     pass
 
 

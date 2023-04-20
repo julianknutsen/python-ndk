@@ -25,6 +25,7 @@ import time
 import mock
 import pytest
 
+import testing_utils
 from ndk import crypto
 from ndk.repos import contacts
 from ndk.repos.metadata_repo import event_backed_metadata_repo, fake_metadata_repo
@@ -71,7 +72,11 @@ async def test_initial_state(repo):
 async def test_overwrite_write(mykeys, repo):
     await repo.overwrite(mykeys, name="bob")
 
-    assert (await repo.get(mykeys.public))["name"] == "bob"
+    async def verify_name():
+        ret = await repo.get(mykeys.public)
+        assert "name" in ret and ret["name"] == "bob"
+
+    await testing_utils.retry_on_assert_coro(verify_name)
 
 
 async def test_overwrite(mykeys, repo):
@@ -82,16 +87,19 @@ async def test_overwrite(mykeys, repo):
     with mock.patch("time.time", return_value=cur + 1):
         await repo.overwrite(mykeys, about="#nostr")
 
-    with mock.patch("time.time", return_value=cur + 2):
-        result = await repo.get(mykeys.public)
+    async def verify_about():
+        assert (await repo.get(mykeys.public)).get("about") == "#nostr"
 
-    assert result["about"] == "#nostr"
+    await testing_utils.retry_on_assert_coro(verify_about)
 
 
 async def test_overwrite_recommend_server(mykeys, repo):
     await repo.overwrite(mykeys, recommend_server="ws://foo.com")
 
-    assert (await repo.get(mykeys.public))["recommend_server"] == "ws://foo.com"
+    async def verify_server():
+        assert (await repo.get(mykeys.public))["recommend_server"] == "ws://foo.com"
+
+    await testing_utils.retry_on_assert_coro(verify_server)
 
 
 async def test_overwrite_metadata_spanning_multiple_events(mykeys, repo):
@@ -102,8 +110,11 @@ async def test_overwrite_metadata_spanning_multiple_events(mykeys, repo):
     with mock.patch("time.time", return_value=cur + 1):
         await repo.overwrite(mykeys, recommend_server="ws://foo.com")
 
-    with mock.patch("time.time", return_value=cur + 2):
-        assert (await repo.get(mykeys.public))["recommend_server"] == "ws://foo.com"
+    async def verify_server():
+        with mock.patch("time.time", return_value=cur + 2):
+            assert (await repo.get(mykeys.public))["recommend_server"] == "ws://foo.com"
+
+    await testing_utils.retry_on_assert_coro(verify_server)
 
 
 async def test_overwrite_contact_list(mykeys, repo):
@@ -114,7 +125,10 @@ async def test_overwrite_contact_list(mykeys, repo):
 
     await repo.overwrite(mykeys, contact_list=contact_list)
 
-    assert (await repo.get(mykeys.public))["contacts"] == contact_list
+    async def verify_contacts():
+        assert (await repo.get(mykeys.public))["contacts"] == contact_list
+
+    await testing_utils.retry_on_assert_coro(verify_contacts)
 
 
 async def test_overwrite_contact_list_only_pubkey(mykeys, repo):
@@ -125,4 +139,7 @@ async def test_overwrite_contact_list_only_pubkey(mykeys, repo):
 
     await repo.overwrite(mykeys, contact_list=contact_list)
 
-    assert (await repo.get(mykeys.public))["contacts"] == contact_list
+    async def verify_contacts():
+        assert (await repo.get(mykeys.public))["contacts"] == contact_list
+
+    await testing_utils.retry_on_assert_coro(verify_contacts)

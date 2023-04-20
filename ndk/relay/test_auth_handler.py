@@ -36,7 +36,7 @@ def test_default_is_authenticated():
 
 def test_build_auth_message():
     h = auth_handler.AuthHandler(VALID_RELAY_URL)
-    m = serialize.deserialize(h.build_auth_message())
+    m = serialize.deserialize_str(h.build_auth_message())
     assert m[0] == "AUTH"
     assert isinstance(m[1], str)
 

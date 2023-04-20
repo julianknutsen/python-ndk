@@ -43,7 +43,7 @@ def relay_info(relay_url, remote_relay):
         warnings.warn(f"No support for NIP11, got {response.status_code} from {url}")
         pytest.skip()
     else:
-        return serialize.deserialize(response.content.decode())
+        return serialize.deserialize_str(response.content.decode())
 
 
 def skip_if_no_field(relay_info, category, field):

@@ -24,6 +24,7 @@ import asyncio
 
 import pytest
 
+import testing_utils
 from ndk.event import repost_event, text_note_event
 from spec_tests import utils
 
@@ -73,9 +74,14 @@ async def test_query_repost_by_repost_author(
 
     fltr = {"authors": [keys.public], "kinds": [6]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_repost_event(response_queue)
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        await utils.expect_repost_event_gen(msgs)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -86,9 +92,14 @@ async def test_query_repost_by_base_event(
 
     fltr = {"#e": [text_note.id]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_repost_event(response_queue)
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        await utils.expect_repost_event_gen(msgs)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -99,6 +110,11 @@ async def test_query_repost_by_base_event_author(
 
     fltr = {"#p": [text_note.pubkey]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_repost_event(response_queue)
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        await utils.expect_repost_event_gen(msgs)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
