@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: db
+  name: postgresql
 spec:
   selector:
     matchLabels:
-      app: db
+      app: postgresql
   replicas: 1
   template:
     metadata:
       labels:
-        app: db
+        app: postgresql
     spec:
       containers:
       - name: postgres
@@ -43,13 +43,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: db
+  name: postgresql
   labels:
-    app: db
+    app: postgresql
 spec:
   type: ClusterIP
   selector:
-    app: db
+    app: postgresql
   ports:
   - port: 5432
-    name: db
+    name: internal

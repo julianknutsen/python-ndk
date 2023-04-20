@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   name: event-persister
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: event-persister
@@ -13,9 +14,7 @@ spec:
     spec:
       containers:
         - name: event-persister
-          image: event-persister
-          ports:
-            - containerPort: 2700
+          image: badimage:badtag # This is a placeholder. The image is built and pushed by the CI/CD pipeline.
           # livenessProbe:
           #   httpGet:
           #     path: /healthz
@@ -28,25 +27,3 @@ spec:
           #     port: 2700
           #   failureThreshold: 6
           #   periodSeconds: 5
-          env:
-            - name: DB_NAME
-              valueFrom:
-                secretKeyRef:
-                  name: db-config
-                  key: DB_NAME
-            - name: DB_USER
-              valueFrom:
-                secretKeyRef:
-                  name: db-config
-                  key: DB_USER
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: db-config
-                  key: DB_PASSWORD
-            - name: DB_HOST
-              value: db
-            - name: DB_PORT
-              value: "5432"
-            - name: KAFKA_URL
-              value: "kafka.kafka"

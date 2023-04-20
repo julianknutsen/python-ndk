@@ -29,32 +29,14 @@ helm_resource("kafka", "overlays/dev/kafka", namespace="kafka")
 deploy_cert_manager()
 k8s_yaml(kustomize("overlays/dev"))
 k8s_resource(objects=["relay-ingress:ingressroute"], resource_deps=["traefik"], new_name="relay-ingressroute")
-k8s_resource(workload="db", resource_deps=["traefik"])
-k8s_resource(workload="relay", resource_deps=["traefik", "db", "kafka"])
-k8s_resource(workload="event-persister", resource_deps=["traefik", "db", "kafka"])
-
-docker_build_with_restart(
-    "event-persister",
-    context="../..",
-    dockerfile="event-persister.dockerfile",
-    ignore=["**/.*", "**/__pycache__", "**/cov.xml", "functional_tests", "spec_tests", "cli"],
-    live_update=[
-        fall_back_on(["."]),
-        sync("../..", "/app/python-ndk"),
-    ],
-    entrypoint="/opt/venv/bin/python /app/python-ndk/relay/event_persister.py"
-)
+k8s_resource(workload="postgresql", resource_deps=["traefik"])
+k8s_resource(workload="relay", resource_deps=["traefik", "postgresql", "kafka"])
+k8s_resource(workload="event-persister", resource_deps=["traefik", "postgresql", "kafka"])
 
 docker_build_with_restart(
     "python-ndk-relay",
     context="../..",
     dockerfile="relay.dockerfile",
-    build_args={
-        "RELAY_HOST": "0.0.0.0",
-        "RELAY_PORT": "2700",
-        "RELAY_LOG_LEVEL": "DEBUG",
-        "RELAY_EVENT_REPO": "postgres_kafka"
-    },
     ignore=["**/.*", "**/__pycache__", "**/cov.xml", "functional_tests", "spec_tests", "cli"],
     live_update=[
         fall_back_on(["."]),

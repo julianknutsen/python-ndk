@@ -6,9 +6,13 @@ resources:
 - secrets.yaml
 - self-signed-cluster-issuer.yaml
 - ingress.yaml
-- db.yaml
+- postgresql.yaml
 patches:
 - path: patch-deployment.yaml
   target:
     kind: Deployment
     name: relay
+- path: patch-event-persister.yaml
+  target:
+    kind: Deployment
+    name: event-persister
