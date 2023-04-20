@@ -27,7 +27,9 @@ import mock
 import pytest
 
 from ndk import crypto
-from ndk.event import event, event_filter, event_tags, metadata_event, text_note_event
+from ndk.event import event, event_filter, event_tags, metadata_event
+from ndk.event import parameterized_replaceable_event as pre
+from ndk.event import text_note_event
 from ndk.relay.event_repo import memory_event_repo, mysql_event_repo
 
 
@@ -347,3 +349,158 @@ async def test_delete_with_tags_deletes(keys, repo):
     await repo.remove(ev_id)
     events = await repo.get([event_filter.EventFilter(ids=[ev_id])])
     assert len(events) == 0
+
+
+@pytest.mark.parametrize(
+    "tags",
+    [
+        None,
+        event_tags.EventTags([["d", ""]]),
+        event_tags.EventTags([["d", ""], ["d", "not empty"]]),
+        event_tags.EventTags([["d", "", "123"]]),
+    ],
+)
+async def test_handle_parameterized_replaceable_event_behavior_empty_d(
+    tags,
+    keys,
+    repo,
+):
+    existing_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=1, tags=event_tags.EventTags([["d", ""]])
+    )
+    await repo.add(existing_ev)
+
+    newer_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=2, tags=tags
+    )
+    await repo.add(newer_ev)
+
+    evs = await repo.get(
+        [
+            event_filter.EventFilter(
+                authors=[keys.public], kinds=[30000], generic_tags={"d": [""]}
+            ),
+            event_filter.EventFilter(authors=[keys.public], kinds=[30000]),
+        ]
+    )
+    assert evs[0] == newer_ev
+
+
+@pytest.mark.parametrize(
+    "tags",
+    [
+        None,
+        event_tags.EventTags([["d", ""]]),
+        event_tags.EventTags([["d", ""], ["d", "not empty"]]),
+        event_tags.EventTags([["d", "", "123"]]),
+    ],
+)
+async def test_handle_parameterized_replaceable_event_behavior_no_tags(
+    tags, keys, repo
+):
+    existing_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=1
+    )
+    await repo.add(existing_ev)
+
+    newer_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=2, tags=tags
+    )
+    await repo.add(newer_ev)
+
+    evs = await repo.get(
+        [
+            event_filter.EventFilter(
+                authors=[keys.public], kinds=[30000], generic_tags={"d": [""]}
+            ),
+            event_filter.EventFilter(authors=[keys.public], kinds=[30000]),
+        ]
+    )
+    assert len(evs) == 1
+    assert evs[0] == newer_ev
+
+
+async def test_handle_parameterized_replaceable_event_behavior_empty_d_not_replaced(
+    keys, repo
+):
+    existing_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=1
+    )
+    await repo.add(existing_ev)
+
+    newer_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=2, tags=event_tags.EventTags([["d", "foo"]])
+    )
+    await repo.add(newer_ev)
+
+    evs = await repo.get(
+        [
+            event_filter.EventFilter(
+                authors=[keys.public], kinds=[30000], generic_tags={"d": [""]}
+            ),
+            event_filter.EventFilter(authors=[keys.public], kinds=[30000]),
+        ]
+    )
+    assert len(evs) == 2
+    assert evs[0] == newer_ev
+    assert evs[1] == existing_ev
+
+
+@pytest.mark.parametrize(
+    "tags",
+    [
+        None,
+        event_tags.EventTags([["d", ""]]),
+        event_tags.EventTags([["d", ""], ["d", "not empty"]]),
+        event_tags.EventTags([["d", "", "123"]]),
+    ],
+)
+async def test_handle_parameterized_replaceable_event_behavior_not_replaced(
+    tags, keys, repo
+):
+    existing_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=1, tags=event_tags.EventTags([["d", "foo"]])
+    )
+    await repo.add(existing_ev)
+
+    newer_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=2, tags=tags
+    )
+    await repo.add(newer_ev)
+
+    evs = await repo.get(
+        [
+            event_filter.EventFilter(
+                authors=[keys.public], kinds=[30000], generic_tags={"d": [""]}
+            ),
+            event_filter.EventFilter(authors=[keys.public], kinds=[30000]),
+        ]
+    )
+    assert len(evs) == 2
+    assert evs[0] == newer_ev
+    assert evs[1] == existing_ev
+
+
+async def test_handle_parameterized_replaceable_event_behavior_valid_d_replaced(
+    keys, repo
+):
+    existing_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=1, tags=event_tags.EventTags([["d", "foo"]])
+    )
+    await repo.add(existing_ev)
+
+    newer_ev = pre.ParameterizedReplaceableEvent.build(
+        keys, kind=30000, created_at=2, tags=event_tags.EventTags([["d", "foo"]])
+    )
+    await repo.add(newer_ev)
+
+    evs = await repo.get(
+        [
+            event_filter.EventFilter(
+                authors=[keys.public], kinds=[30000], generic_tags={"d": [""]}
+            ),
+            event_filter.EventFilter(authors=[keys.public], kinds=[30000]),
+        ]
+    )
+    assert len(evs) == 1
+    assert evs[0] == newer_ev

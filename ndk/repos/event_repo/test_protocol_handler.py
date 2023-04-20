@@ -114,7 +114,7 @@ async def test_query_sends_correct_message(write_queue, local_protocol):
     # verify correct message was sent to server
     data = await write_queue.get()
     write_queue.task_done()
-    request = serialize.deserialize(data)
+    request = serialize.deserialize_str(data)
     assert isinstance(request, list)
     assert request[0] == "REQ"
 
@@ -129,7 +129,7 @@ async def test_query_success_empty(read_queue, write_queue, local_protocol):
 
     data = await write_queue.get()
     write_queue.task_done()
-    request = serialize.deserialize(data)
+    request = serialize.deserialize_str(data)
 
     await simulate_server_reponse(read_queue, ["EOSE", request[1]])
 
@@ -145,7 +145,7 @@ async def test_query_success(read_queue, write_queue, local_protocol, event):
 
     data = await write_queue.get()
     write_queue.task_done()
-    request = serialize.deserialize(data)
+    request = serialize.deserialize_str(data)
 
     await read_queue.put(
         serialize.serialize_as_str(["EVENT", request[1], event.__dict__])
@@ -165,6 +165,6 @@ async def test_auth_challenge(read_queue, write_queue):
     # verify correct message was sent to server
     data = await write_queue.get()
     write_queue.task_done()
-    request = serialize.deserialize(data)
+    request = serialize.deserialize_str(data)
     assert isinstance(request, list)
     assert request[0] == "AUTH"

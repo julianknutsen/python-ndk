@@ -23,6 +23,7 @@
 
 import pytest
 
+import testing_utils
 from ndk import crypto
 from ndk.event import event, event_tags
 from ndk.event import parameterized_replaceable_event as pre
@@ -79,12 +80,17 @@ async def test_paramterized_replaceable_event_no_tag(
 
     fltr = {"authors": [keys.public], "kinds": [30000]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    stored_ev = await utils.expect_relay_event_of_type(
-        pre.ParameterizedReplaceableEvent, response_queue
-    )
-    assert stored_ev == replacement
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        stored_ev = await utils.expect_relay_event_of_type_gen(
+            pre.ParameterizedReplaceableEvent, msgs
+        )
+        assert stored_ev == replacement
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.parametrize(
@@ -114,12 +120,17 @@ async def test_paramterized_replaceable_event_empty_d(
 
     fltr = {"authors": [keys.public], "kinds": [30000]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    stored_ev = await utils.expect_relay_event_of_type(
-        pre.ParameterizedReplaceableEvent, response_queue
-    )
-    assert stored_ev == replacement
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        stored_ev = await utils.expect_relay_event_of_type_gen(
+            pre.ParameterizedReplaceableEvent, msgs
+        )
+        assert stored_ev == replacement
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -136,16 +147,21 @@ async def test_paramterized_replaceable_event_empty_d_not_replaced(
 
     fltr = {"authors": [keys.public], "kinds": [30000]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    stored_ev = await utils.expect_relay_event_of_type(
-        pre.ParameterizedReplaceableEvent, response_queue
-    )
-    assert stored_ev == other
-    stored_ev = await utils.expect_relay_event_of_type(
-        pre.ParameterizedReplaceableEvent, response_queue
-    )
-    assert stored_ev == ev
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        stored_ev = await utils.expect_relay_event_of_type_gen(
+            pre.ParameterizedReplaceableEvent, msgs
+        )
+        assert stored_ev == other
+        stored_ev = await utils.expect_relay_event_of_type_gen(
+            pre.ParameterizedReplaceableEvent, msgs
+        )
+        assert stored_ev == ev
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -166,9 +182,14 @@ async def test_paramterized_replaceable_event_valid_d_replaced(
 
     fltr = {"authors": [keys.public], "kinds": [30000]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    stored_ev = await utils.expect_relay_event_of_type(
-        pre.ParameterizedReplaceableEvent, response_queue
-    )
-    assert stored_ev == replacement
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        stored_ev = await utils.expect_relay_event_of_type_gen(
+            pre.ParameterizedReplaceableEvent, msgs
+        )
+        assert stored_ev == replacement
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)

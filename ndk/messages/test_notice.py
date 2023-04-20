@@ -64,7 +64,7 @@ def test_notice_correct():
 def test_notice_serialie():
     n = notice.Notice("text")
 
-    assert serialize.deserialize(n.serialize()) == ["NOTICE", "text"]
+    assert serialize.deserialize_str(n.serialize()) == ["NOTICE", "text"]
 
 
 def test_factory():

@@ -67,7 +67,7 @@ def test_serialize():
     r = request.Request("1", [{}])
     serialized = r.serialize()
 
-    deserialized = serialize.deserialize(serialized)
+    deserialized = serialize.deserialize_str(serialized)
 
     assert deserialized == ["REQ", "1", {}]
 
@@ -76,6 +76,6 @@ def test_serialize_multiple_filters():
     r = request.Request("1", [{}, {}])
     serialized = r.serialize()
 
-    deserialized = serialize.deserialize(serialized)
+    deserialized = serialize.deserialize_str(serialized)
 
     assert deserialized == ["REQ", "1", {}, {}]

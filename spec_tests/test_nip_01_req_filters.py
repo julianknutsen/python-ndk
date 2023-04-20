@@ -26,6 +26,7 @@ import time
 import mock
 import pytest
 
+import testing_utils
 from ndk import crypto
 from ndk.event import (
     contact_list_event,
@@ -71,9 +72,14 @@ async def test_text_note_find_by_id(event, request_queue, response_queue):
 
     fltr = {"ids": [cmd_result.event_id]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_text_note_event(response_queue)
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        await utils.expect_text_note_event_gen(msgs)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -88,9 +94,14 @@ async def test_text_note_two_inserts_one_result(event, request_queue, response_q
 
     fltr = {"ids": [cmd_result1.event_id]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_text_note_event(response_queue)
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        await utils.expect_text_note_event_gen(msgs)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -99,9 +110,14 @@ async def test_text_note_find_by_author(request_queue, response_queue, event):
 
     fltr = {"authors": [event.pubkey]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_text_note_event(response_queue)
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        await utils.expect_text_note_event_gen(msgs)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -112,9 +128,14 @@ async def test_text_note_find_by_id_and_author(request_queue, response_queue, ev
 
     fltr = {"ids": [cmd_result.event_id], "authors": [event.pubkey]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_text_note_event(response_queue)
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        await utils.expect_text_note_event_gen(msgs)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -135,9 +156,14 @@ async def test_text_note_find_by_kind(request_queue, response_queue, event):
 
     fltr = {"authors": [event.pubkey], "kinds": [1]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_text_note_event(response_queue)
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        await utils.expect_text_note_event_gen(msgs)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -158,12 +184,16 @@ async def test_text_note_find_author_limit_respected_returns_newest(
 
     fltr = {"authors": [event1.pubkey], "limit": 1}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+        msgs = utils.read_until_eose(response_queue)
 
-    relay_event = await utils.expect_text_note_event(response_queue)
-    assert relay_event == event2  # second insert is returned
+        relay_event = await utils.expect_text_note_event_gen(msgs)
+        assert relay_event == event2  # second insert is returned
 
-    await utils.expect_eose(response_queue)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -194,12 +224,16 @@ async def test_text_note_find_author_since_less_cur_has_result(
 
     fltr = {"authors": [keys.public], "since": cur - 1}  # (since,]
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
 
-    relay_event = await utils.expect_text_note_event(response_queue)
-    assert relay_event == event
+        msgs = utils.read_until_eose(response_queue)
+        relay_event = await utils.expect_text_note_event_gen(msgs)
+        assert relay_event == event
 
-    await utils.expect_eose(response_queue)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -232,12 +266,16 @@ async def test_text_note_find_author_until_less_cur_has_result(
 
     fltr = {"authors": [keys.public], "since": cur - 1}  # (, until)
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
 
-    relay_event = await utils.expect_text_note_event(response_queue)
-    assert relay_event == event
+        msgs = utils.read_until_eose(response_queue)
+        relay_event = await utils.expect_text_note_event_gen(msgs)
+        assert relay_event == event
 
-    await utils.expect_eose(response_queue)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -267,11 +305,15 @@ async def test_text_note_find_by_tag_ptag(request_queue, response_queue, keys):
 
     await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
-    fltr = {"authors": [event.pubkey], "#p": [event.pubkey]}
+    async def validate_response():
+        fltr = {"authors": [event.pubkey], "#p": [event.pubkey]}
+        await utils.send_req_with_filter("1", [fltr], request_queue)
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_text_note_event(response_queue)
-    await utils.expect_eose(response_queue)
+        msgs = utils.read_until_eose(response_queue)
+        await utils.expect_text_note_event_gen(msgs)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -282,11 +324,15 @@ async def test_text_note_find_by_tag_ptag_with_relay(
 
     await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
-    fltr = {"authors": [event.pubkey], "#p": [event.pubkey]}
+    async def validate_response():
+        fltr = {"authors": [event.pubkey], "#p": [event.pubkey]}
+        await utils.send_req_with_filter("1", [fltr], request_queue)
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_text_note_event(response_queue)
-    await utils.expect_eose(response_queue)
+        msgs = utils.read_until_eose(response_queue)
+        await utils.expect_text_note_event_gen(msgs)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -297,17 +343,26 @@ async def test_text_note_find_by_tag_multiple_ptag_in_event(
     event = build_with_tags(keys, tags=[["p", keys.public], ["p", keys2.public]])
     await utils.send_and_expect_command_result(event, request_queue, response_queue)
 
-    fltr = {"authors": [keys.public], "#p": [keys.public]}
+    async def validate_response():
+        fltr = {"authors": [keys.public], "#p": [keys.public]}
+        await utils.send_req_with_filter("1", [fltr], request_queue)
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_text_note_event(response_queue)
-    await utils.expect_eose(response_queue)
+        msgs = utils.read_until_eose(response_queue)
+        await utils.expect_text_note_event_gen(msgs)
+        await utils.expect_eose_gen(msgs)
 
-    fltr = {"authors": [keys.public], "#p": [keys2.public]}
+    await testing_utils.retry_on_assert_coro(validate_response)
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_text_note_event(response_queue)
-    await utils.expect_eose(response_queue)
+    async def validate_response2():
+        fltr = {"authors": [keys.public], "#p": [keys2.public]}
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+
+        await utils.expect_text_note_event_gen(msgs)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response2)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -321,12 +376,16 @@ async def test_text_note_find_by_tag_multiple_ptag_in_filter(
     event2 = build_with_tags(keys, tags=[["p", keys2.public]])
     await utils.send_and_expect_command_result(event2, request_queue, response_queue)
 
-    fltr = {"authors": [keys.public], "#p": [keys.public, keys2.public]}
+    async def validate_response():
+        fltr = {"authors": [keys.public], "#p": [keys.public, keys2.public]}
+        await utils.send_req_with_filter("1", [fltr], request_queue)
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_text_note_event(response_queue)
-    await utils.expect_text_note_event(response_queue)
-    await utils.expect_eose(response_queue)
+        msgs = utils.read_until_eose(response_queue)
+        await utils.expect_text_note_event_gen(msgs)
+        await utils.expect_text_note_event_gen(msgs)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -341,10 +400,15 @@ async def test_text_note_find_by_tag_etag(request_queue, response_queue, keys, e
 
     fltr = {"authors": [event.pubkey], "#e": [event.id]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    relay_event = await utils.expect_text_note_event(response_queue)
-    assert relay_event == event2
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        relay_event = await utils.expect_text_note_event_gen(msgs)
+        assert relay_event == event2
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -361,10 +425,15 @@ async def test_text_note_find_by_other_generic_tag(
 
     fltr = {"authors": [event.pubkey], "#d": [event.id]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    relay_event = await utils.expect_text_note_event(response_queue)
-    assert relay_event == event2
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        relay_event = await utils.expect_text_note_event_gen(msgs)
+        assert relay_event == event2
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -387,10 +456,14 @@ async def test_text_note_find_by_tag_etag_and_ptag(
         "#p": [event2.pubkey],
     }
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    relay_event = await utils.expect_text_note_event(response_queue)
-    assert relay_event == event2
-    await utils.expect_eose(response_queue)
+    async def verify_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+        msgs = utils.read_until_eose(response_queue)
+        relay_event = await utils.expect_text_note_event_gen(msgs)
+        assert relay_event == event2
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(verify_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -408,11 +481,16 @@ async def test_text_note_multiple_filters_or(
     fltr2 = {
         "authors": [keys2.public],
     }
-    await utils.send_req_with_filter("1", [fltr1, fltr2], request_queue)
 
-    await utils.expect_text_note_event(response_queue)
-    await utils.expect_text_note_event(response_queue)
-    await utils.expect_eose(response_queue)
+    async def verify_response():
+        await utils.send_req_with_filter("1", [fltr1, fltr2], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        await utils.expect_text_note_event_gen(msgs)
+        await utils.expect_text_note_event_gen(msgs)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(verify_response)
 
 
 @pytest.mark.usefixtures("ctx")
@@ -494,11 +572,13 @@ async def test_second_event_delete_previous(
 
     fltr = {"authors": [keys.public]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.send_close("1", request_queue)
+    async def verify_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+        await utils.send_close("1", request_queue)
 
-    relay_event = event_builder.from_dict(
-        (await utils.expect_relay_event(response_queue)).event_dict
-    )
-    assert relay_event == event2
-    await utils.expect_eose(response_queue)
+        msgs = utils.read_until_eose(response_queue)
+        rev = await utils.expect_relay_event_gen(msgs)
+        assert event_builder.from_dict(rev.event_dict) == event2
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(verify_response)

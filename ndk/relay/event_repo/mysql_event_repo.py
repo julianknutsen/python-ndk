@@ -76,10 +76,17 @@ class MySqlEventRepo(event_repo.EventRepo):
         super().__init__()
 
     @classmethod
-    async def create(cls, host, port, user, password, database):
+    async def create_engine(
+        cls, host, port, user, password, database
+    ) -> sa_asyncio.AsyncEngine:
         engine = sa_asyncio.create_async_engine(
-            f"mysql+aiomysql://{user}:{password}@{host}:{port}/{database}",
+            f"mysql+aiomysql://{user}:{password}@{host}:{port}/{database}"
         )
+        return engine
+
+    @classmethod
+    async def create(cls, host, port, user, password, database):
+        engine = await cls.create_engine(host, port, user, password, database)
 
         async with engine.begin() as conn:  # transaction
             await conn.run_sync(
@@ -92,7 +99,7 @@ class MySqlEventRepo(event_repo.EventRepo):
         logger.info("Database initialized")
         return MySqlEventRepo(engine)
 
-    async def add(self, ev: event.Event) -> types.EventID:
+    async def _persist(self, ev: event.Event) -> types.EventID:
         async with self._engine.begin() as conn:
             event_insert_stmt = (
                 sqlalchemy.insert(EVENTS_TABLE)
@@ -277,7 +284,7 @@ class MySqlEventRepo(event_repo.EventRepo):
                                 tag.split("__")[0],
                                 tag.split("__")[1],
                                 *(
-                                    serialize.deserialize(tag.split("__")[2])
+                                    serialize.deserialize_str(tag.split("__")[2])
                                     if len(tag.split("__")) > 2
                                     else []
                                 ),

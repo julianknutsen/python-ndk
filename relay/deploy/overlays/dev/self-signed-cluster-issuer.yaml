@@ -11,7 +11,6 @@ metadata:
   name: self-signed-cert
   namespace: python-ndk-dev
 spec:
-  # secretName doesn't have to match the certificate name, but it may as well, for simplicity!
   secretName: self-signed-cert
   issuerRef:
     name: self-signed-cluster-issuer

@@ -65,7 +65,7 @@ def test_correct():
 def test_serialize():
     n = relay_event.RelayEvent("subscription-id", {})
 
-    assert serialize.deserialize(n.serialize()) == ["EVENT", "subscription-id", {}]
+    assert serialize.deserialize_str(n.serialize()) == ["EVENT", "subscription-id", {}]
 
 
 def test_factory():

@@ -37,7 +37,7 @@ from ndk.messages import (
 
 
 def from_str(data: str) -> message.Message:
-    lst = serialize.deserialize(data)
+    lst = serialize.deserialize_str(data)
 
     if not isinstance(lst, list):
         raise exceptions.ParseError("Expected list, got: {obj}")

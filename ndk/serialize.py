@@ -63,7 +63,7 @@ def serialize_as_bytes(obj) -> bytes:
     return serialize_as_str(obj).encode("utf-8")
 
 
-def deserialize(serialized_obj: str) -> typing.Any:
+def deserialize_str(serialized_obj: str) -> typing.Any:
     """Deserialize a str into a Python object according to Nostr spec
 
     Args:
@@ -73,3 +73,15 @@ def deserialize(serialized_obj: str) -> typing.Any:
         typing.Any: Python object
     """
     return json.loads(serialized_obj)
+
+
+def deserialize_bytes(serialized_obj: bytes) -> typing.Any:
+    """Deserialize bytes into a Python object according to Nostr spec
+
+    Args:
+        s (str): serialized object
+
+    Returns:
+        typing.Any: Python object
+    """
+    return json.loads(serialized_obj.decode("utf-8"))

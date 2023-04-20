@@ -33,7 +33,7 @@ class MemoryEventRepo(event_repo.EventRepo):
         self._stored_events = {}
         super().__init__()
 
-    async def add(self, ev: event.Event) -> types.EventID:
+    async def _persist(self, ev: event.Event) -> types.EventID:
         self._stored_events[ev.id] = ev
         return ev.id
 

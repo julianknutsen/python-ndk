@@ -23,6 +23,7 @@
 
 import pytest
 
+import testing_utils
 from ndk import crypto
 from ndk.repos.text_note_repo import event_backed_text_note_repo, fake_text_note_repo
 
@@ -53,11 +54,17 @@ async def test_set_retrieve(repo):
     # send plaintext note
     info = await repo.add(mykeys, "plaintext content goes here!")
 
-    # retrieve by id
-    text_note = await repo.get_by_uid(info)
+    async def validate():
+        # retrieve by id
+        try:
+            text_note = await repo.get_by_uid(info)
+        except:  # pylint: disable=bare-except
+            assert False
 
-    # retrive by author
-    text_notes = await repo.get_by_author(mykeys.public)
+        # retrive by author
+        text_notes = await repo.get_by_author(mykeys.public)
 
-    assert text_note == "plaintext content goes here!"
-    assert text_notes[0] == "plaintext content goes here!"
+        assert text_note == "plaintext content goes here!"
+        assert text_notes[0] == "plaintext content goes here!"
+
+    await testing_utils.retry_on_assert_coro(validate)

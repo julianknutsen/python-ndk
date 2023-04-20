@@ -27,12 +27,7 @@ from ndk.event import event
 
 
 @dataclasses.dataclass
-class ParameterizedReplaceableEvent(
-    event.Event,
-    event.PersistentEvent,
-    event.SingletonEvent,
-    event.BroadcastEvent,
-):
+class ParameterizedReplaceableEvent(event.ReplaceableEvent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

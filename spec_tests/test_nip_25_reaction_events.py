@@ -25,6 +25,7 @@ import asyncio
 
 import pytest
 
+import testing_utils
 from ndk.event import reaction_event, text_note_event
 from spec_tests import utils
 
@@ -65,6 +66,11 @@ async def test_reaction_basic(text_note, event, request_queue, response_queue):
 
     fltr = {"#p": [text_note.pubkey]}
 
-    await utils.send_req_with_filter("1", [fltr], request_queue)
-    await utils.expect_reaction_event(response_queue)
-    await utils.expect_eose(response_queue)
+    async def validate_response():
+        await utils.send_req_with_filter("1", [fltr], request_queue)
+
+        msgs = utils.read_until_eose(response_queue)
+        await utils.expect_reaction_event_gen(msgs)
+        await utils.expect_eose_gen(msgs)
+
+    await testing_utils.retry_on_assert_coro(validate_response)

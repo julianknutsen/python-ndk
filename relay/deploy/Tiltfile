@@ -23,12 +23,27 @@ def deploy_cert_manager():
 local("kubectl config use-context minikube")
 create_namespace("python-ndk-dev")
 create_namespace("traefik")
+create_namespace("kafka")
 helm_resource("traefik", "overlays/dev/traefik", namespace="traefik")
+helm_resource("kafka", "overlays/dev/kafka", namespace="kafka")
 deploy_cert_manager()
 k8s_yaml(kustomize("overlays/dev"))
 k8s_resource(objects=["relay-ingress:ingressroute"], resource_deps=["traefik"], new_name="relay-ingressroute")
 k8s_resource(workload="db", resource_deps=["traefik"])
-k8s_resource(workload="relay", resource_deps=["traefik", "db"])
+k8s_resource(workload="relay", resource_deps=["traefik", "db", "kafka"])
+k8s_resource(workload="event-persister", resource_deps=["traefik", "db", "kafka"])
+
+docker_build_with_restart(
+    "event-persister",
+    context="../..",
+    dockerfile="event-persister.dockerfile",
+    ignore=["**/.*", "**/__pycache__", "**/cov.xml", "functional_tests", "spec_tests", "cli"],
+    live_update=[
+        fall_back_on(["."]),
+        sync("../..", "/app/python-ndk"),
+    ],
+    entrypoint="/opt/venv/bin/python /app/python-ndk/relay/event_persister.py"
+)
 
 docker_build_with_restart(
     "python-ndk-relay",
@@ -38,7 +53,7 @@ docker_build_with_restart(
         "RELAY_HOST": "0.0.0.0",
         "RELAY_PORT": "2700",
         "RELAY_LOG_LEVEL": "DEBUG",
-        "RELAY_EVENT_REPO": "mysql"
+        "RELAY_EVENT_REPO": "mysql_kafka"
     },
     ignore=["**/.*", "**/__pycache__", "**/cov.xml", "functional_tests", "spec_tests", "cli"],
     live_update=[
