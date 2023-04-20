@@ -6,7 +6,7 @@ resources:
 - secrets.yaml
 - self-signed-cluster-issuer.yaml
 - ingress.yaml
-- mysql.yaml
+- db.yaml
 patches:
 - path: patch-deployment.yaml
   target:

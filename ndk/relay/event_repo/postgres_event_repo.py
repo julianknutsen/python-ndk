@@ -22,9 +22,10 @@
 import logging
 
 import sqlalchemy
-from sqlalchemy.ext import asyncio as sa_asyncio
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.ext import asyncio as pq_asyncio
 
-from ndk import serialize, types
+from ndk import types
 from ndk.event import event, event_builder, event_filter
 from ndk.relay.event_repo import event_repo
 
@@ -50,7 +51,7 @@ TAGS_TABLE = sqlalchemy.Table(
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("identifier", sqlalchemy.String(255)),
     sqlalchemy.Column("value", sqlalchemy.String(255)),
-    sqlalchemy.Column("additional_data", sqlalchemy.JSON),
+    sqlalchemy.Column("additional_data", postgresql.ARRAY(sqlalchemy.String(255))),
     sqlalchemy.Index("identifier", "value"),
 )
 
@@ -68,19 +69,19 @@ EVENT_TAGS_TABLE = sqlalchemy.Table(
 )
 
 
-class MySqlEventRepo(event_repo.EventRepo):
-    _engine: sa_asyncio.AsyncEngine
+class PostgresEventRepo(event_repo.EventRepo):
+    _engine: pq_asyncio.AsyncEngine
 
-    def __init__(self, engine: sa_asyncio.AsyncEngine):
+    def __init__(self, engine: pq_asyncio.AsyncEngine):
         self._engine = engine
         super().__init__()
 
     @classmethod
     async def create_engine(
         cls, host, port, user, password, database
-    ) -> sa_asyncio.AsyncEngine:
-        engine = sa_asyncio.create_async_engine(
-            f"mysql+aiomysql://{user}:{password}@{host}:{port}/{database}"
+    ) -> pq_asyncio.AsyncEngine:
+        engine = pq_asyncio.create_async_engine(
+            f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{database}"
         )
         return engine
 
@@ -97,12 +98,12 @@ class MySqlEventRepo(event_repo.EventRepo):
             await conn.run_sync(METADATA.create_all)
 
         logger.info("Database initialized")
-        return MySqlEventRepo(engine)
+        return PostgresEventRepo(engine)
 
     async def _persist(self, ev: event.Event) -> types.EventID:
         async with self._engine.begin() as conn:
             event_insert_stmt = (
-                sqlalchemy.insert(EVENTS_TABLE)
+                postgresql.insert(EVENTS_TABLE)
                 .values(
                     event_id=ev.id,
                     pubkey=ev.pubkey,
@@ -111,16 +112,17 @@ class MySqlEventRepo(event_repo.EventRepo):
                     content=ev.content,
                     sig=ev.sig,
                 )
-                .prefix_with("IGNORE")
+                .on_conflict_do_nothing(index_elements=[EVENTS_TABLE.c.event_id])
+                .returning(EVENTS_TABLE.c.id)
             )
 
             insert_result = await conn.execute(event_insert_stmt)
 
             # if it is already in the db, do nothing
-            if insert_result.lastrowid == 0:
+            if insert_result.rowcount == 0:
                 return ev.id
 
-            ev_id = insert_result.lastrowid
+            ev_id = insert_result.scalar()
 
             for tag in ev.tags:
                 if len(tag) == 0:
@@ -138,13 +140,17 @@ class MySqlEventRepo(event_repo.EventRepo):
                 tag_select_result = (await conn.execute(tag_select_stmt)).fetchone()
                 if tag_select_result is None:
                     # Insert the tag if it doesn't exist
-                    tag_insert_stmt = sqlalchemy.insert(TAGS_TABLE).values(
-                        identifier=tag[0],
-                        value=tag[1],
-                        additional_data=tag[2:],
+                    tag_insert_stmt = (
+                        sqlalchemy.insert(TAGS_TABLE)
+                        .values(
+                            identifier=tag[0],
+                            value=tag[1],
+                            additional_data=tag[2:],
+                        )
+                        .returning(TAGS_TABLE.c.id)
                     )
 
-                    tag_id = (await conn.execute(tag_insert_stmt)).lastrowid
+                    tag_id = (await conn.execute(tag_insert_stmt)).scalar()
 
                 else:
                     tag_id = tag_select_result[0]
@@ -191,11 +197,9 @@ class MySqlEventRepo(event_repo.EventRepo):
                 EVENTS_TABLE.c.kind,
                 EVENTS_TABLE.c.content,
                 EVENTS_TABLE.c.sig,
-                sqlalchemy.func.group_concat(
-                    sqlalchemy.text(
-                        "CONCAT_WS('__', tags.identifier, tags.value, JSON_EXTRACT(tags.additional_data, \"$[*]\")) ORDER BY event_tags.id ASC"
-                    )
-                ).label("tags_combined"),
+                sqlalchemy.text(
+                    "string_agg(CONCAT_WS('__', tags.identifier, tags.value, array_to_string(tags.additional_data, ',')), ',' ORDER BY event_tags.id ASC) as tags_combined"
+                ),
             )
             .select_from(
                 EVENTS_TABLE.outerjoin(EVENT_TAGS_TABLE).outerjoin(
@@ -265,7 +269,8 @@ class MySqlEventRepo(event_repo.EventRepo):
         )
         if limit != float("-inf"):
             final = final.limit(int(limit))
-        # logger.debug(final.compile(dialect=self._engine.dialect).string)
+        # query_str = final.compile(dialect=self._engine.dialect).string
+        # logger.debug(query_str)
 
         async with self._engine.connect() as conn:
             result = (await conn.execute(final)).fetchall()
@@ -280,15 +285,9 @@ class MySqlEventRepo(event_repo.EventRepo):
                         "content": row[4],
                         "sig": row[5],
                         "tags": [
-                            [
-                                tag.split("__")[0],
-                                tag.split("__")[1],
-                                *(
-                                    serialize.deserialize_str(tag.split("__")[2])
-                                    if len(tag.split("__")) > 2
-                                    else []
-                                ),
-                            ]
+                            tag.split("__")[:-1]
+                            if tag.endswith("__")
+                            else tag.split("__")
                             for tag in row[6].split(",")
                             if row[6]
                         ],

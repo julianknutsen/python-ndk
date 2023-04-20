@@ -1,2 +1,2 @@
 ignore:
-  - ndk/relay/event_repo/mysql_event_repo.py
+  - ndk/relay/event_repo/postgres_event_repo.py

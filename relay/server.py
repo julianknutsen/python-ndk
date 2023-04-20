@@ -41,9 +41,9 @@ from ndk.relay import (
 )
 from ndk.relay.event_repo import (
     event_repo,
-    kafka_mysql_event_repo,
+    kafka_event_repo,
     memory_event_repo,
-    mysql_event_repo,
+    postgres_event_repo,
 )
 from ndk.repos.event_repo import protocol_handler
 from relay import config
@@ -56,7 +56,7 @@ PORT = int(os.environ.get("RELAY_PORT", "2700"))
 DEBUG_LEVEL = os.environ.get("RELAY_LOG_LEVEL", "INFO")
 RELAY_URL = os.environ.get("RELAY_URL", "wss://tests")
 
-if RELAY_EVENT_REPO in ("mysql", "mysql_kafka"):
+if RELAY_EVENT_REPO in ("postgres", "postgres_kafka"):
     DB_HOST = os.environ.get("DB_HOST")
     DB_PORT = os.environ.get("DB_PORT")
     DB_NAME = os.environ.get("DB_NAME")
@@ -191,17 +191,15 @@ async def main():
 
     if RELAY_EVENT_REPO == "memory":
         repo = memory_event_repo.MemoryEventRepo()
-    elif RELAY_EVENT_REPO == "mysql":
-        repo = await mysql_event_repo.MySqlEventRepo.create(
+    elif RELAY_EVENT_REPO == "postgres":
+        repo = await postgres_event_repo.PostgresEventRepo.create(
             DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
         )
-    elif RELAY_EVENT_REPO == "mysql_kafka":
-        read_repo = await mysql_event_repo.MySqlEventRepo.create(
+    elif RELAY_EVENT_REPO == "postgres_kafka":
+        read_repo = await postgres_event_repo.PostgresEventRepo.create(
             DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
         )
-        repo = kafka_mysql_event_repo.KafkaMySqlEventRepo(
-            "kafka.kafka", read_repo, "events"
-        )
+        repo = kafka_event_repo.KafkaEventRepo("kafka.kafka", read_repo, "events")
         await repo.start()
     else:
         raise ValueError(f"Unknown event repo: {RELAY_EVENT_REPO}")

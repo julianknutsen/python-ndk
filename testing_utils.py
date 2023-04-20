@@ -23,7 +23,7 @@ import asyncio
 import time
 
 
-async def retry_on_assert_coro(predicate, timeout=5, backoff=0.1):
+async def retry_on_assert_coro(predicate, timeout=10, backoff=0.1):
     start_time = time.time()
     while (time.time() - start_time) < timeout:
         try:

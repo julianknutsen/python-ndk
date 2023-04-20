@@ -23,7 +23,7 @@ import asyncio
 import logging
 import os
 
-from ndk.relay.event_repo import kafka_mysql_event_persister, mysql_event_repo
+from ndk.relay.event_repo import kafka_event_persister, postgres_event_repo
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level="DEBUG", format="%(asctime)s %(levelname)s %(message)s")
@@ -38,12 +38,10 @@ DB_PASSWORD = os.environ.get("DB_PASSWORD")
 
 
 async def main():
-    repo = await mysql_event_repo.MySqlEventRepo.create(
+    repo = await postgres_event_repo.PostgresEventRepo.create(
         DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
     )
-    persister = kafka_mysql_event_persister.KafkaMySqlEventPersister(
-        KAFKA_URL, "events", repo
-    )
+    persister = kafka_event_persister.KafkaEventPersister(KAFKA_URL, "events", repo)
     await persister.start()
 
 

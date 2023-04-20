@@ -25,19 +25,19 @@ import aiokafka
 
 from ndk import types
 from ndk.event import event, event_filter
-from ndk.relay.event_repo import event_repo, kafka_events, mysql_event_repo
+from ndk.relay.event_repo import event_repo, kafka_events
 
 
-class KafkaMySqlEventRepo(event_repo.EventRepo):
+class KafkaEventRepo(event_repo.EventRepo):
     _producer: aiokafka.AIOKafkaProducer
-    _repo: mysql_event_repo.MySqlEventRepo
+    _repo: event_repo.EventRepo
     _started: bool
     _topic: str
 
     def __init__(
         self,
         kafka_url: str,
-        repo: mysql_event_repo.MySqlEventRepo,
+        repo: event_repo.EventRepo,
         topic: str,
     ):
         self._producer = aiokafka.AIOKafkaProducer(bootstrap_servers=kafka_url)
