@@ -30,7 +30,7 @@ from ndk import crypto
 from ndk.event import event, event_filter, event_tags, metadata_event
 from ndk.event import parameterized_replaceable_event as pre
 from ndk.event import text_note_event
-from ndk.relay.event_repo import memory_event_repo, mysql_event_repo
+from ndk.relay.event_repo import memory_event_repo, postgres_event_repo
 
 
 @pytest.fixture
@@ -41,7 +41,9 @@ def fake():
 @pytest.fixture
 def db(db_url):
     return asyncio.get_event_loop().run_until_complete(
-        mysql_event_repo.MySqlEventRepo.create(db_url, 3306, "nostr", "nostr", "nostr")
+        postgres_event_repo.PostgresEventRepo.create(
+            db_url, 5432, "nostr", "nostr", "nostr"
+        )
     )
 
 

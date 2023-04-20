@@ -30,7 +30,7 @@ coincurve = "18.0.0"
 
 # extras / dev
 aiokafka = { version = "*", optional = true }
-aiomysql = { version = "*", optional = true }
+asyncpg  = { version = "*", optional = true }
 black = { version = "*", optional = true }
 click = { version = "*", optional = true }
 coverage = { version = "*", optional = true }
@@ -39,6 +39,7 @@ isort = { version = "*", optional = true }
 mock = { version = "*", optional = true }
 mypy = { version = "*", optional = true }
 pipreqs = { version = "*", optional = true }
+psycopg2-binary = { version = "*", optional = true }
 pylint = { version = "*", optional = true }
 pytest = { version = "*", optional = true }
 pytest-asyncio = { version = "*", optional = true }
@@ -57,9 +58,9 @@ lint = "scripts.verify_format_lint:main"
 
 [tool.poetry.extras]
 cli = ["click", "websockets"]
-dev =  ["aiokafka", "aiomysql", "black", "coverage", "cryptography", "isort", "mock", "mypy", "pipreqs", "pylint", "pytest", "pytest-asyncio", "pytest-timeout", "pytest-xdist", "requests", "types-requests", "sqlalchemy", "types-mock", "websockets"]
-relay = ["aiokafka", "aiomysql", "cryptography", "sqlalchemy", "websockets"]
-test = ["aiokafka", "aiomysql", "mock", "cryptography", "pytest", "pytest-asyncio", "pytest-timeout", "requests", "types-requests", "sqlalchemy", "types-mock", "websockets"]
+dev =  ["aiokafka", "asyncpg", "black", "coverage", "cryptography", "isort", "mock", "mypy", "pipreqs", "psycopg2-binary", "pylint", "pytest", "pytest-asyncio", "pytest-timeout", "pytest-xdist", "requests", "types-requests", "sqlalchemy", "types-mock", "websockets"]
+relay = ["aiokafka", "asyncpg", "cryptography", "psycopg2-binary", "sqlalchemy", "websockets"]
+test = ["aiokafka", "asyncpg", "mock", "cryptography", "psycopg2-binary", "pytest", "pytest-asyncio", "pytest-timeout", "requests", "types-requests", "sqlalchemy", "types-mock", "websockets"]
 
 [tool.isort]
 profile = "black"

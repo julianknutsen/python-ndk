@@ -47,6 +47,6 @@ spec:
             - name: DB_HOST
               value: db
             - name: DB_PORT
-              value: "3306"
+              value: "5432"
             - name: KAFKA_URL
               value: "kafka.kafka"

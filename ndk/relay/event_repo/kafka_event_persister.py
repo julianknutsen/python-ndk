@@ -23,23 +23,21 @@ import logging
 
 import aiokafka
 
-from ndk.relay.event_repo import kafka_events, mysql_event_repo
+from ndk.relay.event_repo import event_repo, kafka_events
 
 logger = logging.getLogger(__name__)
 
 
-class KafkaMySqlEventPersister:
+class KafkaEventPersister:
     _consumer: aiokafka.AIOKafkaConsumer
-    _event_repo: mysql_event_repo.MySqlEventRepo
+    _event_repo: event_repo.EventRepo
     _topic: str
 
-    def __init__(
-        self, kafka_url: str, topic: str, event_repo: mysql_event_repo.MySqlEventRepo
-    ):
+    def __init__(self, kafka_url: str, topic: str, ev_repo: event_repo.EventRepo):
         self._consumer = aiokafka.AIOKafkaConsumer(
             topic, bootstrap_servers=kafka_url, group_id="event_persister"
         )
-        self._event_repo = event_repo
+        self._event_repo = ev_repo
         self._topic = topic
 
     async def start(self):
