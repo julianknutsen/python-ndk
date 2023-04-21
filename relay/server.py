@@ -66,7 +66,7 @@ KAFKA_URL = os.environ.get("KAFKA_URL", None)
 
 logging.basicConfig(level=DEBUG_LEVEL, format="%(asctime)s %(levelname)s %(message)s")
 logging.getLogger("websockets").setLevel(logging.WARNING)
-logging.getLogger("aiokafka").setLevel(logging.INFO)
+logging.getLogger("aiokafka").setLevel(logging.WARNING)
 
 
 async def process_message(
