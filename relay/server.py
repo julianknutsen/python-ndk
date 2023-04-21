@@ -41,6 +41,7 @@ from ndk.relay import (
 )
 from ndk.relay.event_repo import (
     event_repo,
+    kafka_event_persister,
     kafka_event_repo,
     memory_event_repo,
     postgres_event_repo,
@@ -50,21 +51,22 @@ from relay import config
 
 logger = logging.getLogger(__name__)
 
-RELAY_EVENT_REPO = os.environ.get("RELAY_EVENT_REPO", "memory").lower()
-HOST = os.environ.get("RELAY_HOST", "localhost")
+MODE = os.environ.get("MODE", "MEMORY")
+HOST = os.environ.get("RELAY_HOST", "0.0.0.0")
 PORT = int(os.environ.get("RELAY_PORT", "2700"))
 DEBUG_LEVEL = os.environ.get("RELAY_LOG_LEVEL", "INFO")
 RELAY_URL = os.environ.get("RELAY_URL", "wss://tests")
 
-if RELAY_EVENT_REPO in ("postgres", "postgres_kafka"):
-    DB_HOST = os.environ.get("DB_HOST")
-    DB_PORT = os.environ.get("DB_PORT")
-    DB_NAME = os.environ.get("DB_NAME")
-    DB_USER = os.environ.get("DB_USER")
-    DB_PASSWORD = os.environ.get("DB_PASSWORD")
+DB_HOST = os.environ.get("DB_HOST", None)
+DB_PORT = os.environ.get("DB_PORT", "5432")
+DB_NAME = os.environ.get("DB_NAME", None)
+DB_USER = os.environ.get("DB_USER", None)
+DB_PASSWORD = os.environ.get("DB_PASSWORD", None)
+KAFKA_URL = os.environ.get("KAFKA_URL", None)
 
 logging.basicConfig(level=DEBUG_LEVEL, format="%(asctime)s %(levelname)s %(message)s")
 logging.getLogger("websockets").setLevel(logging.WARNING)
+logging.getLogger("aiokafka").setLevel(logging.INFO)
 
 
 async def process_message(
@@ -181,28 +183,47 @@ def parse_args():
     return parser.parse_args()
 
 
-async def main():
+async def create_repo_from_env():
+    if MODE is None:
+        raise ValueError("Required MODE environment variable is not set")
+
+    valid_modes = ["MEMORY", "POSTGRES", "POSTGRES_KAFKA"]
+    if MODE not in valid_modes:
+        raise ValueError(
+            f"Invalid MODE environment variable value. Must be one of {valid_modes}"
+        )
+
+    if MODE == "MEMORY":
+        return memory_event_repo.MemoryEventRepo()
+
+    for e in [DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD]:
+        if e is None:
+            raise ValueError("Required DB_* environment variables are not set")
+
+    postgres_repo = await postgres_event_repo.PostgresEventRepo.create(
+        DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
+    )
+
+    if MODE == "POSTGRES":
+        return postgres_repo
+
+    if MODE == "POSTGRES_KAFKA":
+        if KAFKA_URL is None:
+            raise ValueError("Required KAFKA_URL environment variable is not set")
+        kafka_repo = kafka_event_repo.KafkaEventRepo(KAFKA_URL, postgres_repo, "events")
+        await kafka_repo.start()
+        return kafka_repo
+
+    raise ValueError("Invalid MODE environment variable value")
+
+
+async def start_relay():
     args = parse_args()
+    repo = await create_repo_from_env()
     ini_parser = configparser.ConfigParser()
     ini_parser.read(args.config)
     cfg = config.RelayConfig(ini_parser)
 
-    logger.info("Logging set to %s", DEBUG_LEVEL)
-
-    if RELAY_EVENT_REPO == "memory":
-        repo = memory_event_repo.MemoryEventRepo()
-    elif RELAY_EVENT_REPO == "postgres":
-        repo = await postgres_event_repo.PostgresEventRepo.create(
-            DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
-        )
-    elif RELAY_EVENT_REPO == "postgres_kafka":
-        read_repo = await postgres_event_repo.PostgresEventRepo.create(
-            DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
-        )
-        repo = kafka_event_repo.KafkaEventRepo("kafka.kafka", read_repo, "events")
-        await repo.start()
-    else:
-        raise ValueError(f"Unknown event repo: {RELAY_EVENT_REPO}")
     logger.info("%s initialized", repo.__class__)
 
     loop = asyncio.get_event_loop()
@@ -218,6 +239,31 @@ async def main():
         ),
     ):
         await stop
+
+
+async def start_kafka_persister():
+    for e in [DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD]:
+        if e is None:
+            raise ValueError("Required DB_* environment variables are not set")
+
+    if KAFKA_URL is None:
+        raise ValueError("Required KAFKA_URL environment variable is not set")
+
+    repo = await postgres_event_repo.PostgresEventRepo.create(
+        DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
+    )
+    persister = kafka_event_persister.KafkaEventPersister(KAFKA_URL, "events", repo)
+    await persister.start()
+
+
+async def main():
+    logger.info("Starting in %s", MODE)
+    logger.info("Logging set to %s", DEBUG_LEVEL)
+
+    if MODE == "KAFKA_PERSISTER":
+        await start_kafka_persister()
+    else:
+        await start_relay()
 
 
 if __name__ == "__main__":

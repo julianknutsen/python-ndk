@@ -245,7 +245,6 @@ jobs:
           file: relay/deploy/relay.dockerfile
           platforms: linux/amd64
           push: true
-          build-args: "RELAY_EVENT_REPO=postgres"
           tags: |
             ${{ env.IMAGE }}:${{ env.BUILD_ID }}
             ${{ env.IMAGE }}:${{ env.LATEST_ID }}

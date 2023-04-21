@@ -31,43 +31,46 @@ class EventRepo(abc.ABC):
         ev_id = await self._persist(ev)
 
         if isinstance(ev, event.ReplaceableEvent):
-            if not isinstance(ev, pre.ParameterizedReplaceableEvent):
-                existing_evs = await self.get(
-                    [event_filter.EventFilter(authors=[ev.pubkey], kinds=[ev.kind])]
-                )
-            else:
-                fltrs = []
-                existing_evs = []
-                normalized_d_tag = ev.get_normalized_d_tag_value()
-                if normalized_d_tag is None:
-                    # search for ["d", ""], or no tag at all, per NIP-33
-                    fltrs.append(
-                        event_filter.EventFilter(authors=[ev.pubkey], kinds=[ev.kind])
-                    )
-
-                    # query language has no way to search for "no tag" so need to check them all
-                    existing_evs = await self.get(fltrs)
-                    existing_evs = [
-                        ev
-                        for ev in existing_evs
-                        if len(ev.tags) == 0
-                        or (ev.tags[0][0] == "d" and ev.tags[0][1] == "")
-                    ]
-                else:
-                    fltrs.append(
-                        event_filter.EventFilter(
-                            authors=[ev.pubkey],
-                            kinds=[ev.kind],
-                            generic_tags={"d": [normalized_d_tag]},
-                        )
-                    )
-
-                    existing_evs = await self.get(fltrs)
-
-            for e in existing_evs[1:]:  # first entry (latest) is the one we just added
-                await self.remove(e.id)
+            await self._delete_old_events(ev)
 
         return ev_id
+
+    async def _delete_old_events(self, ev: event.Event):
+        if not isinstance(ev, pre.ParameterizedReplaceableEvent):
+            existing_evs = await self.get(
+                [event_filter.EventFilter(authors=[ev.pubkey], kinds=[ev.kind])]
+            )
+        else:
+            fltrs = []
+            existing_evs = []
+            normalized_d_tag = ev.get_normalized_d_tag_value()
+            if normalized_d_tag is None:
+                # search for ["d", ""], or no tag at all, per NIP-33
+                fltrs.append(
+                    event_filter.EventFilter(authors=[ev.pubkey], kinds=[ev.kind])
+                )
+
+                # query language has no way to search for "no tag" so need to check them all
+                existing_evs = await self.get(fltrs)
+                existing_evs = [
+                    ev
+                    for ev in existing_evs
+                    if len(ev.tags) == 0
+                    or (ev.tags[0][0] == "d" and ev.tags[0][1] == "")
+                ]
+            else:
+                fltrs.append(
+                    event_filter.EventFilter(
+                        authors=[ev.pubkey],
+                        kinds=[ev.kind],
+                        generic_tags={"d": [normalized_d_tag]},
+                    )
+                )
+
+                existing_evs = await self.get(fltrs)
+
+        for e in existing_evs[1:]:  # first entry (latest) is the one we just added
+            await self.remove(e.id)
 
     @abc.abstractmethod
     async def _persist(self, ev: event.Event) -> types.EventID:

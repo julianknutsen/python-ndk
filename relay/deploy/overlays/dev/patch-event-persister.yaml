@@ -1,14 +1,11 @@
 - op: replace
-  path: /spec/template/spec/containers/0/livenessProbe/periodSeconds
-  value: 30
-- op: replace
   path: /spec/template/spec/containers/0/image
   value: python-ndk-relay
 - op: add
   path: /spec/template/spec/containers/0/env
   value:
     - name: MODE
-      value: POSTGRES_KAFKA
+      value: KAFKA_PERSISTER
     - name: DB_NAME
       valueFrom:
         secretKeyRef:
@@ -28,7 +25,5 @@
       value: postgresql
     - name: KAFKA_URL
       value: kafka.kafka
-    - name: RELAY_URL
-      value: localhost
     - name: RELAY_LOG_LEVEL
       value: DEBUG

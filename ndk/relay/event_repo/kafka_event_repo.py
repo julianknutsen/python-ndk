@@ -47,12 +47,14 @@ class KafkaEventRepo(event_repo.EventRepo):
         super().__init__()
 
     def __del__(self):
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self._producer.stop())
+        asyncio.run(self._producer.stop())
 
     async def start(self):
         await self._producer.start()
         self._started = True
+
+    async def _delete_old_events(self, ev: event.Event):
+        pass  # handled by the kafka consumer
 
     async def _persist(self, ev: event.Event) -> types.EventID:
         assert self._started
