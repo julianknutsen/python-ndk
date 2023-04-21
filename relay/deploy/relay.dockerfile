@@ -1,6 +1,8 @@
 FROM python:3.11-slim-bullseye
 
 RUN python -m venv /opt/venv && /opt/venv/bin/pip install --upgrade pip
+COPY ../../relay_requirements.txt /tmp/relay_requirements.txt
+RUN /opt/venv/bin/pip install -r /tmp/relay_requirements.txt
 
 WORKDIR /app
 COPY ../.. python-ndk
