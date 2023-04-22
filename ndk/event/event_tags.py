@@ -25,8 +25,14 @@ from ndk import crypto, types
 
 
 def validate_relay_url(relay_url: str):
-    if not (relay_url.startswith("ws://") or relay_url.startswith("wss://")):
-        raise ValueError(f"Relay URL must start with ws:// or ws:// {relay_url}")
+    if not (
+        relay_url.startswith("ws://")
+        or relay_url.startswith("wss://")
+        or relay_url == ""
+    ):
+        raise ValueError(
+            f"Relay URL must be blank or start with ws:// or wss:// {relay_url}"
+        )
 
 
 class EventTag(list):

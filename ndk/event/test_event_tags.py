@@ -86,6 +86,11 @@ def test_init_p_tag_from_pubkey_with_relay():
     assert str(et) == f"['p', '{VALID_PUBKEY_STR}', '{VALID_RELAY_STR}']"
 
 
+def test_init_p_tag_from_pubkey_with_empty_relay():
+    et = event_tags.PublicKeyTag.from_pubkey(crypto.PublicKeyStr(VALID_PUBKEY_STR), "")
+    assert str(et) == f"['p', '{VALID_PUBKEY_STR}', '']"
+
+
 def test_init_p_tag_from_pubkey_with_malformed_relay():
     with pytest.raises(ValueError):
         event_tags.PublicKeyTag.from_pubkey(
