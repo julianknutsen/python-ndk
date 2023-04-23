@@ -49,9 +49,9 @@ TAGS_TABLE = sqlalchemy.Table(
     "tags",
     METADATA,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
-    sqlalchemy.Column("identifier", sqlalchemy.String(255)),
-    sqlalchemy.Column("value", sqlalchemy.String(255)),
-    sqlalchemy.Column("additional_data", postgresql.ARRAY(sqlalchemy.String(255))),
+    sqlalchemy.Column("identifier", sqlalchemy.String),
+    sqlalchemy.Column("value", sqlalchemy.String),
+    sqlalchemy.Column("additional_data", postgresql.ARRAY(sqlalchemy.String)),
     sqlalchemy.Index("identifier", "value"),
 )
 
