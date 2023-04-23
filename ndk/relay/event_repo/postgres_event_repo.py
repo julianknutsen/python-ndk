@@ -19,9 +19,11 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import asyncio
 import logging
 
 import sqlalchemy
+from sqlalchemy import exc as sqlalchemy_exc
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext import asyncio as pq_asyncio
 
@@ -81,7 +83,8 @@ class PostgresEventRepo(event_repo.EventRepo):
         cls, host, port, user, password, database
     ) -> pq_asyncio.AsyncEngine:
         engine = pq_asyncio.create_async_engine(
-            f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{database}"
+            f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{database}",
+            pool_size=8,
         )
         return engine
 
@@ -101,6 +104,25 @@ class PostgresEventRepo(event_repo.EventRepo):
         return PostgresEventRepo(engine)
 
     async def _persist(self, ev: event.Event) -> types.EventID:
+        max_retries = 3
+        for attempt in range(1, max_retries + 1):
+            try:
+                return await self._insert(ev)
+            except sqlalchemy_exc.IntegrityError as e:
+                if "unique constraint" in str(e).lower() and attempt < max_retries:
+                    logger.warning(
+                        "Concurrent insert error (attempt %s/%s): %s",
+                        attempt,
+                        max_retries,
+                        e,
+                    )
+                    await asyncio.sleep(0.1 * attempt)
+                else:
+                    raise e
+        else:
+            raise RuntimeError("Failed to insert event after multiple retries")
+
+    async def _insert(self, ev: event.Event) -> types.EventID:
         async with self._engine.begin() as conn:
             event_insert_stmt = (
                 postgresql.insert(EVENTS_TABLE)
@@ -124,10 +146,16 @@ class PostgresEventRepo(event_repo.EventRepo):
 
             ev_id = insert_result.scalar()
 
+            tag_inserts = []
+            event_tag_inserts = []
+            existing_tags = {}
+
+            # populate known tags and build batch insert for new tags
             for tag in ev.tags:
                 if len(tag) == 0:
                     continue
 
+                tag_key = tuple(tag)
                 # Check for existing tag_id
                 tag_select_stmt = sqlalchemy.select(TAGS_TABLE.c.id).where(
                     sqlalchemy.and_(
@@ -139,29 +167,57 @@ class PostgresEventRepo(event_repo.EventRepo):
 
                 tag_select_result = (await conn.execute(tag_select_stmt)).fetchone()
                 if tag_select_result is None:
-                    # Insert the tag if it doesn't exist
-                    tag_insert_stmt = (
-                        sqlalchemy.insert(TAGS_TABLE)
-                        .values(
-                            identifier=tag[0],
-                            value=tag[1],
-                            additional_data=tag[2:],
-                        )
-                        .returning(TAGS_TABLE.c.id)
+                    # Collect the tag to be inserted
+                    tag_inserts.append(
+                        {
+                            "identifier": tag[0],
+                            "value": tag[1],
+                            "additional_data": tag[2:],
+                        }
                     )
-
-                    tag_id = (await conn.execute(tag_insert_stmt)).scalar()
-
                 else:
-                    tag_id = tag_select_result[0]
+                    existing_tags[tag_key] = tag_select_result[0]
 
-                # Always insert tags even if they are a duplicate as we need to include
-                # the duplicate in the reconstruction
-                tag_event_insert_stmt = sqlalchemy.insert(EVENT_TAGS_TABLE).values(
-                    event_id=ev_id,
-                    tag_id=tag_id,
+            # insert new tags in db and record their ids
+            if tag_inserts:
+                tag_insert_stmt = (
+                    sqlalchemy.insert(TAGS_TABLE)
+                    .values(
+                        identifier=sqlalchemy.bindparam("identifier"),
+                        value=sqlalchemy.bindparam("value"),
+                        additional_data=sqlalchemy.bindparam("additional_data"),
+                    )
+                    .returning(TAGS_TABLE.c.id)
                 )
-                await conn.execute(tag_event_insert_stmt)
+                tag_ids = [
+                    row[0] for row in await conn.execute(tag_insert_stmt, tag_inserts)
+                ]
+
+                for tag, tag_id in zip(tag_inserts, tag_ids):
+                    tag_key = (tag["identifier"], tag["value"], *tag["additional_data"])
+                    existing_tags[tag_key] = tag_id
+
+            # build event_tag batch
+            for tag in ev.tags:
+                if len(tag) == 0:
+                    continue
+
+                tag_key = tuple(tag)
+                tag_id = existing_tags[tag_key]
+                event_tag_inserts.append(
+                    {
+                        "event_id": ev_id,
+                        "tag_id": tag_id,
+                    }
+                )
+
+            # bulk insert into event_tags
+            if event_tag_inserts:
+                tag_event_insert_stmt = sqlalchemy.insert(EVENT_TAGS_TABLE).values(
+                    event_id=sqlalchemy.bindparam("event_id"),
+                    tag_id=sqlalchemy.bindparam("tag_id"),
+                )
+                await conn.execute(tag_event_insert_stmt, event_tag_inserts)
 
             await conn.commit()
 
