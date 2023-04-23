@@ -48,7 +48,10 @@ class KafkaEventPersister:
 
             logger.debug("Handling %s", kafka_event)
             if isinstance(kafka_event, kafka_events.CreatOrUpdateEvent):
-                await self._event_repo.add(kafka_event.ev)
+                try:
+                    await self._event_repo.add(kafka_event.ev)
+                except Exception as exc:  # pylint: disable=broad-except
+                    logger.error("Failed to add event %s", kafka_event.ev, exc_info=exc)
             else:
                 raise ValueError(f"Unknown kafka event type: {kafka_event}")
 

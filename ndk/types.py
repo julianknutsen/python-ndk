@@ -19,6 +19,8 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import re
+
 
 class FixedLengthHexStr(str):
     _length: int
@@ -38,7 +40,7 @@ class FixedLengthHexStr(str):
                 f"{cls.__name__} must be {cls._length} bytes long, not {value}"
             )
 
-        if not all(c in "0123456789abcdef" for c in value):
+        if not re.match("^[0-9a-fA-F]+$", value):
             raise ValueError(f"{cls.__name__} must be a hex string, not {value}")
 
 
