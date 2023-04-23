@@ -19,6 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+import asyncio
 import logging
 
 import aiokafka
@@ -26,6 +27,8 @@ import aiokafka
 from ndk.relay.event_repo import event_repo, kafka_events
 
 logger = logging.getLogger(__name__)
+
+WORKER_COUNT = 8
 
 
 class KafkaEventPersister:
@@ -35,16 +38,16 @@ class KafkaEventPersister:
 
     def __init__(self, kafka_url: str, topic: str, ev_repo: event_repo.EventRepo):
         self._consumer = aiokafka.AIOKafkaConsumer(
-            topic, bootstrap_servers=kafka_url, group_id="event_persister"
+            topic,
+            bootstrap_servers=kafka_url,
+            group_id="event_persister",
         )
         self._event_repo = ev_repo
         self._topic = topic
 
-    async def start(self):
-        await self._consumer.start()
-        logger.debug("Started consumer for topic %s", self._topic)
-        async for message in self._consumer:
-            kafka_event = kafka_events.KafkaEvent.deserialize(message.value)
+    async def start_worker(self, work_queue):
+        while True:
+            kafka_event = kafka_events.KafkaEvent.deserialize(await work_queue.get())
 
             logger.debug("Handling %s", kafka_event)
             if isinstance(kafka_event, kafka_events.CreatOrUpdateEvent):
@@ -55,4 +58,17 @@ class KafkaEventPersister:
             else:
                 raise ValueError(f"Unknown kafka event type: {kafka_event}")
 
+    async def start(self):
+        await self._consumer.start()
+        logger.debug("Started consumer for topic %s", self._topic)
+        work_queue = asyncio.Queue(maxsize=WORKER_COUNT)
+        workers = [
+            asyncio.create_task(self.start_worker(work_queue))
+            for _ in range(WORKER_COUNT)
+        ]
+        async for message in self._consumer:
+            await work_queue.put(message.value)
+
+        for t in workers:
+            t.cancel()
         await self._consumer.stop()

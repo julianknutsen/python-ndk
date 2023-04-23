@@ -40,7 +40,12 @@ class KafkaEventRepo(event_repo.EventRepo):
         repo: event_repo.EventRepo,
         topic: str,
     ):
-        self._producer = aiokafka.AIOKafkaProducer(bootstrap_servers=kafka_url)
+        self._producer = aiokafka.AIOKafkaProducer(
+            bootstrap_servers=kafka_url,
+            loop=asyncio.get_event_loop(),
+            value_serializer=lambda v: v.serialize(),
+            compression_type="gzip",
+        )
         self._repo = repo
         self._started = False
         self._topic = topic
@@ -59,7 +64,7 @@ class KafkaEventRepo(event_repo.EventRepo):
     async def _persist(self, ev: event.Event) -> types.EventID:
         assert self._started
         kafka_event = kafka_events.CreatOrUpdateEvent.create(ev)
-        await self._producer.send_and_wait(self._topic, kafka_event.serialize())
+        await self._producer.send_and_wait(self._topic, kafka_event)
 
         return ev.id
 
