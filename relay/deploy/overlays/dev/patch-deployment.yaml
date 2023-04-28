@@ -26,8 +26,12 @@
           key: DB_PASSWORD
     - name: DB_HOST
       value: postgresql
+    - name: DROP_DB
+      value: "true"
     - name: KAFKA_URL
       value: kafka.kafka
+    - name: KAFKA_TOPIC
+      value: events
     - name: RELAY_URL
       value: localhost
     - name: RELAY_LOG_LEVEL
