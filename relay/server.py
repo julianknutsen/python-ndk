@@ -62,7 +62,9 @@ DB_PORT = os.environ.get("DB_PORT", "5432")
 DB_NAME = os.environ.get("DB_NAME", None)
 DB_USER = os.environ.get("DB_USER", None)
 DB_PASSWORD = os.environ.get("DB_PASSWORD", None)
+DROP_DB = os.environ.get("DROP_DB", None)
 KAFKA_URL = os.environ.get("KAFKA_URL", None)
+KAFKA_TOPIC = os.environ.get("KAFKA_TOPIC", None)
 
 logging.basicConfig(level=DEBUG_LEVEL, format="%(asctime)s %(levelname)s %(message)s")
 logging.getLogger("websockets").setLevel(logging.WARNING)
@@ -200,8 +202,12 @@ async def create_repo_from_env():
         if e is None:
             raise ValueError("Required DB_* environment variables are not set")
 
+    drop_db = False
+    if DROP_DB is not None:
+        drop_db = True
+
     postgres_repo = await postgres_event_repo.PostgresEventRepo.create(
-        DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
+        DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, drop_db=drop_db
     )
 
     if MODE == "POSTGRES":
@@ -210,7 +216,13 @@ async def create_repo_from_env():
     if MODE == "POSTGRES_KAFKA":
         if KAFKA_URL is None:
             raise ValueError("Required KAFKA_URL environment variable is not set")
-        kafka_repo = kafka_event_repo.KafkaEventRepo(KAFKA_URL, postgres_repo, "events")
+
+        if KAFKA_TOPIC is None:
+            raise ValueError("Required KAFKA_TOPIC environment variable is not set")
+
+        kafka_repo = kafka_event_repo.KafkaEventRepo(
+            KAFKA_URL, postgres_repo, KAFKA_TOPIC
+        )
         await kafka_repo.start()
         return kafka_repo
 
@@ -249,10 +261,13 @@ async def start_kafka_persister():
     if KAFKA_URL is None:
         raise ValueError("Required KAFKA_URL environment variable is not set")
 
+    if KAFKA_TOPIC is None:
+        raise ValueError("Required KAFKA_TOPIC environment variable is not set")
+
     repo = await postgres_event_repo.PostgresEventRepo.create(
         DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
     )
-    persister = kafka_event_persister.KafkaEventPersister(KAFKA_URL, "events", repo)
+    persister = kafka_event_persister.KafkaEventPersister(KAFKA_URL, KAFKA_TOPIC, repo)
     await persister.start()
 
 

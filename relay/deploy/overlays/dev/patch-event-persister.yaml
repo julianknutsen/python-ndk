@@ -25,5 +25,7 @@
       value: postgresql
     - name: KAFKA_URL
       value: kafka.kafka
+    - name: KAFKA_TOPIC
+      value: events
     - name: RELAY_LOG_LEVEL
       value: DEBUG
